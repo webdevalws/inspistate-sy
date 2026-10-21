@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AuthFlow from './AuthFlow';
 import type { Role } from '../../data/plans';
+import { roleForNext, safeNext } from '../../lib/redirect';
 
 // Site-wide login dialog. Any element with `data-auth-open` opens it (optionally `data-auth-next="/path"`);
 // without JavaScript those elements are plain links to /login, so nothing breaks.
@@ -23,9 +24,9 @@ export default function AuthDialog({ cities, needsRegistration = false, phone = 
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-auth-open]');
       if (!el) return;
       e.preventDefault();
-      const n = el.dataset.authNext ?? null;
-      setNext(n && n.startsWith('/') && !n.startsWith('//') ? n : null);
-      setRole(n?.startsWith('/post-property') ? 'seller' : n?.startsWith('/account/plans') ? 'agent' : 'user');
+      const n = safeNext(el.dataset.authNext);
+      setNext(n);
+      setRole(roleForNext(n));
       setKey((k) => k + 1);
       setOpen(true);
     };

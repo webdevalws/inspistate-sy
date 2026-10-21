@@ -3,14 +3,13 @@ import Base from '../layouts/Base.astro';
 import AuthFlow from '../components/islands/AuthFlow';
 import { getRefs } from '../lib/repo';
 import { ROLES } from '../data/plans';
+import { roleForNext, safeNext } from '../lib/redirect';
 
-const raw = Astro.url.searchParams.get('next') ?? '';
-// Only allow same-site relative redirects.
-const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
+const next = safeNext(Astro.url.searchParams.get('next'));
 const user = Astro.locals.user;
 if (user?.role) return Astro.redirect(next ?? '/account');
 const cities = (await getRefs()).cities.map((c) => ({ slug: c.slug, name: c.name }));
-const defaultRole = next?.startsWith('/post-property') ? 'seller' : next?.startsWith('/account/plans') ? 'agent' : 'user';
+const defaultRole = roleForNext(next);
 ---
 <Base title="Login or Register" noindex>
   <div class="bg-sand-100">

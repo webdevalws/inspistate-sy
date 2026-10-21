@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { readShortlist } from './shortlist';
 import { ROLES, type Role } from '../../data/plans';
+import { destinationAfterRegister, safeNext } from '../../lib/redirect';
 
 // Mobile number → one-time code → (new accounts only) "I am a User / Seller / Agent" registration.
 // Used inside the header login dialog and on the /login page.
@@ -74,15 +75,15 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
     return run(async () => {
       const r = await post<{ needsRegistration: boolean }>('/api/auth/verify', { phone, code, shortlist: readShortlist() });
       if (r.needsRegistration) setStep('register');
-      else go(next);
+      else go(safeNext(next));
     });
   };
 
   const register = (e: React.SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
-      const r = await post<{ home: string | null }>('/api/account/register', { role, name, email, city, company });
-      go(next ?? r.home);
+      await post('/api/account/register', { role, name, email, city, company });
+      go(destinationAfterRegister(role, next));
     });
   };
 
