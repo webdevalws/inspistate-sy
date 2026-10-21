@@ -33,11 +33,24 @@ them the login dialog says "Login by SMS is not configured yet". See `docs/funct
 
 ## Database
 
-| Command | What it does |
-|---|---|
-| `npm run db:seed:build` | Regenerate `db/seed.sql` from `db/seed-data.ts` |
-| `npm run db:migrate:local` / `:remote` | Apply `migrations/*.sql` |
-| `npm run db:seed:local` / `:remote` | Replace all data with the demo seed (**destructive**) |
+| Command | Where | What it does |
+|---|---|---|
+| `npm run db:seed:build` | files only | Regenerate `db/seed.sql` from `db/seed-data.ts` |
+| `npm run db:migrate:local` | **local** | Apply `migrations/*.sql` to `.wrangler/state/` |
+| `npm run db:seed:local` | **local** | Replace all local data with the demo seed (destructive, local only) |
+| `npm run db:reset:local` | **local** | `db:seed:build` + `db:migrate:local` + `db:seed:local` |
+| `npm run db:migrate:remote` | ⚠️ **remote** | Apply new migrations to the production database |
+| `npm run db:seed:remote` | ⚠️ **remote** | **Deletes production data** and loads the demo seed — blocked unless confirmed (below) |
+
+> ⚠️ **`db:seed:remote` wipes production.** `db/seed.sql` starts with `DELETE FROM` for leads, listings
+> (including owner-posted ones), listing photos, shortlists, saved searches, reviews, transactions, the
+> forum and the reference tables. The command runs `db/confirm-remote-seed.ts` first, which prints this
+> warning and stops unless `CONFIRM_REMOTE_SEED=inspistate-db` is set for that one command:
+>
+> ```powershell
+> $env:CONFIRM_REMOTE_SEED='inspistate-db'; npm run db:seed:remote; Remove-Item Env:CONFIRM_REMOTE_SEED
+> ```
+> Only do this for a brand-new, empty database. Day to day, use the **local** commands.
 
 Schema: `migrations/0001_init.sql`. New schema changes go in a new numbered migration file.
 
@@ -48,7 +61,9 @@ The API token needs **D1 Edit**, **Workers R2 Storage Edit** and **Workers Scrip
 ```sh
 npx wrangler d1 create inspistate-db          # copy the database_id into wrangler.jsonc
 npx wrangler r2 bucket create inspistate-media
-npm run db:migrate:remote && npm run db:seed:remote
+npm run db:migrate:remote
+# First deploy only, on the new empty database (see the warning above):
+CONFIRM_REMOTE_SEED=inspistate-db npm run db:seed:remote
 npx wrangler secret put ADMIN_PASSWORD
 npm run build && npx wrangler deploy
 ```

@@ -16,7 +16,7 @@
     "db:seed:local": "wrangler d1 execute inspistate-db --local --file db/seed.sql",
     "db:reset:local": "npm run db:seed:build && npm run db:migrate:local && npm run db:seed:local",
     "db:migrate:remote": "wrangler d1 migrations apply inspistate-db --remote",
-    "db:seed:remote": "wrangler d1 execute inspistate-db --remote --file db/seed.sql"
+    "db:seed:remote": "node db/confirm-remote-seed.ts && wrangler d1 execute inspistate-db --remote --file db/seed.sql"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
