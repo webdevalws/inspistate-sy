@@ -17,9 +17,11 @@ const [refs, listings, enquiries, searches, allowance, leads, subs] = await Prom
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const saved = Astro.url.searchParams.get('saved');
 const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700' };
-// Agents without a plan see masked buyer numbers; sellers always see leads on their own property.
-const maskPhones = user.role === 'agent' && !allowance.hasPlan;
-const mask = (p: string) => (maskPhones ? `${p.slice(0, 2)}••••••${p.slice(-2)}` : p);
+// Buyer numbers on Agent-posted listings need a paid plan, whatever the current role (switching
+// agent → seller must not unmask them). Leads on the owner's own (Owner-posted) listings are always shown.
+const isMasked = (d: { posted_by: string }) => d.posted_by === 'Agent' && !allowance.hasPlan;
+const anyMasked = leads.some(isMasked);
+const mask = (p: string) => `${p.slice(0, 2)}••••••${p.slice(-2)}`;
 const plan = subs?.active ? planByKey(subs.active.plan) : null;
 const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:text-2xl';
 ---
@@ -108,12 +110,12 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
         {lister && (
           <section id="leads" class="scroll-mt-28">
             <h2 class={h2}>Leads Received</h2>
-            {maskPhones && leads.length > 0 && <p class="mt-2 text-sm text-[#1C1A17]/65">Buyer numbers are hidden on the free plan. <a href="/account/plans" class="font-semibold underline">Choose a plan</a> to see them.</p>}
+            {anyMasked && <p class="mt-2 text-sm text-[#1C1A17]/65">Buyer numbers are hidden on the free plan. <a href="/account/plans" class="font-semibold underline">Choose a plan</a> to see them.</p>}
             {leads.length ? (
               <ul class="mt-4 border-t-[0.5px] border-[#1C1A17]/15">
                 {leads.map((d) => (
                   <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3.5 text-sm">
-                    <span><b>{d.name}</b> · {maskPhones ? <span class="font-mono">+91 {mask(d.phone)}</span> : <a href={`tel:+91${d.phone}`} class="font-mono underline">+91 {d.phone}</a>} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{d.kind.replace('-', ' ')} · #{d.listing_id}</span></span>
+                    <span><b>{d.name}</b> · {isMasked(d) ? <span class="font-mono">+91 {mask(d.phone)}</span> : <a href={`tel:+91${d.phone}`} class="font-mono underline">+91 {d.phone}</a>} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{d.kind.replace('-', ' ')} · #{d.listing_id}</span></span>
                     <span class="text-[#1C1A17]/55">{fmtDate(d.created_at)}</span>
                   </li>
                 ))}
