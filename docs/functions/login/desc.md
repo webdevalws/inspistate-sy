@@ -23,6 +23,10 @@ name, optional email, city and (agents) an optional agency name.
 
 ## How it works
 - Codes and session tokens stored as SHA-256; 30 s resend (UI countdown), 5 attempts, 10 min expiry.
+- **Wrong attempts survive a resend.** While the previous code is still valid, "Resend code" sends a new
+  code but keeps the wrong-attempt count and the original expiry (the SMS says how many minutes are
+  left), so resending can't reset or extend a lockout. After 5 wrong codes both verify and resend answer
+  "Too many attempts. Try again in N minutes." until that expiry; after it, the next request starts fresh.
 - Code delivery: `SMS_WEBHOOK_URL` if set; otherwise the dev-only options below; otherwise
   `/api/auth/otp` answers 503 "Login by SMS is not configured yet".
 - **Dev-only login helpers** (set in `.dev.vars`). Both need `import.meta.env.DEV`, which is true only under

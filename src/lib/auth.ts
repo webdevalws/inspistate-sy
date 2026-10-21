@@ -44,17 +44,28 @@ function randomCode(): string {
 
 export type SendResult = { ok: true; devCode?: string; testCode?: string } | { ok: false; error: string; status: number };
 
+const minutesLeft = (until: number) => Math.max(1, Math.ceil((until - Date.now()) / 60000));
+const tooManyAttempts = (until: number) => `Too many attempts. Try again in ${minutesLeft(until)} minute${minutesLeft(until) === 1 ? '' : 's'}.`;
+
 export async function sendOtp(phone: string): Promise<SendResult> {
   const now = Date.now();
-  const existing = await db().prepare('SELECT last_sent_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ last_sent_at: number }>();
+  const existing = await db().prepare('SELECT attempts, expires_at, last_sent_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ attempts: number; expires_at: number; last_sent_at: number }>();
   if (existing && now - existing.last_sent_at < OTP_RESEND_MS) {
     return { ok: false, error: 'Please wait 30 seconds before requesting another code.', status: 429 };
   }
+  // While the previous code is still valid, a resend sends a fresh code but keeps its wrong-attempt
+  // count and expiry, so resending can't reset or extend a lockout. After expiry everything starts over.
+  const live = existing && existing.expires_at > now ? existing : null;
+  if (live && live.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: tooManyAttempts(live.expires_at), status: 429 };
+  const expiresAt = live ? live.expires_at : now + OTP_TTL_MS;
   const code = randomCode();
   await db()
     .prepare(`INSERT INTO otp_codes (phone, code_hash, attempts, expires_at, last_sent_at) VALUES (?, ?, 0, ?, ?)
-      ON CONFLICT(phone) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, last_sent_at = excluded.last_sent_at`)
-    .bind(phone, await sha256(`${phone}:${code}`), now + OTP_TTL_MS, now)
+      ON CONFLICT(phone) DO UPDATE SET code_hash = excluded.code_hash,
+        attempts = CASE WHEN otp_codes.expires_at > ? THEN otp_codes.attempts ELSE 0 END,
+        expires_at = CASE WHEN otp_codes.expires_at > ? THEN otp_codes.expires_at ELSE excluded.expires_at END,
+        last_sent_at = excluded.last_sent_at`)
+    .bind(phone, await sha256(`${phone}:${code}`), now + OTP_TTL_MS, now, now, now)
     .run();
 
   // Production: POST to an SMS gateway configured as a secret. Development: return the code to the UI.
@@ -63,7 +74,7 @@ export async function sendOtp(phone: string): Promise<SendResult> {
     const res = await fetch(cfg.SMS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ to: `+91${phone}`, message: `${code} is your InspiState login code. It expires in 10 minutes.` }),
+      body: JSON.stringify({ to: `+91${phone}`, message: `${code} is your InspiState login code. It expires in ${minutesLeft(expiresAt)} minutes.` }),
     });
     if (!res.ok) return { ok: false, error: 'Could not send the SMS. Please try again.', status: 502 };
     return { ok: true, testCode };
@@ -76,7 +87,7 @@ export async function sendOtp(phone: string): Promise<SendResult> {
 export async function verifyOtp(phone: string, code: string): Promise<{ ok: true; user: User; token: string } | { ok: false; error: string }> {
   const row = await db().prepare('SELECT code_hash, attempts, expires_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ code_hash: string; attempts: number; expires_at: number }>();
   if (!row || row.expires_at < Date.now()) return { ok: false, error: 'The code has expired. Request a new one.' };
-  if (row.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: 'Too many attempts. Request a new code.' };
+  if (row.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: tooManyAttempts(row.expires_at) };
   // The dev test code still needs a requested, unexpired code row and respects the attempt limit.
   if (code !== testOtp() && row.code_hash !== (await sha256(`${phone}:${code}`))) {
     await db().prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
