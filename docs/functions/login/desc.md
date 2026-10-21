@@ -14,7 +14,12 @@ name, optional email, city and (agents) an optional agency name.
 
 ## Outputs
 - HttpOnly session cookie (30 days); `users.role`, `city_slug`, `company`
-- Redirect after register: `next` if given, else Seller → `/post-property`, Agent → `/account/plans`, User → current page
+- Redirect after **login** (returning account): the safe `next`, else stay on the current page
+  (`/login` itself then forwards to `/account`).
+- Redirect after **register** (new account), from `destinationAfterRegister(role, next)`:
+  - User (buyer) → the safe `next`, else stay on the current page
+  - Seller → `/post-property`, unless `next` is already a seller page (`/post-property…` or `/account…`)
+  - Agent → `/account`, unless `next` is already an account page (`/account` or `/account/…`)
 
 ## How it works
 - Codes and session tokens stored as SHA-256; 30 s resend (UI countdown), 5 attempts, 10 min expiry;
@@ -25,13 +30,20 @@ name, optional email, city and (agents) an optional agency name.
   never registered are prompted again (dialog auto-opens once per browser session; header menu shows
   "Finish registration").
 - Any element with `data-auth-open` opens the dialog (`data-auth-next` sets the redirect, and pre-selects
-  Seller for `/post-property`, Agent for `/account/plans`). Without JS these are links to `/login`.
+  Seller for `/post-property`, Agent for `/account/plans` — `roleForNext`). Without JS these are links to `/login`.
+- **Safe redirects** (`safeNext` in `src/lib/redirect.ts`): every `next` (login page, dialog, after
+  login/register) and the role-switch `back` value must be a path on our own site. It must start with a
+  single `/`; values with `//`, `\`, control characters (browsers drop tabs/newlines, so `/\t/x` becomes
+  `//x`), the same patterns after up to two rounds of URL-decoding (`%5C`, `%2F%2F`, `%255C`), broken
+  encoding, or anything that resolves to another origin are rejected. Rejected values fall back to "no
+  `next`" (stay on the page / `/account`), or `/account` for the role switch.
 - `/api/account/register` validates role, name, email and city; cross-origin POSTs are rejected by middleware.
 
 ## Files
 - `src/components/islands/AuthFlow.tsx` — the three steps (shared by dialog and page)
 - `src/components/islands/AuthDialog.tsx` — dialog + `data-auth-open` wiring (mounted in `Header.astro`)
 - `src/pages/login.astro`, `src/lib/auth.ts`, `src/pages/api/auth/*`, `src/pages/api/account/register.ts`
+- `src/lib/redirect.ts` — `safeNext`, `roleForNext`, `destinationAfterRegister` (also used by `src/pages/api/account/role.ts`)
 - `src/data/plans.ts` — role definitions and perks
 - `migrations/0010_roles_plans.sql`
 
