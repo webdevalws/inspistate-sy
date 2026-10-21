@@ -35,6 +35,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   const [phone, setPhone] = useState(knownPhone);
   const [code, setCode] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [testCode, setTestCode] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
   const [role, setRole] = useState<Role>(defaultRole);
   const [name, setName] = useState('');
@@ -61,8 +62,9 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   const sendCode = (e?: React.SyntheticEvent) => {
     e?.preventDefault();
     return run(async () => {
-      const r = await post<{ devCode?: string }>('/api/auth/otp', { phone });
+      const r = await post<{ devCode?: string; testCode?: string }>('/api/auth/otp', { phone });
       setDevCode(r.devCode ?? null);
+      setTestCode(r.testCode ?? null);
       setCode('');
       setResendIn(30);
       setStep('code');
@@ -110,6 +112,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       <h2 className="font-display text-2xl font-bold tracking-tight !text-[#1C1A17]">Verify your number</h2>
       <p className="mt-1.5 text-sm text-[#1C1A17]/60">Enter the 6-digit code sent to <b className="text-[#1C1A17]">+91 {phone}</b> · <button type="button" onClick={() => setStep('phone')} className="cursor-pointer underline">Change</button></p>
       {devCode && <p className="mt-4 border-[0.5px] border-accent-400 bg-accent-50 px-3 py-2 text-sm text-accent-800">Development mode — no SMS sent. Your code is <b className="font-mono">{devCode}</b></p>}
+      {testCode && <p className="mt-4 border-[0.5px] border-accent-400 bg-accent-50 px-3 py-2 text-sm text-accent-800">Development mode — test code enabled. Enter <b className="font-mono">{testCode}</b> for any number.</p>}
       <input autoFocus required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="••••••" aria-label="One-time code" className={`${field} mt-5 text-center font-mono text-2xl tracking-[0.6em]`} />
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
       <button className={`${primary} mt-5`} disabled={busy || code.length !== 6}>{busy ? 'Verifying…' : 'Verify & continue →'}</button>

@@ -19,9 +19,17 @@ Local D1/R2 data lives in `.wrangler/state/`. Local secrets go in `.dev.vars` (g
 
 ```
 ADMIN_PASSWORD=choose-a-strong-password
+# Optional, local dev only — ignored by `astro build`, `npm run preview` and production.
+# This 6-digit code logs in any mobile number:
+TEST_OTP=123456
+# Show the real login code on screen instead of sending an SMS:
+DEV_SHOW_OTP=1
 ```
 
 `/admin` uses HTTP Basic auth — any username, the password above.
+
+Phone login needs one of `TEST_OTP`, `DEV_SHOW_OTP` (local) or `SMS_WEBHOOK_URL` (production); without
+them the login dialog says "Login by SMS is not configured yet". See `docs/functions/login/desc.md`.
 
 ## Database
 

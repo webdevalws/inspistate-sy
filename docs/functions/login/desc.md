@@ -17,8 +17,16 @@ name, optional email, city and (agents) an optional agency name.
 - Redirect after register: `next` if given, else Seller → `/post-property`, Agent → `/account/plans`, User → current page
 
 ## How it works
-- Codes and session tokens stored as SHA-256; 30 s resend (UI countdown), 5 attempts, 10 min expiry;
-  `DEV_SHOW_OTP=1` shows the code in the UI locally.
+- Codes and session tokens stored as SHA-256; 30 s resend (UI countdown), 5 attempts, 10 min expiry.
+- Code delivery: `SMS_WEBHOOK_URL` if set; otherwise the dev-only options below; otherwise
+  `/api/auth/otp` answers 503 "Login by SMS is not configured yet".
+- **Dev-only login helpers** (set in `.dev.vars`). Both need `import.meta.env.DEV`, which is true only under
+  `npm run dev`; `astro build` replaces it with `false`, so `npm run preview` and production ignore them
+  even if the variables are set.
+  - `DEV_SHOW_OTP=1` returns the real code to the UI (yellow "Development mode" note on the code step).
+  - `TEST_OTP=123456` accepts that code for any number, so login works without SMS; the code step shows
+    it in the same yellow note. Must be exactly 6 digits (other values are ignored). A code still has
+    to be requested first, and the 10 min expiry and 5-attempt limit still apply.
 - The OTP is verified **before** the register form, so the site never reveals whether a number already
   has an account (Square Yards shows the register form first).
 - `/api/auth/verify` returns `needsRegistration` when `users.role` is NULL. Accounts that verified but

@@ -15,7 +15,17 @@ const OTP_RESEND_MS = 30 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 
 const db = () => env.DB;
-const cfg = env as unknown as { DEV_SHOW_OTP?: string; SMS_WEBHOOK_URL?: string };
+const cfg = env as unknown as { DEV_SHOW_OTP?: string; SMS_WEBHOOK_URL?: string; TEST_OTP?: string };
+
+// Dev-only login helpers. `import.meta.env.DEV` is true under `astro dev` and replaced with `false` by
+// `astro build`, so neither works in a built Worker even if the variable is set.
+/** Local test code that logs in any number: needs a dev server AND TEST_OTP=<6 digits> in .dev.vars. */
+function testOtp(): string | null {
+  if (!import.meta.env.DEV) return null;
+  const c = cfg.TEST_OTP?.trim() ?? '';
+  return /^\d{6}$/.test(c) ? c : null;
+}
+const devShowOtp = () => import.meta.env.DEV && cfg.DEV_SHOW_OTP === '1';
 
 export async function sha256(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -32,7 +42,7 @@ function randomCode(): string {
   return String(n).padStart(6, '0');
 }
 
-export type SendResult = { ok: true; devCode?: string } | { ok: false; error: string; status: number };
+export type SendResult = { ok: true; devCode?: string; testCode?: string } | { ok: false; error: string; status: number };
 
 export async function sendOtp(phone: string): Promise<SendResult> {
   const now = Date.now();
@@ -48,6 +58,7 @@ export async function sendOtp(phone: string): Promise<SendResult> {
     .run();
 
   // Production: POST to an SMS gateway configured as a secret. Development: return the code to the UI.
+  const testCode = testOtp() ?? undefined;
   if (cfg.SMS_WEBHOOK_URL) {
     const res = await fetch(cfg.SMS_WEBHOOK_URL, {
       method: 'POST',
@@ -55,9 +66,10 @@ export async function sendOtp(phone: string): Promise<SendResult> {
       body: JSON.stringify({ to: `+91${phone}`, message: `${code} is your InspiState login code. It expires in 10 minutes.` }),
     });
     if (!res.ok) return { ok: false, error: 'Could not send the SMS. Please try again.', status: 502 };
-    return { ok: true };
+    return { ok: true, testCode };
   }
-  if (cfg.DEV_SHOW_OTP === '1') return { ok: true, devCode: code };
+  if (devShowOtp()) return { ok: true, devCode: code, testCode };
+  if (testCode) return { ok: true, testCode };
   return { ok: false, error: 'Login by SMS is not configured yet.', status: 503 };
 }
 
@@ -65,7 +77,8 @@ export async function verifyOtp(phone: string, code: string): Promise<{ ok: true
   const row = await db().prepare('SELECT code_hash, attempts, expires_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ code_hash: string; attempts: number; expires_at: number }>();
   if (!row || row.expires_at < Date.now()) return { ok: false, error: 'The code has expired. Request a new one.' };
   if (row.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: 'Too many attempts. Request a new code.' };
-  if (row.code_hash !== (await sha256(`${phone}:${code}`))) {
+  // The dev test code still needs a requested, unexpired code row and respects the attempt limit.
+  if (code !== testOtp() && row.code_hash !== (await sha256(`${phone}:${code}`))) {
     await db().prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
     return { ok: false, error: 'Incorrect code.' };
   }
