@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createLead, LEAD_KINDS, listingContact, type LeadKind } from '../../lib/repo';
+import { overDailyLimit, tooManyToday } from '../../lib/limits';
+
+/** Owner numbers a logged-in account can reveal per day ("View number"). */
+const VIEW_NUMBER_PER_USER_PER_DAY = 20;
 
 export const POST: APIRoute = async ({ request, locals, url }) => {
   if (request.headers.get('origin') !== url.origin) return new Response('Forbidden', { status: 403 });
@@ -24,6 +28,13 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   if (!subject) return Response.json({ error: 'Subject is required' }, { status: 422 });
 
   const listingId = optId(body.listingId);
+  // Owner phone numbers are only revealed to logged-in accounts, within a daily cap. Refused requests
+  // return before createLead, so they leave no lead behind.
+  if (kind === 'view-number') {
+    if (!locals.user) return Response.json({ error: 'Log in or register to see the owner’s number.' }, { status: 401 });
+    if (!listingId) return Response.json({ error: 'Choose a listing.' }, { status: 422 });
+    if (await overDailyLimit('view-number', `user:${locals.user.id}`, VIEW_NUMBER_PER_USER_PER_DAY)) return tooManyToday();
+  }
   const id = await createLead({
     name, phone, email: email || null, subject, page, listingId, projectId: optId(body.projectId), kind, userId: locals.user?.id ?? null,
   });
