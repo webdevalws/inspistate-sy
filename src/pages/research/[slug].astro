@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { buildReports } from '../../lib/research';
+import { jsonLd as serialiseJsonLd } from '../../lib/jsonld';
 
 // Research report detail with bar charts and tables; printable as PDF.
 const reports = await buildReports();
@@ -12,7 +13,7 @@ const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'lo
 const jsonLd = { '@context': 'https://schema.org', '@type': 'Report', name: r.title, description: r.summary, datePublished: new Date().toISOString().slice(0, 10), author: { '@type': 'Organization', name: 'InspiState Research' } };
 ---
 <Base title={`${r.title} | InspiState Research`} description={r.summary}>
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <script type="application/ld+json" set:html={serialiseJsonLd(jsonLd)} />
   <article class="container-x max-w-4xl py-6">
     <Breadcrumbs items={[{ label: 'Research reports', href: '/research' }, { label: r.title }]} />
     <p class="eyebrow mt-4">{r.category} report · {date} · InspiState Research</p>

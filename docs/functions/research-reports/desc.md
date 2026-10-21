@@ -14,6 +14,7 @@ Data-driven market reports computed from our own locality data: national reports
 
 ## How it works
 - `buildReports()` averages locality price, rent and YoY growth per city; yield = rent×12/price; 2BHK = 1,000 sq ft × rate with EMI at 80% LTV, 8.5%, 20 yrs and income = EMI ÷ 40%.
+- The Report JSON-LD is serialised with `jsonLd()` from `src/lib/jsonld.ts` (escapes `<`, `>`, `&`, U+2028/2029).
 
 ## Files
 - `src/lib/research.ts`
