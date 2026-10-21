@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createLead, LEAD_KINDS, listingContact, type LeadKind } from '../../lib/repo';
 import { overDailyLimit, tooManyToday } from '../../lib/limits';
+import { safeNext } from '../../lib/redirect';
 
 /** Owner numbers a logged-in account can reveal per day ("View number"). */
 const VIEW_NUMBER_PER_USER_PER_DAY = 20;
@@ -18,7 +19,8 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const phone = String(body.phone ?? '').replace(/\D/g, '').slice(-10);
   const email = String(body.email ?? '').trim();
   const subject = String(body.subject ?? '').trim().slice(0, 200);
-  const page = String(body.page ?? '').slice(0, 300) || null;
+  // The page the enquiry came from: only same-site paths are kept (shown as a link in admin and /account).
+  const page = safeNext(String(body.page ?? '').slice(0, 300));
   const kind: LeadKind = LEAD_KINDS.includes(body.kind as LeadKind) ? (body.kind as LeadKind) : 'enquiry';
   const optId = (v: unknown) => (Number.isInteger(Number(v)) && Number(v) > 0 ? Number(v) : null);
 

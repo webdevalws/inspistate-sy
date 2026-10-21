@@ -19,6 +19,10 @@ Stores callback, view-number, brochure, service and chat leads.
   register to see the owner's number."; without a `listingId` → 422; more than **20 per account per UTC
   day** → 429 (counted in `ai_usage`, feature `view-number`, key = hashed `user:<id>`). These checks run
   before the lead is saved, so refused requests create no lead and return no number.
+- **The `page` field is a same-site path only.** It is cleaned with `safeNext()` (`src/lib/redirect.ts`)
+  when saved (anything else, e.g. `javascript:` or `https://…`, is stored as NULL), and the admin
+  enquiries table and the account page's "My enquiries" only render it as a link if it is still safe, so
+  older rows can't produce a dangerous link either. All forms send `location.pathname`.
 - On listing cards, logged-out visitors get a "View Number" link with the same look that opens the login
   dialog (`data-auth-open`; a `/login?next=…` link without JS) instead of the lead form.
 

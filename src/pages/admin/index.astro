@@ -5,6 +5,7 @@ import { adminCounts, getRefs, listingsByStatus, recentLeads } from '../../lib/r
 import { listingPrice, listingTitle } from '../../lib/listing';
 import { env } from 'cloudflare:workers';
 import { recentOrders } from '../../lib/orders';
+import { safeNext } from '../../lib/redirect';
 
 const [refs, counts, pending, leads] = await Promise.all([getRefs(), adminCounts(), listingsByStatus('pending', 50), recentLeads(100)]);
 const done = Astro.url.searchParams.get('done');
@@ -131,7 +132,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
                 <td class="px-4 py-3 font-semibold">{ld.name}</td>
                 <td class="whitespace-nowrap px-4 py-3"><a href={`tel:+91${ld.phone}`} class="text-brand-700 hover:underline">+91 {ld.phone}</a></td>
                 <td class="px-4 py-3">{ld.email ?? '—'}</td>
-                <td class="px-4 py-3">{ld.page ? <a href={ld.page} class="text-brand-700 hover:underline">{ld.subject}</a> : ld.subject}</td>
+                <td class="px-4 py-3">{safeNext(ld.page) ? <a href={safeNext(ld.page)!} class="text-brand-700 hover:underline">{ld.subject}</a> : ld.subject}</td>
               </tr>
             ))}
             {leads.length === 0 && <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No enquiries yet.</td></tr>}
