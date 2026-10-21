@@ -81,7 +81,8 @@ export async function listingAllowance(user: User | null): Promise<Allowance> {
   if (!user) return { used: 0, limit: 0, canPost: false, hasPlan: false, reason: 'login' };
   if (!user.role) return { used: 0, limit: 0, canPost: false, hasPlan: false, reason: 'register' };
   const used = (await db().prepare("SELECT count(*) AS n FROM listings WHERE user_id = ? AND status IN ('active', 'pending')").bind(user.id).first<number>('n')) ?? 0;
-  const hasPlan = user.role === 'agent' && !!(await subscriptionState(user.id)).active;
+  // A paid plan belongs to the account, not the current role: it survives switching agent → seller.
+  const hasPlan = !!(await subscriptionState(user.id)).active;
   const limit = hasPlan ? null : FREE_LISTINGS[user.role];
   if (user.role === 'user') return { used, limit: 0, canPost: false, hasPlan, reason: 'buyer' };
   const canPost = limit === null || used < limit;
@@ -105,9 +106,9 @@ export async function requestSubscription(user: User, plan: PlanKey): Promise<{ 
 /** Enquiries buyers sent on this account's own listings. */
 export async function leadsReceived(userId: number) {
   const { results } = await db()
-    .prepare(`SELECT ld.id, ld.name, ld.phone, ld.subject, ld.kind, ld.created_at, ld.listing_id
+    .prepare(`SELECT ld.id, ld.name, ld.phone, ld.subject, ld.kind, ld.created_at, ld.listing_id, l.posted_by
       FROM leads ld JOIN listings l ON l.id = ld.listing_id WHERE l.user_id = ? ORDER BY ld.id DESC LIMIT 100`)
     .bind(userId)
-    .all<{ id: number; name: string; phone: string; subject: string; kind: string; created_at: string; listing_id: number }>();
+    .all<{ id: number; name: string; phone: string; subject: string; kind: string; created_at: string; listing_id: number; posted_by: string }>();
   return results;
 }

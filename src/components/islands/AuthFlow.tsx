@@ -3,7 +3,7 @@ import { readShortlist } from './shortlist';
 import { ROLES, type Role } from '../../data/plans';
 import { destinationAfterRegister, safeNext } from '../../lib/redirect';
 
-// Mobile number → one-time code → (new accounts only) "I am a User / Seller / Agent" registration.
+// Mobile number → one-time code → (new accounts only) "I am a Buyer / Seller / Agent" registration.
 // Used inside the header login dialog and on the /login page.
 type Step = 'phone' | 'code' | 'register';
 interface Props {
@@ -125,7 +125,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
 
   return (
     <form onSubmit={register}>
-      <h2 className="font-display text-2xl font-bold tracking-tight !text-[#1C1A17]">Register</h2>
+      <h2 className="font-display text-2xl font-bold tracking-tight !text-[#1C1A17]">Create your account</h2>
       <p className="mt-1.5 text-sm text-[#1C1A17]/60">Tell us who you are so we can set up the right account.</p>
 
       <fieldset className="mt-5">
@@ -151,13 +151,13 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       <div className="mt-5 grid gap-4">
         <label className="block"><span className={label}>Full name</span><input required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Your full name" className={field} /></label>
         {role === 'agent' && (
-          <label className="block"><span className={label}>Agency / firm name <span className="normal-case tracking-normal">(optional)</span></span><input maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" placeholder="e.g. Skyline Realty" className={field} /></label>
+          <label className="block"><span className={label}>Agency / firm name</span><input required minLength={2} maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" placeholder="e.g. Skyline Realty" className={field} /></label>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block"><span className={label}>Email <span className="normal-case tracking-normal">(optional)</span></span><input type="email" maxLength={200} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com" className={field} /></label>
-          <label className="block"><span className={label}>City</span>
-            <select required value={city} onChange={(e) => setCity(e.target.value)} className={`${field} cursor-pointer`}>
-              <option value="" disabled>Choose a city</option>
+          <label className="block"><span className={label}>City <span className="normal-case tracking-normal">(optional)</span></span>
+            <select value={city} onChange={(e) => setCity(e.target.value)} className={`${field} cursor-pointer`}>
+              <option value="">Choose a city</option>
               {cities.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
             </select>
           </label>
@@ -165,7 +165,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       </div>
 
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
-      <button className={`${primary} mt-6`} disabled={busy}>{busy ? 'Creating account…' : `Register as ${selected.label} →`}</button>
+      <button className={`${primary} mt-6`} disabled={busy}>{busy ? 'Creating account…' : `Create account as ${selected.label} →`}</button>
     </form>
   );
 }

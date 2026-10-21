@@ -3,7 +3,8 @@ export type Role = 'user' | 'seller' | 'agent';
 export type PlanKey = 'yearly' | 'half-yearly';
 
 export const ROLES: { key: Role; label: string; sub: string; perks: string[] }[] = [
-  { key: 'user', label: 'User', sub: 'Buy or rent a home', perks: ['Shortlist & compare homes', 'Saved searches', 'Contact owners and agents'] },
+  // Shown as "Buyer"; the stored role value stays 'user'.
+  { key: 'user', label: 'Buyer', sub: 'Buy or rent a home', perks: ['Shortlist & compare homes', 'Saved searches', 'Contact owners and agents'] },
   { key: 'seller', label: 'Seller', sub: '3 free listings', perks: ['List your own property', 'Leads from interested buyers', 'Listing performance dashboard'] },
   { key: 'agent', label: 'Agent', sub: 'Unlimited with a plan', perks: ['3 free listings to start', 'Unlimited listings with a plan', 'Buyer leads on every listing'] },
 ];
