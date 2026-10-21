@@ -27,6 +27,13 @@ name, optional email, city and (agents) an optional agency name.
   code but keeps the wrong-attempt count and the original expiry (the SMS says how many minutes are
   left), so resending can't reset or extend a lockout. After 5 wrong codes both verify and resend answer
   "Too many attempts. Try again in N minutes." until that expiry; after it, the next request starts fresh.
+- **Daily limits:** at most **5 codes per phone** and **20 per IP** per UTC day. Every code request that
+  passes the 30 s and lockout checks is counted in `ai_usage` — now a general daily counter, not only for
+  AI — under feature `otp-phone` (client = SHA-256 of the phone) and `otp-ip` (client = SHA-256 of the IP,
+  `'unknown'` when the runtime can't tell). Over either limit → 429 "Daily limit for login codes reached".
+  The limits apply in local dev too (use another number to keep testing with `TEST_OTP`).
+- SMS webhook failures — a non-2xx answer **or** a network error — return 502 "Could not send the SMS.
+  Please try again." instead of a 500.
 - Code delivery: `SMS_WEBHOOK_URL` if set; otherwise the dev-only options below; otherwise
   `/api/auth/otp` answers 503 "Login by SMS is not configured yet".
 - **Dev-only login helpers** (set in `.dev.vars`). Both need `import.meta.env.DEV`, which is true only under

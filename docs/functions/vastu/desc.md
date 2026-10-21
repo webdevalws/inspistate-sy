@@ -27,7 +27,7 @@ Analyses an uploaded floor plan: works out which compass direction each room sit
 - `src/components/islands/VastuAnalyzer.tsx` — 5-step UI
 - `src/data/vastu.ts` — directions, room rating table, remedies, `directionOf`, `vastuReport`
 - `src/pages/api/tools/vastu-detect.ts` — AI room detection
-- `migrations/0006_ai_usage.sql` — daily AI usage counter
+- `migrations/0006_ai_usage.sql` — `ai_usage`, now a general daily counter keyed by (hashed client, feature, UTC day); Vastu uses feature `vastu`, login codes use `otp-phone` / `otp-ip` (see `docs/functions/login/desc.md`)
 - `src/pages/tools/[tool].astro`, `src/lib/catalog.ts`
 
 ## Tests

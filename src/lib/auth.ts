@@ -47,7 +47,11 @@ export type SendResult = { ok: true; devCode?: string; testCode?: string } | { o
 const minutesLeft = (until: number) => Math.max(1, Math.ceil((until - Date.now()) / 60000));
 const tooManyAttempts = (until: number) => `Too many attempts. Try again in ${minutesLeft(until)} minute${minutesLeft(until) === 1 ? '' : 's'}.`;
 
-export async function sendOtp(phone: string): Promise<SendResult> {
+/** Daily caps on login codes, counted in the general `ai_usage` daily counter (keys are hashed). */
+const OTP_PER_PHONE_PER_DAY = 5;
+const OTP_PER_IP_PER_DAY = 20;
+
+export async function sendOtp(phone: string, clientIp: string): Promise<SendResult> {
   const now = Date.now();
   const existing = await db().prepare('SELECT attempts, expires_at, last_sent_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ attempts: number; expires_at: number; last_sent_at: number }>();
   if (existing && now - existing.last_sent_at < OTP_RESEND_MS) {
@@ -58,6 +62,19 @@ export async function sendOtp(phone: string): Promise<SendResult> {
   const live = existing && existing.expires_at > now ? existing : null;
   if (live && live.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: tooManyAttempts(live.expires_at), status: 429 };
   const expiresAt = live ? live.expires_at : now + OTP_TTL_MS;
+
+  // Count this request against both daily caps (UTC day) before any code is created or sent.
+  const day = new Date(now).toISOString().slice(0, 10);
+  const bump = `INSERT INTO ai_usage (client, feature, day, count) VALUES (?, ?, ?, 1)
+    ON CONFLICT(client, feature, day) DO UPDATE SET count = count + 1 RETURNING count`;
+  const [perPhone, perIp] = await db().batch<{ count: number }>([
+    db().prepare(bump).bind(await sha256(phone), 'otp-phone', day),
+    db().prepare(bump).bind(await sha256(clientIp), 'otp-ip', day),
+  ]);
+  if ((perPhone.results[0]?.count ?? 0) > OTP_PER_PHONE_PER_DAY || (perIp.results[0]?.count ?? 0) > OTP_PER_IP_PER_DAY) {
+    return { ok: false, error: 'Daily limit for login codes reached. Please try again tomorrow.', status: 429 };
+  }
+
   const code = randomCode();
   await db()
     .prepare(`INSERT INTO otp_codes (phone, code_hash, attempts, expires_at, last_sent_at) VALUES (?, ?, 0, ?, ?)
@@ -71,12 +88,18 @@ export async function sendOtp(phone: string): Promise<SendResult> {
   // Production: POST to an SMS gateway configured as a secret. Development: return the code to the UI.
   const testCode = testOtp() ?? undefined;
   if (cfg.SMS_WEBHOOK_URL) {
-    const res = await fetch(cfg.SMS_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ to: `+91${phone}`, message: `${code} is your InspiState login code. It expires in ${minutesLeft(expiresAt)} minutes.` }),
-    });
-    if (!res.ok) return { ok: false, error: 'Could not send the SMS. Please try again.', status: 502 };
+    const smsFailed = { ok: false, error: 'Could not send the SMS. Please try again.', status: 502 } as const;
+    try {
+      const res = await fetch(cfg.SMS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to: `+91${phone}`, message: `${code} is your InspiState login code. It expires in ${minutesLeft(expiresAt)} minutes.` }),
+      });
+      if (!res.ok) return smsFailed;
+    } catch {
+      // Network error, DNS failure or a bad URL: answer clearly instead of a 500.
+      return smsFailed;
+    }
     return { ok: true, testCode };
   }
   if (devShowOtp()) return { ok: true, devCode: code, testCode };
