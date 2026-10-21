@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Faq from '../components/Faq.astro';
+import { LoanTabs, RateTable } from '../components/islands/LoanTools';
+import { HOME_LOAN_LENDERS, RATE_HISTORY } from '../data/loans';
+
+// Bank-wise home loan interest rates. See docs/functions/home-loan-rates/desc.md.
+const lowest = [...HOME_LOAN_LENDERS].sort((a, b) => a.min - b.min)[0];
+const month = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+const factors = [
+  ['Credit score', 'A score of 750+ gets the lowest advertised rate; below 700 lenders add 0.25–1.5%.'],
+  ['Loan-to-value', 'Borrowing less than 80% of the property value often gets a lower rate.'],
+  ['Income & employer', 'Salaried applicants with listed employers usually get better pricing than self-employed borrowers.'],
+  ['Women borrowers', 'Many lenders offer about 0.05% lower rates when a woman is the primary or co-borrower.'],
+];
+const faq = [
+  { q: 'Which bank has the lowest home loan rate?', a: `As of ${month}, ${lowest.name} advertises the lowest starting rate at ${lowest.min.toFixed(2)}% in our list. Your rate depends on your credit score and profile.` },
+  { q: 'Should I choose a fixed or floating rate?', a: 'Most home loans in India are floating and linked to an external benchmark (repo rate). Floating loans have no prepayment charges for individuals.' },
+  { q: 'How is the rate reset?', a: 'External-benchmark loans reset at least every three months after the benchmark changes. Check your reset dates in the sanction letter.' },
+  { q: 'Can I switch to a lower rate later?', a: 'Yes — ask your lender to convert to the current rate for a small fee, or transfer the balance to another lender. Use our balance transfer calculator to compare.' },
+];
+---
+<Base title={`Home Loan Interest Rates ${month} — Compare ${HOME_LOAN_LENDERS.length} Lenders`} description={`Compare home loan interest rates from ${HOME_LOAN_LENDERS.length} banks and housing finance companies, starting at ${lowest.min.toFixed(2)}%. EMI per lakh, processing fees and loan limits.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Home loans', href: '/services/home-loans' }, { label: 'Interest rates' }]} />
+    <h1 class="mt-3 text-3xl font-extrabold">Home loan interest rates — {month}</h1>
+    <p class="mt-2 max-w-3xl text-neutral-600">Rates start at <b>{lowest.min.toFixed(2)}%</b>. Compare public banks, private banks and housing finance companies by rate, EMI per lakh and fees.</p>
+    <div class="mt-6"><LoanTabs active="" /></div>
+    <RateTable client:load />
+    <div class="mt-12 grid gap-6 lg:grid-cols-2">
+      <section class="panel">
+        <h2 class="text-lg font-bold">What decides your rate</h2>
+        <ul class="mt-3 space-y-3">{factors.map(([t, s]) => <li><p class="font-semibold">{t}</p><p class="text-sm text-neutral-600">{s}</p></li>)}</ul>
+      </section>
+      <section class="panel">
+        <h2 class="text-lg font-bold">Lowest market rate by year</h2>
+        <table class="mt-3 w-full text-sm"><tbody class="divide-y divide-neutral-100">{RATE_HISTORY.map(([y, r]) => <tr><td class="py-2">{y}</td><td class="text-right font-semibold">{r}</td></tr>)}</tbody></table>
+      </section>
+    </div>
+    <div class="panel mt-8"><Faq items={faq} /></div>
+  </div>
+</Base>

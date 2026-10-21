@@ -1,0 +1,17 @@
+---
+interface Props { points: { label: string; v: number }[]; color?: string; prefix?: string }
+const { points, color = '#b48b5d', prefix = '₹' } = Astro.props;
+const W = 300, H = 150, P = { l: 44, r: 10, t: 12, b: 28 };
+const vs = points.map((p) => p.v);
+const lo = Math.min(...vs) * 0.98, hi = Math.max(...vs) * 1.02;
+const x = (i: number) => P.l + (i * (W - P.l - P.r)) / Math.max(1, points.length - 1);
+const y = (v: number) => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+const k = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(0));
+const ticks = [lo, (lo + hi) / 2, hi];
+---
+<svg viewBox={`0 0 ${W} ${H}`} class="w-full" role="img" aria-label={`Trend from ${prefix}${k(vs[0])} to ${prefix}${k(vs.at(-1)!)}`}>
+  {ticks.map((t) => <g><line x1={P.l} x2={W - P.r} y1={y(t)} y2={y(t)} stroke="#e5e5e5" /><text x={P.l - 6} y={y(t) + 4} text-anchor="end" font-size="10" fill="#737373">{prefix}{k(t)}</text></g>)}
+  <polyline points={points.map((p, i) => `${x(i)},${y(p.v)}`).join(' ')} fill="none" stroke={color} stroke-width="2" />
+  {points.map((p, i) => <circle cx={x(i)} cy={y(p.v)} r="3" fill={color}><title>{p.label}: {prefix}{Math.round(p.v).toLocaleString('en-IN')}</title></circle>)}
+  {points.map((p, i) => (i % 2 === 0 || i === points.length - 1) && <text x={x(i)} y={H - 8} text-anchor="middle" font-size="9.5" fill="#737373">{p.label}</text>)}
+</svg>

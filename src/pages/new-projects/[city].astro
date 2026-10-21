@@ -1,0 +1,44 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getProjects, getRefs } from '../../lib/repo';
+import type { ProjectStatus } from '../../data/types';
+
+const refs = await getRefs();
+const city = refs.city(Astro.params.city!);
+if (!city) return new Response(null, { status: 404 });
+
+const statuses: ProjectStatus[] = ['New Launch', 'Under Construction', 'Ready to Move'];
+const status = statuses.find((s) => s === Astro.url.searchParams.get('status'));
+const locality = Astro.url.searchParams.get('locality') ?? undefined;
+const all = await getProjects({ citySlug: city.slug });
+const projects = all.filter((p) => (!status || p.status === status) && (!locality || p.localitySlug === locality));
+const tab = (s?: string) => `/new-projects/${city.slug}${s ? `?status=${encodeURIComponent(s)}` : ''}`;
+---
+<Base title={`New Projects in ${city.name} — ${projects.length} launches`} description={`New launch, under-construction and ready-to-move projects in ${city.name} with prices, floor plans, RERA numbers and possession dates.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: 'New Projects' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">New Projects in {city.name}</h1>
+    <p class="text-sm text-slate-500">{projects.length} projects{locality && ` in ${refs.locality(city.slug, locality)?.name}`}</p>
+
+    <div class="mt-5 flex flex-wrap gap-2">
+      {[undefined, ...statuses].map((s) => (
+        <a href={tab(s)} class:list={['rounded-full px-4 py-2 text-sm font-semibold', s === status ? 'bg-brand-600 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-brand-400']}>{s ?? 'All'} <span class="opacity-70">({s ? all.filter((p) => p.status === s).length : all.length})</span></a>
+      ))}
+    </div>
+
+    {projects.length ? (
+      <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.map((p) => <ProjectCard project={p} />)}</div>
+    ) : (
+      <div class="card mt-6 p-10 text-center"><p class="font-semibold">No projects match.</p><a href={tab()} class="btn-primary mt-4">See all projects</a></div>
+    )}
+
+    <section class="mt-14">
+      <h2 class="section-title mb-4">New projects in other cities</h2>
+      <div class="flex flex-wrap gap-2">
+        {refs.cities.filter((c) => c.slug !== city.slug).map((c) => <a href={`/new-projects/${c.slug}`} class="chip bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:text-brand-700">{c.name}</a>)}
+      </div>
+    </section>
+  </div>
+</Base>

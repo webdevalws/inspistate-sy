@@ -1,0 +1,30 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"compatibility_date": "2026-10-12",
+	"compatibility_flags": ["global_fetch_strictly_public"],
+	"name": "inspistate",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "inspistate-db",
+			"database_id": "2d426abc-9152-4be0-a4de-92e079a5d491",
+			// Local dev keeps using the original placeholder id, so existing local data under .wrangler/ stays put.
+			"preview_database_id": "00000000-0000-4000-8000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "inspistate-media"
+		}
+	]
+}

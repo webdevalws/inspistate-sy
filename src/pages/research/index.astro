@@ -1,0 +1,33 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { buildReports } from '../../lib/research';
+
+// Research reports index. See docs/functions/research-reports/desc.md.
+const reports = await buildReports();
+const cat = Astro.url.searchParams.get('category');
+const shown = reports.filter((r) => !cat || r.category === cat);
+const month = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+---
+<Base title="Research Reports — Indian Real Estate Data & Insights" description="Data-driven reports on property prices, rental yields, fastest-growing localities and affordability across Indian cities, updated from InspiState listings.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Research reports' }]} />
+    <h1 class="mt-3 text-3xl font-extrabold">Research reports</h1>
+    <p class="mt-2 max-w-3xl text-neutral-600">Market data from InspiState listings, refreshed continuously. Free to cite with attribution to InspiState. Updated {month}.</p>
+    <div class="mt-5 flex gap-2">{[['', 'All'], ['National', 'National'], ['City', 'City reports']].map(([v, l]) => <a href={v ? `/research?category=${v}` : '/research'} class:list={['pill', (cat ?? '') === v && 'bg-brand-900 text-white']}>{l}</a>)}</div>
+    <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {shown.map((r) => (
+        <a href={`/research/${r.slug}`} class="card flex flex-col p-5 hover:border-brand-300">
+          <p class="eyebrow">{r.category} report</p>
+          <h2 class="mt-1 text-lg font-bold text-brand-900">{r.title}</h2>
+          <p class="mt-2 flex-1 text-sm text-neutral-600">{r.summary}</p>
+          <p class="mt-4 text-sm font-semibold text-accent-700">{r.keyStat}</p>
+        </a>
+      ))}
+    </div>
+    <section class="panel mt-10">
+      <h2 class="text-lg font-bold">How we calculate</h2>
+      <p class="mt-2 text-sm text-neutral-600">Prices and rents are averages of active asking prices on InspiState for each locality; city figures average their localities. Growth compares the same localities year on year. Asking prices can differ from registered transaction prices. Journalists and analysts can request custom data cuts via our <a href="/press" class="font-semibold underline">press page</a>.</p>
+    </section>
+  </div>
+</Base>

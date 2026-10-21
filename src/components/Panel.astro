@@ -1,0 +1,9 @@
+---
+interface Props { title?: string; sub?: string; id?: string; class?: string }
+const { title, sub, id, class: cls = '' } = Astro.props;
+---
+<section id={id} class:list={['panel', cls]}>
+  {title && <h2 class="section-title">{title}</h2>}
+  {sub && <p class="section-sub">{sub}</p>}
+  <div class:list={[title || sub ? 'mt-6' : '']}><slot /></div>
+</section>

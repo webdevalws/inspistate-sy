@@ -1,0 +1,61 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { BalanceTransfer, Eligibility, LoanEmi, LoanTabs, Prepayment, TaxBenefit } from '../../components/islands/LoanTools';
+import { AreaConverter, StampDuty } from '../../components/islands/Calculators';
+import Affordability from '../../components/islands/Affordability';
+import CostOfLiving from '../../components/islands/CostOfLiving';
+import VastuAnalyzer from '../../components/islands/VastuAnalyzer';
+import BuyVsRent from '../../components/islands/BuyVsRent';
+import { InteriorEstimator, KitchenCalculator } from '../../components/islands/Interiors';
+import { CapitalGains, RentAgreement, RentReceipt, Valuation } from '../../components/islands/MoreTools';
+import { PropertyTax } from '../../components/islands/LivingTools';
+import { CreditScoreCheck } from '../../components/islands/Finance';
+import { getRefs } from '../../lib/repo';
+import { TOOLS, type ToolSlug } from '../../lib/catalog';
+
+const tool = TOOLS.find((t) => t.slug === Astro.params.tool);
+if (!tool) return new Response(null, { status: 404 });
+const key = tool.slug as ToolSlug;
+const refs = await getRefs();
+const valuationCities = refs.cities.map((c) => ({ slug: c.slug, name: c.name, localities: refs.localitiesOf(c.slug).map((l) => ({ slug: l.slug, name: l.name, rate: l.ratePerSqft })) }));
+const livingCities = refs.cities.map((c) => ({ slug: c.slug, name: c.name, localities: refs.localitiesOf(c.slug).map((l) => ({ slug: l.slug, name: l.name, rate: l.ratePerSqft, rent: l.rentPerSqft })) }));
+const others = TOOLS.filter((t) => t.slug !== key);
+---
+<Base title={tool.title} description={tool.sub}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Tools', href: '/tools' }, { label: tool.title }]} />
+    <div class="mt-3 grid gap-8 lg:grid-cols-[1fr_260px]">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-extrabold sm:text-3xl">{tool.title}</h1>
+        <p class="mt-1 text-slate-600">{tool.sub}</p>
+        <div class="card mt-6 p-6">
+          {['emi-calculator', 'loan-eligibility', 'balance-transfer', 'prepayment', 'tax-benefit'].includes(key) && <LoanTabs active={key} />}
+          {key === 'emi-calculator' && <LoanEmi client:load />}
+          {key === 'balance-transfer' && <BalanceTransfer client:load />}
+          {key === 'prepayment' && <Prepayment client:load />}
+          {key === 'tax-benefit' && <TaxBenefit client:load />}
+          {key === 'affordability' && <Affordability client:load cities={livingCities} />}
+          {key === 'stamp-duty' && <StampDuty client:load />}
+          {key === 'area-converter' && <AreaConverter client:load />}
+          {key === 'loan-eligibility' && <Eligibility client:load />}
+          {key === 'buy-vs-rent' && <BuyVsRent client:load cities={livingCities} />}
+          {key === 'capital-gains' && <CapitalGains client:load />}
+          {key === 'property-valuation' && <Valuation client:load cities={valuationCities} />}
+          {key === 'vastu' && <VastuAnalyzer client:only="react" />}
+          {key === 'interior-cost' && <InteriorEstimator client:load />}
+          {key === 'modular-kitchen' && <KitchenCalculator client:load />}
+          {key === 'rent-receipt' && <RentReceipt client:load />}
+          {key === 'rent-agreement' && <RentAgreement client:load />}
+          {key === 'cost-of-living' && <CostOfLiving client:load cities={livingCities} />}
+          {key === 'property-tax' && <PropertyTax client:load cities={refs.cities.map((c) => ({ slug: c.slug, name: c.name }))} />}
+          {key === 'credit-score' && <CreditScoreCheck client:load />}
+        </div>
+      </div>
+      <aside class="print:hidden">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">More tools</p>
+        <ul class="space-y-1">{others.map((t) => <li><a href={`/tools/${t.slug}`} class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-white hover:text-brand-700"><span class="w-5 text-center">{t.icon}</span>{t.title}</a></li>)}</ul>
+      </aside>
+    </div>
+  </div>
+</Base>

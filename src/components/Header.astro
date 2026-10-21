@@ -1,0 +1,118 @@
+---
+import ShortlistCount from './islands/ShortlistCount';
+import AuthDialog from './islands/AuthDialog';
+import { roleLabel } from '../data/plans';
+import { getRefs } from '../lib/repo';
+import { headerMenus } from '../lib/catalog';
+
+const { cities } = await getRefs();
+const current = cities.find((c) => Astro.url.pathname.split('/').includes(c.slug)) ?? cities[0];
+const menus = headerMenus(current.slug, current.name);
+const user = Astro.locals.user;
+const authCities = cities.map((c) => ({ slug: c.slug, name: c.name }));
+// Account menu follows the role picked at registration.
+const accountLinks: [string, string][] = [
+  ['My account', '/account'],
+  ...(user?.role === 'seller' || user?.role === 'agent' ? [['My listings', '/account#listings'], ['Leads received', '/account#leads'], ['List property', '/post-property']] as [string, string][] : []),
+  ...(user?.role === 'agent' ? [['Subscription plans', '/account/plans']] as [string, string][] : []),
+  ['Shortlist', '/account#shortlist'], ['Saved searches', '/account#searches'], ['My enquiries', '/account#enquiries'],
+];
+const overlay = Astro.url.pathname === '/';
+---
+<header class:list={['print:hidden top-0 z-40 w-full transition-all duration-300', overlay ? 'absolute bg-gradient-to-b from-[#1C1A17]/55 to-transparent' : 'sticky bg-brand-950 border-b-[0.5px] border-white/15']}>
+  <div class="container-x flex h-[76px] items-center justify-between gap-6">
+    <a href="/" class="font-display text-[19px] font-extrabold uppercase tracking-[0.02em] text-sand-50 [font-stretch:115%]" aria-label="InspiState home">InspiState</a>
+    
+    <nav class="hidden items-center gap-4 lg:flex xl:gap-7" aria-label="Main">
+      {menus.map((m, idx) => (
+        <div class="group relative">
+          <button class="flex items-center gap-1.5 transition-all duration-200 cursor-pointer nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/80 hover:text-sand-50" aria-haspopup="true">
+            <span>{m.label}</span>
+            <svg class="h-3.5 w-3.5 text-white/50 transition-transform duration-200 group-hover:rotate-180 group-hover:text-amber-400 hidden" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m5 8 5 5 5-5" />
+            </svg>
+          </button>
+          <div class:list={['hidden group-hover:block group-focus-within:block absolute top-full z-50 pt-3', idx >= 3 ? 'right-0' : 'left-0']}>
+            <div class:list={['grid gap-6 rounded-2xl bg-white/98 p-6 text-slate-800 shadow-[0_25px_60px_-15px_rgba(7,14,31,0.25)] ring-1 ring-black/5 backdrop-blur-xl border border-slate-100 max-w-[calc(100vw-3rem)]', m.groups.length > 2 ? 'w-[680px] grid-cols-3' : m.groups.length === 2 ? 'w-[480px] grid-cols-2' : 'w-72']}>
+              {m.groups.map((g) => (
+                <div>
+                  <div class="mb-3 flex items-center gap-2">
+                    <span class="h-1 w-2.5 rounded-full bg-accent-500"></span>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-accent-700">{g.title}</p>
+                  </div>
+                  <ul class="space-y-1">
+                    {g.links.map(([label, href]) => (
+                      <li>
+                        <a href={href} class="block rounded-lg px-2.5 py-1.5 text-sm text-slate-700 transition hover:bg-amber-50 hover:text-brand-950 hover:font-medium">
+                          {label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-3 sm:gap-4">
+      <a href="/shortlist" class="relative grid h-10 w-10 place-items-center border bg-white/5 text-white/90 backdrop-blur-md transition hover:bg-white/10 hover:text-white border-[0.5px] border-sand-50/30 hover:border-sand-50/70" aria-label="Shortlist">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9Z" /></svg>
+        <ShortlistCount client:load />
+      </a>
+      {user ? (
+        <details class="relative" data-dropdown>
+          <summary class="flex cursor-pointer list-none items-center gap-2.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-md px-4 py-2 text-sm font-medium text-white hover:bg-white/20">
+            <span class="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-xs font-bold text-brand-950">{(user.name ?? 'U')[0].toUpperCase()}</span>
+            <span class="hidden md:inline">{user.name ?? 'My account'}</span>
+          </summary>
+          <div class="fixed inset-0 z-40 cursor-default" aria-hidden="true" onclick="this.closest('details').open = false"></div>
+          <div class="absolute right-0 top-12 z-50 w-60 rounded-2xl bg-white p-2.5 text-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.2)] ring-1 ring-black/5">
+            {user.role && <p class="px-3 pb-2 pt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">{roleLabel(user.role)} account</p>}
+            {!user.role && <a href="/login" data-auth-open class="block rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">Finish registration →</a>}
+            {accountLinks.map(([l, h]) => <a href={h} class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900">{l}</a>)}
+            <form method="post" action="/api/auth/logout"><button class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50">Log out</button></form>
+          </div>
+        </details>
+      ) : (
+        <a href={`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open class="hidden transition sm:inline-block nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 hover:text-sand-50">Login</a>
+      )}
+      <a href="/post-property" class="hidden sm:inline-flex items-center gap-2 whitespace-nowrap border-[0.5px] border-sand-50/40 bg-white/5 px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50 backdrop-blur-md transition hover:bg-sand-50 hover:text-[#1C1A17]">
+        Post Property
+        <span class="rounded px-1.5 py-0.5 text-[9px] uppercase tracking-normal bg-white/15 lg:max-xl:hidden">Free</span>
+      </a>
+      <details class="relative lg:hidden" data-dropdown>
+        <summary class="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/10 text-white list-none cursor-pointer" aria-label="Menu">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </summary>
+        <div class="fixed inset-0 z-40 cursor-default" aria-hidden="true" onclick="this.closest('details').open = false"></div>
+        <div class="absolute right-0 top-12 z-50 max-h-[80vh] w-[calc(100vw-2rem)] max-w-xs overflow-y-auto rounded-2xl bg-white p-3 text-slate-800 shadow-2xl ring-1 ring-black/10">
+          {menus.map((m) => (
+            <details class="group border-b border-slate-100 last:border-0">
+              <summary class="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">{m.label}<span class="transition group-open:rotate-180 text-xs">▾</span></summary>
+              <div class="pb-2 pl-3">{m.groups.flatMap((g) => g.links).map(([label, href]) => <a href={href} class="block rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100">{label}</a>)}</div>
+            </details>
+          ))}
+          {!user && <a href="/login" data-auth-open class="mt-2 block rounded-xl px-3 py-2.5 text-center text-sm font-semibold border border-slate-200 hover:bg-slate-50">Login / Sign Up</a>}
+          <a href="/post-property" class="mt-2 block rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-3 py-2.5 text-center text-sm font-bold text-brand-950 shadow">Post Property Free</a>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+<script is:inline>
+  // Header dropdowns (mobile ☰ menu, account menu): an outside tap lands on the invisible full-screen layer
+  // inside each open menu and closes it; this listener is a fallback where that layer can't cover the page.
+  document.addEventListener('pointerdown', function (e) {
+    document.querySelectorAll('details[data-dropdown][open]').forEach(function (d) {
+      if (!d.contains(e.target)) d.open = false;
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('details[data-dropdown][open]').forEach(function (d) { d.open = false; });
+  });
+</script>
+<AuthDialog client:idle cities={authCities} needsRegistration={!!user && !user.role} phone={user?.phone ?? ''} />

@@ -1,0 +1,224 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import ListingCard from '../../../components/ListingCard.astro';
+import ProjectCard from '../../../components/ProjectCard.astro';
+import Pagination from '../../../components/Pagination.astro';
+import Faq from '../../../components/Faq.astro';
+import Tabs from '../../../components/Tabs.astro';
+import FilterPanel from '../../../components/islands/FilterPanel';
+import SearchBox from '../../../components/islands/SearchBox';
+import SaveSearch from '../../../components/islands/SaveSearch';
+import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
+import { searchBoxProps } from '../../../lib/searchProps';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, parseFacets, parseFilters, type Mode } from '../../../lib/search';
+import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
+import { builderUrl, searchUrl } from '../../../lib/urls';
+
+const { mode, city: citySlug, facets } = Astro.params;
+if (!mode || !(mode in MODES)) return new Response(null, { status: 404 });
+const refs = await getRefs();
+const city = refs.city(citySlug!);
+if (!city) return new Response(null, { status: 404 });
+const m = mode as Mode;
+
+const localities = refs.localitiesOf(city.slug);
+const facetFilters = parseFacets(facets ? facets.split('/') : [], localities);
+if (!facetFilters) return new Response(null, { status: 404 });
+const filters = parseFilters(Astro.url, facetFilters);
+
+const [{ items, total, page, pages }, stats, projects, sb] = await Promise.all([
+  searchListings(m, city.slug, filters),
+  marketStats(m, city.slug, filters.commercialPurpose),
+  m === 'commercial' ? Promise.resolve([]) : getProjects({ citySlug: city.slug }),
+  searchBoxProps(),
+]);
+
+const isRentish = m === 'rent' || (m === 'commercial' && filters.commercialPurpose === 'rent');
+const fmtBudget = isRentish ? formatRent : formatPrice;
+const budgets = (isRentish ? RENT_BUDGETS : BUY_BUDGETS).map((v) => ({ value: v, label: isRentish ? `₹${formatNumber(v)}` : formatPrice(v) }));
+
+// Heading reflects facets in the path so each facet URL has a unique, descriptive title.
+const singleLoc = filters.locality.length === 1 ? refs.locality(city.slug, filters.locality[0]) : undefined;
+const place = singleLoc ? `${singleLoc.name}, ${city.name}` : city.name;
+const bhkPrefix = filters.bhk.length === 1 ? `${filters.bhk[0]} BHK ` : '';
+const typePrefix = filters.type.length === 1 ? `${filters.type[0]}s ` : '';
+const heading = bhkPrefix || typePrefix
+  ? `${bhkPrefix}${typePrefix || 'Flats '}for ${m === 'rent' ? 'Rent' : 'Sale'} in ${place}`
+  : MODES[m].heading(place);
+const isFiltered = Astro.url.search.replace(/[?&]page=\d+/, '').length > 0 || !!facets;
+
+// Project cards are interleaved after every 4th listing on the first page, like a portal feed.
+const featuredProjects = page === 1 ? projects.filter((p) => !singleLoc || p.localitySlug === singleLoc.slug).slice(0, 2) : [];
+const feed: ({ kind: 'listing'; i: number } | { kind: 'project'; i: number })[] = [];
+items.forEach((_, i) => {
+  feed.push({ kind: 'listing', i });
+  if ((i + 1) % 4 === 0 && featuredProjects[(i + 1) / 4 - 1]) feed.push({ kind: 'project', i: (i + 1) / 4 - 1 });
+});
+
+const statusTabs = (['New Launch', 'Under Construction', 'Ready to Move'] as const).map((s) => ({ label: s, list: projects.filter((p) => p.status === s).slice(0, 3) }));
+const developers = [...new Set(projects.map((p) => p.builderSlug))].map((s) => refs.builder(s)!).filter(Boolean);
+const budgetLinks = isRentish
+  ? [[0, 15000], [15000, 30000], [30000, 50000], [50000, 100000], [100000, 0]]
+  : [[0, 5000000], [5000000, 10000000], [10000000, 20000000], [20000000, 50000000], [50000000, 0]];
+const budgetLabel = ([lo, hi]: number[]) => (lo === 0 ? `Under ${fmtBudget(hi)}` : hi === 0 ? `Above ${fmtBudget(lo)}` : `${fmtBudget(lo)} – ${fmtBudget(hi)}`);
+const budgetHref = ([lo, hi]: number[]) => `${searchUrl(m, city.slug)}?${lo ? `priceMin=${lo}` : ''}${lo && hi ? '&' : ''}${hi ? `priceMax=${hi}` : ''}`;
+
+const faq = [
+  { q: `How many properties are available ${m === 'rent' ? 'for rent' : 'for sale'} in ${city.name}?`, a: `InspiState currently lists ${plural(stats.count, 'property')} ${m === 'rent' ? 'for rent' : m === 'commercial' ? 'in the commercial segment' : 'for sale'} in ${city.name}, across ${localities.length} localities.` },
+  { q: `What is the average ${isRentish ? 'rent' : 'price'} in ${city.name}?`, a: stats.count ? `The average works out to ${formatRate(stats.avgRate)}${isRentish ? ' per month' : ''}, with listings ranging from ${fmtBudget(stats.min)} to ${fmtBudget(stats.max)}.` : 'There are no listings yet.' },
+  { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${t.key} (${t.count})`).join(', ') + '.' },
+  { q: `Which are the top localities in ${city.name}?`, a: `${[...localities].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 4).map((l) => l.name).join(', ')} have seen the strongest price growth on InspiState.` },
+  { q: `Which developers have projects in ${city.name}?`, a: developers.length ? `${developers.map((d) => d.name).join(', ')}.` : 'No developer projects are listed yet.' },
+  { q: 'Are the listings verified?', a: 'Listings marked “Verified” have had ownership documents and photos checked by our team. Use the “Verified listings only” filter to see just those.' },
+];
+---
+<Base title={`${heading} — ${formatNumber(total)} listings`} description={`Browse ${plural(total, 'listing')} — ${heading.toLowerCase()}. Filter by budget, BHK, locality, furnishing, amenities and possession. Verified photos and prices on InspiState.`}>
+  <div class="border-b border-slate-200 bg-white">
+    <div class="container-x py-3">
+      <SearchBox client:idle {...sb} variant="bar" initialCity={city.slug} initialTab={m === 'commercial' ? 'commercial' : m} />
+    </div>
+  </div>
+
+  <div class="container-x py-6">
+    <Breadcrumbs items={[
+      { label: city.name, href: `/city/${city.slug}` },
+      { label: MODES[m].label, href: searchUrl(m, city.slug) },
+      ...(singleLoc ? [{ label: singleLoc.name }] : []),
+    ]} />
+    <div class="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 class="text-2xl font-extrabold sm:text-3xl">{heading}</h1>
+        <p class="text-sm text-slate-500">Showing {formatNumber(total)} of {formatNumber(stats.count)} listings</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <SaveSearch client:idle label={heading} loggedIn={!!Astro.locals.user} />
+        <form method="get" class="flex items-center gap-2 text-sm" id="sort-form">
+          {[...Astro.url.searchParams.entries()].filter(([k]) => k !== 'sort' && k !== 'page').map(([k, v]) => <input type="hidden" name={k} value={v} />)}
+          <label for="sort" class="text-slate-500">Sort by</label>
+          <select id="sort" name="sort" class="input w-auto py-2" onchange="this.form.submit()">
+            {SORTS.map((s) => <option value={s.value} selected={s.value === filters.sort}>{s.label}</option>)}
+          </select>
+          <noscript><button class="btn-ghost py-2">Go</button></noscript>
+        </form>
+      </div>
+    </div>
+
+    {!singleLoc && (
+      <div class="mt-4 flex gap-2 overflow-x-auto pb-1">
+        {localities.map((l) => <a href={searchUrl(m, city.slug, l.slug)} class="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:text-brand-700 hover:ring-brand-400">{l.name}</a>)}
+      </div>
+    )}
+
+    <div class="mt-5 grid gap-6 lg:grid-cols-[280px_1fr]">
+      <aside>
+        <details class="card p-4 lg:hidden">
+          <summary class="cursor-pointer font-semibold">Show filters</summary>
+          <div class="mt-4"><FilterPanel client:idle basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} /></div>
+        </details>
+        <div class="card sticky top-20 hidden max-h-[calc(100vh-6rem)] overflow-y-auto p-5 lg:block">
+          <FilterPanel client:load basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} />
+        </div>
+      </aside>
+
+      <div class="min-w-0">
+        {items.length ? (
+          <div class="space-y-4" id="results">
+            {feed.map((f) => f.kind === 'listing' ? <ListingCard listing={items[f.i]} /> : (
+              <div class="rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/50 p-3">
+                <p class="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-brand-700">Featured project</p>
+                <ProjectCard project={featuredProjects[f.i]} layout="row" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="card p-10 text-center">
+            <p class="text-lg font-semibold">No listings match these filters</p>
+            <p class="mt-1 text-sm text-slate-500">Try widening your budget or removing a filter.</p>
+            <a href={searchUrl(m, city.slug)} class="btn-primary mt-4">Clear all filters</a>
+          </div>
+        )}
+        <Pagination page={page} pages={pages} url={Astro.url} />
+      </div>
+    </div>
+
+    {!isFiltered && stats.count > 0 && (
+      <div class="mt-14 space-y-12">
+        <section>
+          <h2 class="section-title mb-4">{city.name} property market at a glance</h2>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[['Total properties', formatNumber(stats.count), 'All types combined'], ['Average price', formatRate(stats.avgRate), isRentish ? 'Monthly rent per sq.ft' : 'Per sq.ft'], ['Lowest', fmtBudget(stats.min), 'Starting price'], ['Highest', fmtBudget(stats.max), 'Top of market']].map(([k, v, s]) => (
+              <div class="card p-5"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{k}</p><p class="mt-1 text-2xl font-extrabold">{v}</p><p class="text-xs text-slate-500">{s}</p></div>
+            ))}
+          </div>
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-3">
+          <div class="card p-6">
+            <h2 class="text-lg font-bold">Types of property</h2>
+            <ul class="mt-3 divide-y divide-slate-100 text-sm">
+              {stats.byType.map((t) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?type=${encodeURIComponent(t.key)}`} class="font-semibold text-brand-700 hover:underline">{t.key}</a><span class="text-slate-500">{t.count} · avg {fmtBudget(t.avg)}</span></li>)}
+            </ul>
+          </div>
+          {stats.byBhk.length > 0 && (
+            <div class="card p-6">
+              <h2 class="text-lg font-bold">By BHK type</h2>
+              <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                {stats.byBhk.map((r) => <li class="flex justify-between py-2"><a href={searchUrl(m, city.slug, `${r.bhk}-bhk`)} class="font-semibold text-brand-700 hover:underline">{r.bhk} BHK</a><span class="text-slate-500">{r.count} · avg {fmtBudget(r.avg)}</span></li>)}
+              </ul>
+            </div>
+          )}
+          {stats.byFurnishing.length > 0 && (
+            <div class="card p-6">
+              <h2 class="text-lg font-bold">By furnishing status</h2>
+              <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                {stats.byFurnishing.map((r) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?furnishing=${r.key}`} class="font-semibold text-brand-700 hover:underline">{r.key}</a><span class="text-slate-500">{r.count} · {Math.round((r.count / stats.count) * 100)}%</span></li>)}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-2">
+          <div>
+            <h2 class="section-title mb-4">Filter properties in {city.name} by budget</h2>
+            <div class="flex flex-wrap gap-2">{budgetLinks.map((b) => <a href={budgetHref(b)} class="rounded-full bg-white px-4 py-2 text-sm font-medium ring-1 ring-slate-200 hover:text-brand-700 hover:ring-brand-400">{budgetLabel(b)}</a>)}</div>
+          </div>
+          <div>
+            <h2 class="section-title mb-4">Top localities in {city.name}</h2>
+            <div class="flex flex-wrap gap-2">{localities.map((l) => <a href={`/locality/${city.slug}/${l.slug}`} class="rounded-full bg-white px-4 py-2 text-sm font-medium ring-1 ring-slate-200 hover:text-brand-700 hover:ring-brand-400">{l.name} <span class="text-slate-400">{formatRate(l.ratePerSqft)}</span></a>)}</div>
+          </div>
+        </section>
+
+        {projects.length > 0 && (
+          <section>
+            <h2 class="section-title mb-4">Projects in {city.name} by possession status</h2>
+            <Tabs id="possession" labels={statusTabs.map((t) => `${t.label} (${projects.filter((p) => p.status === t.label).length})`)}>
+              {statusTabs.map((t, i) => (
+                <div slot={`tab-${i}`}>
+                  {t.list.length ? <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{t.list.map((p) => <ProjectCard project={p} />)}</div> : <p class="text-sm text-slate-500">No {t.label.toLowerCase()} projects listed yet.</p>}
+                  <a href={`/new-projects/${city.slug}?status=${encodeURIComponent(t.label)}`} class="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline">All {t.label.toLowerCase()} projects →</a>
+                </div>
+              ))}
+            </Tabs>
+          </section>
+        )}
+
+        {developers.length > 0 && (
+          <section>
+            <h2 class="section-title mb-4">Top real estate developers in {city.name}</h2>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {developers.map((b) => (
+                <a href={builderUrl(b.slug)} class="card flex items-center gap-3 p-4 hover:border-brand-300">
+                  <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-extrabold text-white" style={`background:hsl(${b.hue} 40% 42%)`}>{b.name.split(' ').map((w) => w[0]).join('')}</div>
+                  <div class="min-w-0"><p class="truncate text-sm font-semibold">{b.name}</p><p class="text-xs text-slate-500">{projects.filter((p) => p.builderSlug === b.slug).length} projects here</p></div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    )}
+
+    <div class="mt-14"><Faq items={faq} title="Frequently asked questions" /></div>
+  </div>
+</Base>

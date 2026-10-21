@@ -1,0 +1,16 @@
+---
+interface Props { light?: boolean }
+const { light = false } = Astro.props;
+---
+<a href="/" class="group flex items-center gap-2.5 transition" aria-label="InspiState home">
+  <div class="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-300 to-amber-600 p-0.5 shadow-[0_2px_10px_rgba(207,155,53,0.35)] transition-transform duration-300 group-hover:scale-105">
+    <div class="grid h-full w-full place-items-center rounded-[10px] bg-brand-950">
+      <svg viewBox="0 0 24 24" class="h-5 w-5 text-amber-400 transition group-hover:scale-110" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 21v-6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v6" />
+      </svg>
+    </div>
+  </div>
+  <span class:list={['text-[22px] font-bold tracking-tight font-sans', light ? 'text-white' : 'text-brand-950']}>
+    Inspi<span class="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">State</span>
+  </span>
+</a>

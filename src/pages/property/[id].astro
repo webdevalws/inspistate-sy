@@ -1,0 +1,136 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Photo from '../../components/Photo.astro';
+import ListingCard from '../../components/ListingCard.astro';
+import EnquiryForm from '../../components/islands/EnquiryForm';
+import EmiCalculator from '../../components/islands/EmiCalculator';
+import ShortlistButton from '../../components/islands/ShortlistButton';
+import { getListing, getRefs, getSimilarListings } from '../../lib/repo';
+import { daysSince, listingPrice, listingTitle } from '../../lib/listing';
+import { formatNumber, formatRate, postedAgo } from '../../lib/format';
+import { searchUrl } from '../../lib/urls';
+
+const id = Number(Astro.params.id);
+const l = Number.isInteger(id) ? await getListing(id, Astro.url.searchParams.get('token')) : undefined;
+if (!l) return new Response(null, { status: 404 });
+const refs = await getRefs();
+const city = refs.city(l.citySlug)!;
+const loc = refs.locality(l.citySlug, l.localitySlug)!;
+const title = listingTitle(l, refs);
+const mode = l.segment === 'commercial' ? 'commercial' : l.purpose;
+const kind = l.type === 'Plot' ? 'plot' : l.segment === 'commercial' ? 'office' : l.type === 'Villa' ? 'house' : 'tower';
+const rate = l.price / l.areaSqft;
+const localityRate = l.purpose === 'buy' ? loc.ratePerSqft : loc.rentPerSqft;
+const vs = ((rate - localityRate) / localityRate) * 100;
+const isPending = l.status !== 'active';
+const similar = isPending ? [] : await getSimilarListings(l, 3);
+
+const facts = [
+  ['Price', listingPrice(l)],
+  [l.purpose === 'buy' ? 'Rate' : 'Rent / sq.ft', l.purpose === 'buy' ? formatRate(rate) : `₹${rate.toFixed(1)}/sq.ft`],
+  ['Area', `${formatNumber(l.areaSqft)} sq.ft`],
+  ...(l.bhk ? [['Configuration', `${l.bhk} BHK · ${l.bathrooms} bath`]] : []),
+  ['Type', l.type],
+  ...(l.type !== 'Plot' ? [['Furnishing', l.furnishing], ['Floor', l.totalFloors ? `${l.floor} of ${l.totalFloors}` : '—']] : []),
+  ['Facing', l.facing],
+  ['Possession', l.possession],
+  ...(l.possession === 'Ready to Move' && l.type !== 'Plot' ? [['Age', l.ageYears ? `${l.ageYears} years` : 'New']] : []),
+  ['Posted by', l.postedBy],
+];
+const description = l.description ?? `This ${l.bhk ? `${l.bhk} BHK ` : ''}${l.type.toLowerCase()} in ${loc.name}, ${city.name} offers ${formatNumber(l.areaSqft)} sq.ft${l.type !== 'Plot' ? ` of ${l.furnishing.toLowerCase()} space` : ''} with ${l.facing.toLowerCase()} facing${l.totalFloors ? ` on floor ${l.floor} of ${l.totalFloors}` : ''}. ${l.possession === 'Ready to Move' ? 'It is ready to move in.' : 'It is under construction.'} ${loc.name} has seen ${loc.yoyGrowthPct}% price growth over the last year.`;
+const [main, ...rest] = l.photos;
+---
+<Base title={`${title} — ${listingPrice(l)}`} description={description.slice(0, 300)}>
+  {isPending && (
+    <div class="bg-accent-500 text-white">
+      <p class="container-x py-2.5 text-sm font-semibold">This listing is pending review and is only visible to you. Keep this link to check its status.</p>
+    </div>
+  )}
+  <div class="container-x py-6">
+    <Breadcrumbs items={[
+      { label: city.name, href: `/city/${city.slug}` },
+      { label: mode === 'buy' ? 'Buy' : mode === 'rent' ? 'Rent' : 'Commercial', href: searchUrl(mode, city.slug) },
+      { label: loc.name, href: searchUrl(mode, city.slug, loc.slug) },
+      { label: `#${l.id}` },
+    ]} />
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-4 sm:grid-rows-2">
+      <Photo photo={main} hue={l.hue} kind={kind} alt={title} class="h-60 rounded-2xl sm:col-span-3 sm:row-span-2 sm:h-full sm:min-h-80" label={l.verified ? '✓ Verified listing' : undefined} />
+      <Photo photo={rest[0]} hue={l.hue + 30} kind={kind} alt={`${title} — photo 2`} class="hidden h-36 rounded-2xl sm:block" label={rest[0] ? undefined : 'Living'} />
+      <Photo photo={rest[1]} hue={l.hue - 30} kind={kind} alt={`${title} — photo 3`} class="hidden h-36 rounded-2xl sm:block" label={rest[1] ? (rest.length > 2 ? `+${rest.length - 2} more` : undefined) : 'Bedroom'} />
+    </div>
+
+    <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
+      <div class="min-w-0 space-y-10">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 class="text-2xl font-extrabold">{title}</h1>
+            {l.projectSlug && <p class="text-slate-600">in <a href={`/projects/${l.citySlug}/${l.projectSlug}`} class="font-semibold text-brand-700 hover:underline">{l.projectName}</a></p>}
+            <p class="mt-1 text-xs text-slate-500">{postedAgo(daysSince(l.postedAt))} · ID {l.id}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <p class="text-2xl font-extrabold">{listingPrice(l)}</p>
+            {!isPending && <ShortlistButton client:load kind="listing" id={l.id} withLabel />}
+          </div>
+        </div>
+
+        <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-4">
+          {facts.map(([k, v]) => <div class="bg-white p-4"><dt class="text-xs text-slate-500">{k}</dt><dd class="mt-0.5 font-semibold">{v}</dd></div>)}
+        </dl>
+
+        <section>
+          <h2 class="section-title mb-3">About this property</h2>
+          <p class="whitespace-pre-line leading-relaxed text-slate-700">{description}</p>
+        </section>
+
+        {l.amenities.length > 0 && (
+          <section>
+            <h2 class="section-title mb-3">Amenities</h2>
+            <ul class="flex flex-wrap gap-2">{l.amenities.map((a) => <li class="chip bg-brand-50 text-brand-800">{a}</li>)}</ul>
+          </section>
+        )}
+
+        <section class="card p-5">
+          <h2 class="text-lg font-bold">Is this a fair price?</h2>
+          <p class="mt-2 text-sm text-slate-600">
+            This property is listed at {l.purpose === 'buy' ? formatRate(rate) : `₹${rate.toFixed(1)}/sq.ft per month`}, which is
+            <b class={vs > 5 ? 'text-accent-600' : 'text-brand-700'}> {Math.abs(vs).toFixed(0)}% {vs >= 0 ? 'above' : 'below'}</b> the {loc.name} average
+            ({l.purpose === 'buy' ? formatRate(localityRate) : `₹${localityRate}/sq.ft`}).
+          </p>
+          <div class="mt-4 h-2 rounded-full bg-gradient-to-r from-brand-300 via-amber-200 to-accent-500">
+            <div class="relative h-2" style={`left:${Math.max(2, Math.min(98, 50 + vs))}%`}><span class="absolute -top-1.5 h-5 w-1.5 -translate-x-1/2 rounded bg-slate-900"></span></div>
+          </div>
+          <div class="mt-1 flex justify-between text-xs text-slate-500"><span>Below market</span><span>Locality average</span><span>Above market</span></div>
+        </section>
+
+        {l.purpose === 'buy' && (
+          <section>
+            <h2 class="section-title mb-4">EMI calculator</h2>
+            <div class="card p-5"><EmiCalculator client:visible price={l.price} /></div>
+          </section>
+        )}
+
+        {similar.length > 0 && (
+          <section>
+            <h2 class="section-title mb-4">Similar properties</h2>
+            <div class="space-y-4">{similar.map((s) => <ListingCard listing={s} />)}</div>
+          </section>
+        )}
+      </div>
+
+      <aside>
+        <div class="card sticky top-20 p-5" id="contact">
+          <div class="mb-4 flex items-center gap-3">
+            <div class="grid h-12 w-12 place-items-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">{l.contactName[0]}</div>
+            <div>
+              <p class="font-semibold">{l.contactName}</p>
+              <p class="text-xs text-slate-500">{l.postedBy}{l.verified && ' · ✓ Verified'}</p>
+            </div>
+          </div>
+          {isPending ? <p class="text-sm text-slate-500">Buyers can contact you once the listing is approved.</p> : <EnquiryForm client:visible subject={title} listingId={l.id} contactName={l.contactName} compact />}
+        </div>
+      </aside>
+    </div>
+  </div>
+</Base>

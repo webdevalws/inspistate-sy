@@ -1,0 +1,57 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { listQuestions } from '../../lib/forum';
+import { getRefs } from '../../lib/repo';
+
+const refs = await getRefs();
+const city = refs.city(Astro.url.searchParams.get('city') ?? '')?.slug;
+const q = (Astro.url.searchParams.get('q') ?? '').slice(0, 100);
+const questions = await listQuestions({ city, q: q || undefined });
+const user = Astro.locals.user;
+const error = Astro.url.searchParams.get('error');
+const ago = (iso: string) => { const d = Math.floor((Date.now() - Date.parse(iso)) / 86400000); return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; };
+---
+<Base title="Real Estate Forum — Ask & Answer Property Questions" description="Ask questions about buying, renting, localities, builders and legal issues. Get answers from residents and experts.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Forum' }]} />
+    <div class="mt-3 grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div class="panel">
+        <h1 class="section-title">Real Estate Forum</h1>
+        <p class="section-sub">Ask the community about localities, builders, prices, legal and rental questions.</p>
+        <form method="get" class="mt-5 flex flex-col gap-2 sm:flex-row">
+          <input name="q" value={q} class="input" placeholder="Search questions" />
+          <select name="city" class="input sm:w-48"><option value="">All cities</option>{refs.cities.map((c) => <option value={c.slug} selected={c.slug === city}>{c.name}</option>)}</select>
+          <button class="btn-dark">Search</button>
+        </form>
+        <ul class="mt-6 divide-y divide-neutral-200">
+          {questions.map((x) => (
+            <li class="py-4">
+              <a href={`/forum/${x.id}`} class="text-lg font-semibold text-neutral-900 hover:underline">{x.title}</a>
+              <p class="mt-1 line-clamp-2 text-neutral-600">{x.body}</p>
+              <p class="mt-2 flex flex-wrap gap-3 text-sm text-neutral-500">
+                <span>{x.author}</span>{x.citySlug && <span class="chip">{refs.city(x.citySlug)?.name}</span>}<span>{ago(x.createdAt)}</span>
+                <span class="font-semibold text-neutral-800">{x.answers} answer{x.answers === 1 ? '' : 's'}</span>
+              </p>
+            </li>
+          ))}
+          {questions.length === 0 && <li class="py-6 text-neutral-500">No questions match. Be the first to ask!</li>}
+        </ul>
+      </div>
+      <aside id="ask" class="panel h-fit">
+        <h2 class="text-xl font-bold">Ask a question</h2>
+        {error && <p class="mt-2 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">Title needs 10–200 characters and details 10–3,000.</p>}
+        {user ? (
+          <form method="post" action="/api/forum" class="mt-4 space-y-3">
+            <input name="title" required minlength="10" maxlength="200" class="input" placeholder="Your question in one line" />
+            <textarea name="body" required minlength="10" maxlength="3000" rows="5" class="input" placeholder="Add details — locality, budget, what you’ve tried"></textarea>
+            <select name="city" class="input"><option value="">City (optional)</option>{refs.cities.map((c) => <option value={c.slug}>{c.name}</option>)}</select>
+            <button class="btn-primary w-full">Post question</button>
+          </form>
+        ) : (
+          <p class="mt-3 text-neutral-600"><a href="/login?next=/forum%23ask" class="font-semibold text-neutral-900 underline">Log in</a> with your mobile number to ask or answer.</p>
+        )}
+      </aside>
+    </div>
+  </div>
+</Base>

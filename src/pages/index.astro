@@ -1,0 +1,669 @@
+---
+import Base from '../layouts/Base.astro';
+import EdHead from '../components/EdHead.astro';
+import Tabs from '../components/Tabs.astro';
+import Stars from '../components/Stars.astro';
+import MiniLine from '../components/MiniLine.astro';
+import MiniBars from '../components/MiniBars.astro';
+import SearchBox from '../components/islands/SearchBox';
+import LeadDialog from '../components/islands/LeadDialog';
+import ShortlistButton from '../components/islands/ShortlistButton';
+import { cityStats, getProjects, getRefs, platformTotals } from '../lib/repo';
+import { homeInsights, homeMarket } from '../lib/community';
+import { searchBoxProps } from '../lib/searchProps';
+import { formatNumber, formatPrice } from '../lib/format';
+import { builderUrl, projectUrl, searchUrl } from '../lib/urls';
+
+const refs = await getRefs();
+const { cities, builders } = refs;
+const [projects, statsFor, sb, totals, ins, mkt] = await Promise.all([
+  getProjects({}, { orderBy: 'newest' }), cityStats(), searchBoxProps(), platformTotals(), homeInsights(), homeMarket(),
+]);
+const topCities = cities.slice(0, 8);
+const pct = (a: number, b: number) => (a ? ((b - a) / a) * 100 : 0);
+
+// Market-insight series per city, all from our own data.
+const insight = (slug: string) => {
+  const ps = projects.filter((p) => p.citySlug === slug);
+  const trend = ps.length ? ps[0].priceTrend.map((pt, i) => ({ label: pt.label.replace(' 20', " '"), v: ps.reduce((s, p) => s + p.priceTrend[i].rate, 0) / ps.length })) : [];
+  const yields = refs.localitiesOf(slug).map((l) => ({ label: l.name.split(' ')[0], n: +(((l.rentPerSqft * 12) / l.ratePerSqft) * 100).toFixed(1) })).slice(0, 6);
+  const tx = mkt.txQuarters(slug).slice(-6);
+  return {
+    trend, yields, tx,
+    movement: trend.length ? pct(trend[3].v, trend[7].v) : 0,
+    growth: trend.length ? pct(trend[0].v, trend[7].v) : 0,
+    avgYield: yields.length ? yields.reduce((s, y) => s + y.n, 0) / yields.length : 0,
+    txGrowth: tx.length > 1 ? pct(tx[0].v, tx.at(-1)!.v) : 0,
+  };
+};
+
+const guideCards = [
+  { title: 'Home Buying Guide', sub: 'Step by step guide to buy your dream home', href: '/guides/buyer-guide', bg: 'from-sky-50 to-sky-100', icon: 'M4 21V10l8-6 8 6v11H4ZM9 21v-6h6v6' },
+  { title: 'Home Loan Guide', sub: 'Compare loans & get the best rates', href: '/guides/home-loan-basics', bg: 'from-indigo-50 to-indigo-100', icon: 'M6 3h9l3 3v15H6zM9 12h6M9 16h6M9 8h3' },
+  { title: 'Investment Guide', sub: 'Best locations for high returns', href: '/localities/mumbai/rental-yield', bg: 'from-violet-50 to-violet-100', icon: 'M3 20h18M6 16l4-5 3 3 5-7' },
+  { title: 'Legal & Documentation', sub: 'Know the complete process', href: '/guides/rera-explained', bg: 'from-purple-50 to-purple-100', icon: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6' },
+];
+
+// "Discover more" tabs: each card is a category in a city with its starting price.
+const c = (i: number) => topCities[i % topCities.length];
+type Card = { title: string; img: string; city: (typeof cities)[number]; href: string; min: number | null };
+const card = (title: string, img: string, cityIdx: number, href: (s: string) => string, pred: Parameters<typeof mkt.from>[0]): Card => {
+  const city = c(cityIdx);
+  return { title, img, city, href: href(city.slug), min: mkt.from(pred, city.slug)?.min ?? null };
+};
+const discover: { tab: string; cards: Card[] }[] = [
+  { tab: 'Residential', cards: [
+    card('2 BHK Luxury Apartments', 'apartment-luxury-sea.jpg', 1, (s) => searchUrl('buy', s, '2-bhk', 'apartment'), (r) => r.type === 'Apartment' && r.bhk === 2),
+    card('3 BHK Sky Residences', 'interior-luxury-living.jpg', 0, (s) => searchUrl('buy', s, '3-bhk', 'apartment'), (r) => r.type === 'Apartment' && r.bhk === 3),
+    card('4 BHK Signature Penthouses', 'project-luxury-tower.jpg', 2, (s) => searchUrl('buy', s, '4-bhk', 'apartment'), (r) => r.type === 'Apartment' && r.bhk === 4),
+    card('Waterfront Luxury Villas', 'project-luxury-villa.jpg', 5, (s) => searchUrl('buy', s, 'villa'), (r) => r.type === 'Villa'),
+    card('Prime Residential Plots', 'plot.svg', 6, (s) => searchUrl('buy', s, 'plot'), (r) => r.type === 'Plot'),
+  ] },
+  { tab: 'Commercial', cards: [0, 1, 2, 3, 4].map((i) => card(i % 2 ? 'Grade-A Retail Shops' : 'Corporate Office Suites', 'commercial-luxury-tower.jpg', i, (s) => `${searchUrl('commercial', s, i % 2 ? 'shop' : 'office')}?for=buy`, (r) => r.type === (i % 2 ? 'Shop' : 'Office'))) },
+  { tab: 'Plots & Land', cards: [0, 1, 2, 3, 4].map((i) => card('Gated Community Plots', 'plot.svg', i, (s) => searchUrl('buy', s, 'plot'), (r) => r.type === 'Plot')) },
+  { tab: 'Villas', cards: [0, 1, 2, 3, 4].map((i) => card('Contemporary Luxury Villas', 'project-luxury-villa.jpg', i, (s) => searchUrl('buy', s, 'villa'), (r) => r.type === 'Villa')) },
+  { tab: 'Builder Floors', cards: [0, 1, 2, 3, 4].map((i) => card('Designer Builder Floors', 'interior-luxury-living.jpg', i, (s) => searchUrl('buy', s, 'builder-floor'), (r) => r.type === 'Builder Floor')) },
+];
+
+// Landing page photo pool (all our own images).
+const photos = ['/images/hero-luxury.jpg', '/images/apartment-luxury-sea.jpg', '/images/project-luxury-tower.jpg', '/images/interior-luxury-living.jpg', '/images/project-luxury-villa.jpg', '/images/commercial-luxury-tower.jpg'];
+const caption = (m: Card) => `${m.city.name}${m.min ? ` · From ${formatPrice(m.min)}` : ''}`;
+
+// Collections bento: six tiles that exactly fill a 4×3 grid (2×N on mobile).
+const [r2, r3, r4, villas, , ] = discover[0].cards;
+const collections = [
+  { m: r3, img: photos[0], span: 'col-span-2 row-span-2' },
+  { m: r2, img: photos[1], span: '' },
+  { m: r4, img: photos[2], span: 'row-span-2' },
+  { m: discover[4].cards[0], img: photos[3], span: '' },
+  { m: villas, img: photos[4], span: 'col-span-2' },
+  { m: discover[1].cards[0], img: photos[5], span: 'col-span-2' },
+].map(({ m, img, span }) => ({ title: m.title, href: m.href, img, span, sub: caption(m) }));
+const moreCollections = [discover[0].cards[4], discover[1].cards[1], discover[2].cards[0], discover[3].cards[1]].map((m) => ({ title: `${m.title} · ${m.city.name}`, href: m.href }));
+
+const hotProjects = projects.slice(0, 5).map((p, i) => ({
+  id: p.id, name: p.name, href: projectUrl(p), img: photos[(i + 2) % photos.length], status: p.status,
+  locality: refs.locality(p.citySlug, p.localitySlug)?.name ?? '', city: refs.city(p.citySlug)?.name ?? '',
+  price: `${formatPrice(p.priceMin)} – ${formatPrice(p.priceMax)}`, meta: `${p.bhkLabel} · ${p.possession}`,
+}));
+
+const toolTiles = [
+  { title: 'Home Loan Calculator', sub: 'Calculate EMI & affordability', href: '/tools/loan-eligibility', icon: 'M4 4h16v16H4zM8 8h3v3H8zM13 8h3M13 11h3M8 15h8' },
+  { title: 'Property Value Calculator', sub: 'Check current market value', href: '/tools/property-valuation', icon: 'M4 20V10l8-6 8 6v10zM9 14h6M12 11v6' },
+  { title: 'Rental Yield Finder', sub: 'Know your rental returns', href: '/localities/mumbai/rental-yield', icon: 'M4 20V10l8-6 8 6v10zM9 20v-5h6v5' },
+  { title: 'Stamp Duty Calculator', sub: 'Estimate your stamp duty', href: '/tools/stamp-duty', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01' },
+  { title: 'EMI Calculator', sub: 'Plan your finances', href: '/tools/emi-calculator', icon: 'M6 3h12v18H6zM9 7h6M9 11h2M13 11h2M9 15h2M13 15h2' },
+];
+---
+<Base title="InspiState — Search, Compare & Own Your Next Home" description="Search verified homes for sale and rent, new launch projects and commercial spaces across India. Property rates, price trends, valuation, home loans and free tools.">
+  <!-- Hero: layered depth — photo, giant wordmark, then the building cut-out in front of it -->
+  <section id="hero" class="hero relative min-h-[100svh] overflow-hidden bg-[#2b231d] text-sand-50">
+    <picture>
+      <source media="(orientation: portrait)" srcset="/images/hero-towers-portrait-bg.webp" />
+      <img src="/images/hero-towers-bg.webp" alt="" aria-hidden="true" fetchpriority="high" class="hero-photo hero-layer absolute inset-0 h-full w-full object-cover" data-depth="0.06" />
+    </picture>
+    <div class="absolute inset-0 bg-[#b48b5d] opacity-60 mix-blend-color pointer-events-none"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-[#1C1A17]/45 via-[#e9d8bd]/10 to-transparent pointer-events-none"></div>
+
+    <div aria-hidden="true" class="hero-wordmark-wrap hero-layer absolute inset-x-0 z-[1] select-none text-center" data-depth="0.22">
+      <span class="hero-wordmark block font-display font-extrabold uppercase leading-[0.8] text-sand-50/90">InspiState</span>
+    </div>
+
+    <picture>
+      <source media="(orientation: portrait)" srcset="/images/hero-towers-portrait-cut.webp" />
+      <img src="/images/hero-towers-cut.webp" alt="Three residential towers against a dusk sky" class="hero-photo hero-cut hero-layer absolute inset-0 z-[2] h-full w-full object-cover" data-depth="0.06" />
+    </picture>
+
+    <div class="absolute inset-x-0 bottom-0 z-[3] h-[58%] bg-gradient-to-t from-[#1C1A17]/90 via-[#1C1A17]/40 to-transparent pointer-events-none"></div>
+
+    <div class="hero-content container-x relative z-[4] flex min-h-[100svh] flex-col justify-between gap-10 pb-24 sm:pb-28">
+      <div class="hero-reveal flex text-sand-50 [text-shadow:0_1px_12px_rgba(28,26,23,0.45)]" style="--d:.5s">
+        {[[`${formatNumber(totals.listings)}+`, 'Verified', 'Residences'], [`${totals.projects}+`, 'Premier', 'Developments'], ['0%', 'Direct', 'Brokerage Fee']].map(([v, l1, l2], i) => (
+          <div class:list={['pr-5 sm:pr-8', i > 0 && 'border-l-[0.5px] border-sand-50/30 pl-5 sm:pl-8']}>
+            <p class="font-display text-lg font-bold tracking-tight sm:text-xl">{v}</p>
+            <p class="mt-1 font-mono text-[9px] uppercase leading-tight tracking-[0.2em] text-sand-50/85 sm:text-[10px]">{l1}<br />{l2}</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div class="hero-reveal" style="--d:.7s">
+          <h1 class="font-display text-[clamp(2rem,min(5.4vw,9svh),4.1rem)] font-extrabold uppercase leading-[0.9] tracking-[-0.02em] !text-sand-50">
+            Search,<br />Compare &amp;<br />Own Your<br />Next Home
+          </h1>
+          <div class="mt-6 grid grid-cols-2 gap-2 sm:mt-7 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
+            <a href="#home-search" class="group inline-flex items-stretch justify-center border-[0.5px] border-sand-50/60 bg-sand-50 text-[#1C1A17] transition hover:bg-white">
+              <span class="px-2 py-3 font-mono text-[10px] uppercase tracking-[0.12em] sm:px-5 sm:text-[12px] sm:tracking-[0.2em]">Explore Homes</span>
+              <span class="hidden w-11 place-items-center sm:grid border-l-[0.5px] border-[#1C1A17]/30 transition group-hover:translate-x-0.5">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m6 7 5 5-5 5M13 7l5 5-5 5" /></svg>
+              </span>
+            </a>
+            <button type="button" onclick="window.openTourModal('/videos/luxury_tower.mp4', 'The Waterfront Tower · Worli, Mumbai', '₹14.50 Cr – ₹32.00 Cr · Arabian Sea Panorama')" class="inline-flex items-center justify-center gap-2 border-[0.5px] border-sand-50/30 bg-white/5 px-2 py-3 font-mono text-[10px] uppercase tracking-[0.12em] sm:gap-2.5 sm:px-4 sm:text-[12px] sm:tracking-[0.2em] text-sand-50 backdrop-blur-md transition hover:border-sand-50/70 hover:bg-white/10 cursor-pointer">
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+              Watch 4K Tour
+            </button>
+          </div>
+        </div>
+
+        <p class="hero-reveal max-w-sm text-[12px] sm:text-[13px] font-medium uppercase leading-[1.45] tracking-[0.04em] text-sand-50/85 md:text-right" style="--d:.9s">
+          Curated access to {formatNumber(totals.listings)}+ verified residences across {totals.cities} major metros and {totals.projects} premier developments with zero brokerage.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Cream editorial run: search dock → city marquee → about → collections ===== -->
+  <div class="bg-sand-100 text-[#1C1A17]">
+    <div class="container-x relative z-10 -mt-16 sm:-mt-20" id="home-search">
+      <div class="mx-auto max-w-5xl bg-[#1C1A17] p-4 shadow-[0_30px_60px_-20px_rgba(28,26,23,0.5)] sm:p-6">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <p class="ed-label text-sand-50/70"><span class="bracket"></span>Find your home</p>
+          <a href="/property-search" class="font-mono text-[10px] uppercase tracking-[0.2em] text-sand-50/60 transition hover:text-sand-50">Ask in plain words →</a>
+        </div>
+        <SearchBox client:load {...sb} />
+        <div class="mt-4 hidden space-y-1.5 border-t-[0.5px] border-sand-50/15 pt-3 text-xs text-sand-50/70 sm:block">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="w-28 font-mono text-[10px] uppercase tracking-[0.2em] text-sand-50/50">Trending</span>
+            <a href="/buy/mumbai" class="transition hover:text-sand-50">Worli Waterfront Penthouses</a>
+            <a href="/buy/mumbai" class="transition hover:text-sand-50">Alibaug Beach Villas</a>
+            <a href="/buy/mumbai" class="transition hover:text-sand-50">Marine Drive Sky Suites</a>
+            <a href="/buy/mumbai" class="transition hover:text-sand-50">BKC Grade-A Headquarters</a>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="w-28 font-mono text-[10px] uppercase tracking-[0.2em] text-sand-50/50">Prime markets</span>
+            {[['Mumbai', 'mumbai'], ['Delhi NCR', 'delhi'], ['Bengaluru', 'bengaluru'], ['Pune', 'pune'], ['Hyderabad', 'hyderabad']].map(([n, s]) => <a href={`/buy/${s}`} class="transition hover:text-sand-50">{n}</a>)}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- City marquee -->
+    <div class="ed-marquee mt-12 overflow-hidden border-y-[0.5px] border-[#1C1A17]/15 py-4 sm:mt-16" aria-label="Cities on InspiState">
+      <div class="ed-marquee-track">
+        {[0, 1].map((dup) => (
+          <ul class="flex shrink-0 items-center" aria-hidden={dup === 1 ? 'true' : undefined}>
+            {cities.map((city) => (
+              <li class="flex items-center">
+                <a href={`/city/${city.slug}`} tabindex={dup === 1 ? -1 : undefined} class="group flex items-baseline gap-2.5 px-6 sm:px-8">
+                  <span class="font-display text-xl font-bold uppercase tracking-tight transition group-hover:text-accent-600 sm:text-2xl">{city.name}</span>
+                  <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-[#1C1A17]/50">{formatNumber(statsFor(city.slug).total)} homes</span>
+                </a>
+                <span class="text-accent-500" aria-hidden="true">✦</span>
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+    </div>
+
+    <!-- About -->
+    <section class="container-x grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-12 lg:gap-16 lg:py-24">
+      <div class="relative pb-[14%] lg:col-span-5">
+        <img src="/images/project-luxury-villa.jpg" alt="Contemporary villa with an infinity pool at dusk" loading="lazy" class="warm-tone aspect-[4/5] w-[80%] object-cover" />
+        <img src="/images/interior-luxury-living.jpg" alt="Double-height living room" loading="lazy" class="warm-tone absolute bottom-0 right-0 aspect-square w-[50%] border-[6px] border-sand-100 object-cover sm:border-8" />
+        <p class="absolute left-3 top-3 bg-sand-50/90 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm">100% RERA verified</p>
+      </div>
+      <div class="lg:col-span-7">
+        <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>About InspiState</p>
+        <h2 class="mt-4 font-display text-[clamp(1.9rem,3.8vw,3.1rem)] font-bold leading-[1.02] tracking-[-0.02em] !text-[#1C1A17]">Verified homes,<br />honest data, zero&nbsp;brokerage.</h2>
+        <p class="mt-6 max-w-xl text-[15px] leading-relaxed sm:text-base">
+          InspiState helps you search verified homes for sale and rent, new launch projects and commercial spaces across India — with zero brokerage and a 100% RERA-certified portfolio.
+        </p>
+        <p class="mt-4 max-w-xl text-[15px] leading-relaxed text-[#1C1A17]/60 sm:text-base">
+          Property rates, price trends, valuation, home loans and free tools sit beside every listing, so each decision is informed by live market data rather than guesswork.
+        </p>
+        <div class="mt-9 grid grid-cols-2 border-y-[0.5px] border-[#1C1A17]/15 sm:grid-cols-4">
+          {[[`${formatNumber(totals.listings)}+`, 'Verified residences'], [`${totals.cities}`, 'Major metros'], [`${totals.projects}`, 'Premier developments'], [`${totals.localities}`, 'Localities tracked']].map(([v, k], i) => (
+            <div class:list={['py-5', i % 2 === 1 && 'border-l-[0.5px] border-[#1C1A17]/15 pl-5', i >= 2 && 'border-t-[0.5px] border-[#1C1A17]/15 sm:border-t-0', i === 2 && 'sm:border-l-[0.5px] sm:pl-5']}>
+              <p class="font-display text-3xl font-bold tracking-tight">{v}</p>
+              <p class="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">{k}</p>
+            </div>
+          ))}
+        </div>
+        <div class="ed-pair mt-8">
+          <a href="#home-search" class="ed-btn ed-btn-dark">Start your search <span aria-hidden="true">→</span></a>
+          <a href="#expert" class="ed-btn ed-btn-ghost-dark">Talk to an expert</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Collections bento -->
+    <section id="collections" class="container-x pb-16 sm:pb-20 lg:pb-24">
+      <EdHead label="Curated collections" title="Spaces Worth<br />Coming Home To" sub="From sea-facing sky residences to waterfront villas and Grade-A offices — browse curated categories across India's prime markets." href="/buy/mumbai" linkLabel="View all properties" />
+      <div class="grid grid-flow-dense auto-rows-[170px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:gap-4 lg:auto-rows-[230px] lg:grid-cols-4">
+        {collections.map((m, i) => (
+          <a href={m.href} class:list={['group relative block overflow-hidden bg-[#1C1A17]', m.span]}>
+            <img src={m.img} alt={m.title} loading="lazy" class="warm-tone absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#1C1A17]/85 via-[#1C1A17]/15 to-transparent"></div>
+            <span class="absolute left-4 top-4 font-mono text-[10px] tracking-[0.2em] text-sand-50/80">0{i + 1}</span>
+            <span class="absolute right-4 top-4 grid h-9 w-9 place-items-center border-[0.5px] border-sand-50/50 text-sand-50 opacity-0 transition duration-300 group-hover:opacity-100" aria-hidden="true">↗</span>
+            <div class="absolute inset-x-4 bottom-4 text-sand-50">
+              <p class:list={['font-display font-bold leading-tight tracking-tight', i === 0 ? 'text-xl sm:text-3xl' : 'text-[15px] sm:text-xl']}>{m.title}</p>
+              <p class="mt-1.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/75">{m.sub}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+      <div class="mt-6 flex flex-wrap items-center gap-2">
+        <span class="mr-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#1C1A17]/50">Also explore</span>
+        {moreCollections.map((m) => (
+          <a href={m.href} class="border-[0.5px] border-[#1C1A17]/25 px-3 py-1.5 text-xs transition hover:border-[#1C1A17] hover:bg-[#1C1A17] hover:text-sand-50">{m.title}</a>
+        ))}
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== Featured developments (espresso band) ===== -->
+  <section class="bg-[#1C1A17] py-16 text-sand-50 sm:py-20 lg:py-24">
+    <div class="container-x">
+      <EdHead dark label="Hot deals" title="Hot Selling Projects<br />Across India" sub="The most sought-after residential launches right now — high demand, verified developers and transparent pricing." href="/new-projects/mumbai" linkLabel="View all projects" />
+      <div class="ed-rail">
+        {hotProjects.map((p) => (
+          <article class="group relative">
+            <a href={p.href} class="relative block aspect-[4/5] overflow-hidden bg-black">
+              <img src={p.img} alt={`${p.name}, ${p.locality}`} loading="lazy" class="warm-tone absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#1C1A17]/70 via-transparent to-[#1C1A17]/30"></div>
+              <span class="absolute left-3 top-3 bg-sand-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[#1C1A17]">{p.status}</span>
+              <span class="absolute bottom-3 left-3 font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/85">RERA verified</span>
+            </a>
+            <div class="absolute right-3 top-3"><ShortlistButton client:visible kind="project" id={p.id} /></div>
+            <div class="border-b-[0.5px] border-sand-50/15 pb-4 pt-4">
+              <a href={p.href} class="block font-display text-lg font-bold leading-snug tracking-tight transition hover:text-accent-300">{p.name}</a>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/55">{p.locality} · {p.city}</p>
+              <p class="mt-3 text-[15px] font-semibold">{p.price}</p>
+              <p class="mt-1 text-xs text-sand-50/60">{p.meta}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Market insights ===== -->
+  <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
+    <div class="container-x">
+      <EdHead label="Market insights" title="Property Price<br />Insights in India" sub="Market data, price trends and locality insights from live InspiState listings." href="/property-rates/mumbai" linkLabel="All property rates" />
+      <Tabs id="insights" variant="mono" labels={topCities.map((x) => x.name)}>
+        {topCities.map((city, i) => {
+          const d = insight(city.slug);
+          const cells = [
+            { href: `/property-rates/${city.slug}`, label: 'Price movement', tag: '12 mo', value: `${d.movement >= 0 ? '↑' : '↓'} ${Math.abs(d.movement).toFixed(1)}%`, note: 'Last 12 months index', chart: d.trend.length ? 'line' : '', color: '#7c5b3c' },
+            { href: `/heatmap/${city.slug}`, label: 'Price trend', tag: '2 yrs', value: `↑ ${d.growth.toFixed(1)}%`, note: 'Capital appreciation', chart: d.trend.length ? 'bars' : '', color: '#b48b5d' },
+            { href: `/localities/${city.slug}/rental-yield`, label: 'Rental yield', tag: 'Annual', value: `${d.avgYield.toFixed(1)}%`, note: 'Avg. gross rental yield', chart: 'yield', color: '#c9a576' },
+            { href: `/property-rates/${city.slug}`, label: 'Registered transactions', tag: 'Govt.', value: `${d.txGrowth >= 0 ? '↑' : '↓'} ${Math.abs(d.txGrowth).toFixed(1)}%`, note: 'Registrations by quarter', chart: d.tx.length > 1 ? 'tx' : '', color: '#4c4035' },
+          ];
+          return (
+            <div slot={`tab-${i}`} class="ed-rail [--cols:4]">
+              {cells.map((c) => (
+                <a href={c.href} class="group flex flex-col border-[0.5px] border-[#1C1A17]/15 bg-white/50 p-5 transition hover:bg-white sm:p-6">
+                  <div class="flex items-center justify-between">
+                    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/70">{c.label}</p>
+                    <span class="font-mono text-[9px] uppercase tracking-[0.18em] text-[#1C1A17]/45">{c.tag}</span>
+                  </div>
+                  <div class="mt-4 flex-1">
+                    {c.chart === 'line' && <MiniLine points={d.trend.slice(-6)} color={c.color} />}
+                    {c.chart === 'bars' && <MiniBars bars={d.trend.slice(-6).map((t) => ({ label: t.label, n: Math.round(t.v) }))} color={c.color} />}
+                    {c.chart === 'yield' && <MiniBars bars={d.yields} color={c.color} />}
+                    {c.chart === 'tx' && <MiniLine points={d.tx} color={c.color} prefix="" />}
+                    {!c.chart && <p class="py-10 text-sm text-[#1C1A17]/50">Not enough data yet</p>}
+                  </div>
+                  <div class="mt-4 flex items-baseline justify-between border-t-[0.5px] border-[#1C1A17]/10 pt-4">
+                    <p class="font-display text-2xl font-bold tracking-tight">{c.value}</p>
+                    <p class="font-mono text-[10px] uppercase tracking-[0.16em] text-[#1C1A17]/50">{city.name}</p>
+                  </div>
+                  <p class="mt-1 text-xs text-[#1C1A17]/55">{c.note}</p>
+                </a>
+              ))}
+            </div>
+          );
+        })}
+      </Tabs>
+    </div>
+  </section>
+
+  <!-- ===== Owner / seller band ===== -->
+  <section class="relative overflow-hidden bg-[#1C1A17] text-sand-50">
+    <img src="/images/interior-luxury-living.jpg" alt="" loading="lazy" class="warm-tone absolute inset-0 h-full w-full object-cover object-[70%_100%]" />
+    <div class="absolute inset-0 bg-[#1C1A17]/75 sm:bg-transparent sm:bg-gradient-to-r sm:from-[#1C1A17]/95 sm:via-[#1C1A17]/60 sm:to-transparent"></div>
+    <div class="container-x relative py-20 sm:py-24 lg:py-28">
+      <div class="max-w-xl">
+        <p class="ed-label text-sand-50/60"><span class="bracket"></span>Owner &amp; seller lounge</p>
+        <h2 class="mt-4 font-display text-[clamp(2rem,4.2vw,3.4rem)] font-bold leading-[1.02] tracking-[-0.02em] !text-sand-50">List your property free &amp; reach serious buyers.</h2>
+        <p class="mt-5 text-[15px] leading-relaxed text-sand-50/75">Get maximum exposure to verified HNI buyers and corporate tenants, zero brokerage fees, and an instant data-driven valuation against current locality trends.</p>
+        <div class="ed-pair mt-8">
+          <a href="/post-property" class="ed-btn ed-btn-sand">Post property free <span aria-hidden="true">→</span></a>
+          <a href="/guides/seller-guide" class="ed-btn ed-btn-ghost-light">Learn more</a>
+        </div>
+        <div class="mt-10 grid max-w-md grid-cols-3 border-t-[0.5px] border-sand-50/20 pt-5">
+          {[['0%', 'Brokerage'], ['2.4x', 'Faster deals'], ['100%', 'Privacy guard']].map(([v, k], i) => (
+            <div class:list={[i > 0 && 'border-l-[0.5px] border-sand-50/20 pl-4']}>
+              <p class="font-display text-2xl font-bold">{v}</p>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/60">{k}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Localities + developers ===== -->
+  <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
+    <div class="container-x">
+      <EdHead label="Neighbourhoods" title="Top Localities<br />in India" sub="The best localities with high growth potential, great connectivity and modern amenities." href="/property-rates/mumbai" linkLabel="View all localities" />
+      <Tabs id="localities" variant="mono" labels={topCities.map((x) => x.name)}>
+        {topCities.map((city, i) => (
+          <div slot={`tab-${i}`} class="ed-rail">
+            {[...refs.localitiesOf(city.slug)].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 5).map((l, j) => {
+              const m = mkt.locality(city.slug, l.slug);
+              return (
+                <a href={`/locality/${city.slug}/${l.slug}`} class="group block">
+                  <div class="relative aspect-[4/5] overflow-hidden bg-[#1C1A17]">
+                    <img src={photos[(i + j) % photos.length]} alt="" loading="lazy" class="warm-tone absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-105" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#1C1A17]/80 via-transparent to-transparent"></div>
+                    <span class="absolute left-3 top-3 bg-sand-50 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[#1C1A17]">+{l.yoyGrowthPct}% YoY</span>
+                    <p class="absolute inset-x-3 bottom-3 font-display text-lg font-bold leading-tight text-sand-50">{l.name}</p>
+                  </div>
+                  <div class="flex items-center justify-between border-b-[0.5px] border-[#1C1A17]/15 py-3">
+                    <p class="text-[13px] font-medium">{m ? `${formatPrice(m.mn)} – ${formatPrice(m.mx)}` : `₹${formatNumber(l.ratePerSqft)}/sq.ft`}</p>
+                    <span class="transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        ))}
+      </Tabs>
+
+      <div class="mt-16 sm:mt-20">
+        <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>Top developers</p>
+            <h3 class="mt-3 font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:text-2xl">Built by India's most trusted names</h3>
+          </div>
+          <a href="/builders" class="ed-link">View all developers <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="grid grid-cols-2 border-l-[0.5px] border-t-[0.5px] border-[#1C1A17]/15 sm:grid-cols-3 lg:grid-cols-6">
+          {builders.slice(0, 6).map((b) => (
+            <a href={builderUrl(b.slug)} class="group flex flex-col items-center border-b-[0.5px] border-r-[0.5px] border-[#1C1A17]/15 px-4 py-7 text-center transition hover:bg-white">
+              <span class="font-display text-4xl font-extrabold tracking-tight text-[#1C1A17]/85 transition group-hover:text-accent-600 [font-stretch:120%]">{b.name[0]}</span>
+              <span class="mt-3 text-sm font-semibold">{b.name}</span>
+              <span class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#1C1A17]/50">{b.delivered + b.ongoing} projects</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Residents' voices + guides ===== -->
+  <section class="border-t-[0.5px] border-[#1C1A17]/10 bg-sand-50 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
+    <div class="container-x grid gap-14 lg:grid-cols-2 lg:gap-20">
+      <div>
+        <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>Community insights</p>
+        <h2 class="mt-4 font-display text-[clamp(1.75rem,3.2vw,2.5rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">What Residents Say</h2>
+        <div class="mt-7 flex items-end gap-5 border-b-[0.5px] border-[#1C1A17]/15 pb-6">
+          <span class="font-display text-6xl font-extrabold leading-none tracking-tight">{ins.overall.rating.toFixed(1)}</span>
+          <div class="pb-1">
+            <Stars value={ins.overall.rating} size="md" />
+            <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#1C1A17]/55">{formatNumber(ins.overall.count)} verified reviews</p>
+          </div>
+        </div>
+        <ul>
+          {ins.reviews.slice(0, 3).map((r) => (
+            <li class="flex gap-4 border-b-[0.5px] border-[#1C1A17]/15 py-5">
+              <span class="grid h-10 w-10 shrink-0 place-items-center bg-[#1C1A17] font-display text-sm font-bold text-sand-50">{r.author[0]}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="truncate text-sm font-semibold">{r.author}</p>
+                  <Stars value={r.rating} />
+                </div>
+                <p class="mt-1.5 line-clamp-2 text-sm leading-relaxed text-[#1C1A17]/65">“{r.body}”</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {ins.reviews[0] && <a href={`/projects/${ins.reviews[0].city_slug}/${ins.reviews[0].slug}#reviews`} class="ed-link mt-6">View all reviews <span aria-hidden="true">→</span></a>}
+      </div>
+
+      <div>
+        <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>Knowledge hub</p>
+        <h2 class="mt-4 font-display text-[clamp(1.75rem,3.2vw,2.5rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Guides to Help You Decide</h2>
+        <p class="mt-4 max-w-md text-sm leading-relaxed text-[#1C1A17]/65">Expert-authored playbooks on financing, legal verification and smart property selection.</p>
+        <ul class="mt-6 border-t-[0.5px] border-[#1C1A17]/15">
+          {guideCards.map((g, i) => (
+            <li>
+              <a href={g.href} class="group flex items-center gap-5 border-b-[0.5px] border-[#1C1A17]/15 py-5 transition hover:bg-white sm:px-3">
+                <span class="font-mono text-[11px] tracking-[0.2em] text-[#1C1A17]/45">0{i + 1}</span>
+                <span class="min-w-0 flex-1">
+                  <span class="block font-display text-lg font-bold tracking-tight">{g.title}</span>
+                  <span class="mt-0.5 block text-sm text-[#1C1A17]/60">{g.sub}</span>
+                </span>
+                <span class="grid h-9 w-9 shrink-0 place-items-center border-[0.5px] border-[#1C1A17]/25 transition group-hover:bg-[#1C1A17] group-hover:text-sand-50" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <a href="/guides" class="ed-link mt-6">View all guides <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tools (espresso band) ===== -->
+  <section class="bg-[#1C1A17] py-16 text-sand-50 sm:py-20 lg:py-24">
+    <div class="container-x">
+      <EdHead dark label="Research, guides & tools" title="Calculators for Every<br />Property Decision" sub="Expert insights, calculators and tools to make better property decisions." href="/tools" linkLabel="View all tools" />
+      <div class="grid border-l-[0.5px] border-t-[0.5px] border-sand-50/15 sm:grid-cols-2 lg:grid-cols-5">
+        {toolTiles.map((t, i) => (
+          <a href={t.href} class="group flex flex-col border-b-[0.5px] border-r-[0.5px] border-sand-50/15 p-6 transition hover:bg-sand-50/[0.05] lg:min-h-[220px]">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-[10px] tracking-[0.2em] text-sand-50/45">0{i + 1}</span>
+              <svg viewBox="0 0 24 24" class="h-6 w-6 text-accent-300" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d={t.icon} /></svg>
+            </div>
+            <span class="mt-8 block font-display text-lg font-bold leading-snug tracking-tight lg:mt-auto">{t.title}</span>
+            <span class="mt-1 flex items-center justify-between gap-3 text-sm text-sand-50/60">{t.sub}<span class="transition group-hover:translate-x-1" aria-hidden="true">→</span></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== City directory ===== -->
+  <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
+    <div class="container-x">
+      <EdHead label="Popular cities" title="Explore Real Estate in<br />India's Prime Cities" sub="Detailed listings, prices and locality insights for every major market." href={`/city/${cities[0].slug}`} linkLabel="View all cities" />
+      <div class="grid grid-cols-2 border-l-[0.5px] border-t-[0.5px] border-[#1C1A17]/15 sm:grid-cols-3 lg:grid-cols-5">
+        {cities.map((city, i) => (
+          <a href={`/city/${city.slug}`} class="group relative flex flex-col justify-between gap-6 border-b-[0.5px] border-r-[0.5px] border-[#1C1A17]/15 p-5 transition hover:bg-[#1C1A17] hover:text-sand-50 sm:p-6">
+            <span class="font-mono text-[10px] tracking-[0.2em] opacity-50">{String(i + 1).padStart(2, '0')}</span>
+            <span>
+              <span class="block font-display text-lg font-bold tracking-tight sm:text-xl">{city.name}</span>
+              <span class="mt-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.16em] opacity-60">{formatNumber(statsFor(city.slug).total)} properties <span class="transition group-hover:translate-x-1" aria-hidden="true">→</span></span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Expert strip (compact closing band) ===== -->
+  <section id="expert" class="relative overflow-hidden bg-[#1C1A17] text-sand-50">
+    <img src="/images/hero-towers-bg.webp" alt="" loading="lazy" class="hero-photo absolute inset-0 h-full w-full object-cover opacity-50" />
+    <div class="absolute inset-0 bg-gradient-to-r from-[#1C1A17] via-[#1C1A17]/85 to-[#1C1A17]/60"></div>
+    <div class="container-x relative py-12 sm:py-14">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="ed-label text-sand-50/60"><span class="bracket"></span>VIP advisory · free</p>
+          <h2 class="mt-3 font-display text-[clamp(1.6rem,3vw,2.3rem)] font-bold leading-[1.05] tracking-[-0.02em] !text-sand-50">Talk to a property expert.</h2>
+          <p class="mt-2 max-w-lg text-sm leading-relaxed text-sand-50/70">Personalised advice, off-market inventory, better developer prices and total legal confidence.</p>
+        </div>
+        <div class="ed-pair shrink-0">
+          <LeadDialog client:visible kind="callback" label="Book consultation →" subject="Home page: free consultation" className="ed-btn ed-btn-sand" />
+          <button type="button" onclick="window.openTourModal('/videos/luxury_tower.mp4', 'InspiState 4K VIP Property Showcase', 'Private Consultations & Verified Luxury Developments')" class="ed-btn ed-btn-ghost-light">
+            <svg viewBox="0 0 24 24" class="h-3 w-3" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            Watch 4K tour
+          </button>
+        </div>
+      </div>
+      <div class="mt-8 grid grid-cols-2 border-t-[0.5px] border-sand-50/20 md:grid-cols-4">
+        {[[`${formatNumber(totals.listings)}+`, 'Active listings'], [`${totals.cities}`, 'Cities covered'], [`${totals.projects}`, 'New projects'], [`${totals.localities}`, 'Localities tracked']].map(([v, k], i) => (
+          <div class:list={['pt-5', i % 2 === 1 && 'border-l-[0.5px] border-sand-50/20 pl-5', i === 2 && 'md:border-l-[0.5px] md:pl-5', i >= 2 && 'max-md:pt-4']}>
+            <p class="font-display text-2xl font-bold tracking-tight sm:text-3xl">{v}</p>
+            <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/60">{k}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Video Walkthrough Modal Dialog with Multi-Tour Switcher -->
+  <dialog id="video-modal" class="rounded-3xl bg-brand-950 p-0 text-white shadow-2xl backdrop:bg-black/85 backdrop:backdrop-blur-lg max-w-4xl w-[95%] border border-white/20">
+    <div class="relative overflow-hidden rounded-3xl">
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-brand-900/80">
+        <div class="flex items-center gap-3">
+          <svg class="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+          <div>
+            <p id="modal-video-title" class="font-bold text-white text-base">InspiState 4K Cinematic Property Tour</p>
+            <p id="modal-video-sub" class="text-xs text-slate-300">Worli Sea Face · Ultra-Luxury Penthouse</p>
+          </div>
+        </div>
+        <form method="dialog">
+          <button class="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer" aria-label="Close">✕</button>
+        </form>
+      </div>
+
+      <!-- Video Player -->
+      <div class="relative aspect-video w-full bg-black">
+        <video id="modal-tour-video" controls loop playsinline preload="none" class="h-full w-full object-cover">
+          <source id="modal-video-src" src="/videos/luxury_tower.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+
+      <!-- Multi-Property Tour Selector Dock -->
+      <div class="p-4 bg-brand-900/40 border-t border-white/10">
+        <p class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 mb-2.5">Switch Ultra-Luxury Tour:</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button 
+            type="button" 
+            onclick="window.switchTourVideo('/videos/luxury_tower.mp4', 'The Waterfront Tower · Worli, Mumbai', '₹14.50 Cr – ₹32.00 Cr · Arabian Sea Panorama')" 
+            class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 hover:bg-white/10 text-left transition cursor-pointer group"
+          >
+            <span class="rounded bg-amber-400/20 text-amber-400 font-mono text-[10px] font-bold px-1.5 py-0.5">01</span>
+            <div>
+              <p class="text-xs font-bold text-white leading-tight">Worli Tower</p>
+              <p class="text-[10px] text-slate-400">Sky Penthouse</p>
+            </div>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="window.switchTourVideo('/videos/luxury_villa.mp4', 'The Palms Signature Villa · Alibaug Waterfront', '₹18.75 Cr · Private Dock & Infinity Pool')" 
+            class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 hover:bg-white/10 text-left transition cursor-pointer group"
+          >
+            <span class="rounded bg-emerald-400/20 text-emerald-400 font-mono text-[10px] font-bold px-1.5 py-0.5">02</span>
+            <div>
+              <p class="text-xs font-bold text-white leading-tight">Palms Villa</p>
+              <p class="text-[10px] text-slate-400">Beachfront</p>
+            </div>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="window.switchTourVideo('/videos/luxury_penthouse.mp4', 'Skyline Residences · Marine Drive, Mumbai', '₹26.00 Cr · 360° Arabian Sea View')" 
+            class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 hover:bg-white/10 text-left transition cursor-pointer group"
+          >
+            <span class="rounded bg-blue-400/20 text-blue-400 font-mono text-[10px] font-bold px-1.5 py-0.5">03</span>
+            <div>
+              <p class="text-xs font-bold text-white leading-tight">Sky Penthouse</p>
+              <p class="text-[10px] text-slate-400">Marine Drive</p>
+            </div>
+          </button>
+
+          <button 
+            type="button" 
+            onclick="window.switchTourVideo('/videos/modern_building.mp4', 'BKC Financial Center · Corporate Suites', '₹45,000/sq.ft · Grade A+ LEED Platinum')" 
+            class="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 hover:bg-white/10 text-left transition cursor-pointer group"
+          >
+            <span class="rounded bg-purple-400/20 text-purple-400 font-mono text-[10px] font-bold px-1.5 py-0.5">04</span>
+            <div>
+              <p class="text-xs font-bold text-white leading-tight">BKC Glass Tower</p>
+              <p class="text-[10px] text-slate-400">LEED Platinum</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Tour modal + hero parallax -->
+  <script is:inline>
+    // Global functions for opening and switching modal video tours
+    window.openTourModal = function(videoSrc, title, subtitle) {
+      const modal = document.getElementById('video-modal');
+      const modalVideo = document.getElementById('modal-tour-video');
+      const titleEl = document.getElementById('modal-video-title');
+      const subEl = document.getElementById('modal-video-sub');
+      if (titleEl && title) titleEl.textContent = title;
+      if (subEl && subtitle) subEl.textContent = subtitle;
+      if (modalVideo && videoSrc) {
+        if (!modalVideo.src.endsWith(videoSrc)) {
+          modalVideo.src = videoSrc;
+        }
+        modalVideo.currentTime = 0;
+        modalVideo.play().catch(function() {});
+      }
+      if (modal && typeof modal.showModal === 'function') {
+        modal.showModal();
+      }
+    };
+
+    window.switchTourVideo = function(src, title, subtitle) {
+      const modalVideo = document.getElementById('modal-tour-video');
+      const titleEl = document.getElementById('modal-video-title');
+      const subEl = document.getElementById('modal-video-sub');
+      if (titleEl && title) titleEl.textContent = title;
+      if (subEl && subtitle) subEl.textContent = subtitle;
+      if (modalVideo && src) {
+        modalVideo.src = src;
+        modalVideo.currentTime = 0;
+        modalVideo.play().catch(function() {});
+      }
+    };
+
+    // Modal lifecycle: Pause modal video when dialog closes
+    const tourModal = document.getElementById('video-modal');
+    if (tourModal) {
+      tourModal.addEventListener('close', function() {
+        const modalVideo = document.getElementById('modal-tour-video');
+        if (modalVideo) modalVideo.pause();
+      });
+    }
+
+    // Hero depth: the wordmark drifts slower than the photo layers on scroll and pointer move.
+    (function initHeroDepth() {
+      const hero = document.getElementById('hero');
+      if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const layers = hero.querySelectorAll('.hero-layer');
+      let px = 0, py = 0, raf = 0;
+      function render() {
+        raf = 0;
+        const y = Math.min(window.scrollY, hero.offsetHeight);
+        layers.forEach(function(el) {
+          const d = parseFloat(el.getAttribute('data-depth') || '0');
+          el.style.transform = 'translate3d(' + (px * d * 40) + 'px,' + (y * d + py * d * 24) + 'px,0)';
+        });
+      }
+      const queue = function() { if (!raf) raf = requestAnimationFrame(render); };
+      window.addEventListener('scroll', queue, { passive: true });
+      hero.addEventListener('pointermove', function(e) {
+        const r = hero.getBoundingClientRect();
+        px = (e.clientX - r.left) / r.width - 0.5;
+        py = (e.clientY - r.top) / r.height - 0.5;
+        queue();
+      });
+    })();
+
+  </script>
+
+</Base>

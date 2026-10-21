@@ -1,0 +1,15 @@
+---
+// Simple line-art landmark icons (original drawings), varied by index.
+interface Props { i: number }
+const { i } = Astro.props;
+const shapes = [
+  'M6 40h36M10 40V22h28v18M14 22v-6h20v6M20 16V9h8v7M18 40v-8a6 6 0 0 1 12 0v8', // gateway arch
+  'M6 40h36M12 40V18l12-8 12 8v22M20 40v-9h8v9M17 22h4M27 22h4', // palace
+  'M6 40h36M9 40V26h30v14M14 26a10 10 0 0 1 20 0M24 16v-6M15 32h4M29 32h4', // dome
+  'M6 40h36M10 40V12h6v28M32 40V12h6v28M16 18h16M16 26h16M21 40v-8h6v8', // twin minarets
+  'M6 40h36M18 40V8h12v32M22 14h4M22 20h4M22 26h4M12 40V24h6M30 24h6v16', // tower
+  'M6 40h36M8 40V30l8-6 8 6 8-6 8 6v10M14 40v-6M24 40v-6M34 40v-6', // temple roofline
+];
+const d = shapes[i % shapes.length];
+---
+<svg viewBox="0 0 48 48" class="h-11 w-11" fill="none" stroke="#e0457b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d={d} /></svg>

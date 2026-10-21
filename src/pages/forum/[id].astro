@@ -1,0 +1,49 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { getQuestion } from '../../lib/forum';
+import { getRefs } from '../../lib/repo';
+
+const id = Number(Astro.params.id);
+const data = Number.isInteger(id) ? await getQuestion(id) : null;
+if (!data) return new Response(null, { status: 404 });
+const { question: q, answers } = data;
+const refs = await getRefs();
+const user = Astro.locals.user;
+const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'QAPage',
+  mainEntity: { '@type': 'Question', name: q.title, text: q.body, answerCount: answers.length, author: { '@type': 'Person', name: q.author },
+    suggestedAnswer: answers.map((a) => ({ '@type': 'Answer', text: a.body, author: { '@type': 'Person', name: a.author } })) },
+};
+---
+<Base title={q.title} description={q.body.slice(0, 160)} jsonLd={jsonLd}>
+  <div class="container-x max-w-4xl py-6">
+    <Breadcrumbs items={[{ label: 'Forum', href: '/forum' }, { label: q.title.slice(0, 50) }]} />
+    <article class="panel mt-3">
+      <h1 class="text-2xl font-bold sm:text-3xl">{q.title}</h1>
+      <p class="mt-2 flex flex-wrap gap-3 text-sm text-neutral-500"><span>Asked by {q.author}</span><span>{fmt(q.createdAt)}</span>{q.citySlug && <a href={`/forum?city=${q.citySlug}`} class="chip">{refs.city(q.citySlug)?.name}</a>}</p>
+      <p class="mt-4 whitespace-pre-line text-[17px] leading-relaxed text-neutral-700">{q.body}</p>
+    </article>
+    <section id="answers" class="panel mt-5">
+      <h2 class="text-xl font-bold">{answers.length} answer{answers.length === 1 ? '' : 's'}</h2>
+      <ul class="mt-3 divide-y divide-neutral-200">
+        {answers.map((a) => (
+          <li class="py-4">
+            <p class="flex items-center gap-2 text-sm"><span class="grid h-8 w-8 place-items-center rounded-full bg-accent-500 font-bold text-black">{a.author[0]}</span><b class="text-neutral-900">{a.author}</b><span class="text-neutral-500">{fmt(a.createdAt)}</span></p>
+            <p class="mt-2 whitespace-pre-line text-neutral-700">{a.body}</p>
+          </li>
+        ))}
+      </ul>
+      <div id="answer" class="mt-4 border-t border-neutral-200 pt-4">
+        {user ? (
+          <form method="post" action="/api/forum" class="space-y-3">
+            <input type="hidden" name="questionId" value={q.id} />
+            <textarea name="body" required minlength="10" maxlength="3000" rows="4" class="input" placeholder="Share what you know"></textarea>
+            <button class="btn-primary">Post answer</button>
+          </form>
+        ) : <p class="text-neutral-600"><a href={`/login?next=/forum/${q.id}%23answer`} class="font-semibold text-neutral-900 underline">Log in</a> to answer this question.</p>}
+      </div>
+    </section>
+  </div>
+</Base>

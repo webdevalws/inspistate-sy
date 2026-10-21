@@ -1,0 +1,98 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/Faq.astro';
+import EnquiryForm from '../../components/islands/EnquiryForm';
+import { InspectionBooking, PackersEstimator, PaintingEstimator, PropertyManagementForm, RentalCatalogue, SolarEstimator } from '../../components/islands/HomeServices';
+import { INSPECTION_CHECKS, PARTNER_DISCLAIMER, PM_COMPARE, PAINT_TIPS, SERVICE_CONTENT } from '../../data/home-services';
+import { SERVICES } from '../../lib/catalog';
+import { InteriorEstimator } from '../../components/islands/Interiors';
+import { RateTable } from '../../components/islands/LoanTools';
+
+// Generic service page; services with a SERVICE_CONTENT entry get their own estimator, steps, features and FAQ.
+const s = SERVICES.find((x) => x.slug === Astro.params.slug);
+if (!s) return new Response(null, { status: 404 });
+const c = SERVICE_CONTENT[s.slug];
+const steps = c?.steps ?? ['Share your requirement', 'Get matched with a verified partner', 'Compare quotes — no obligation', 'Track the work with our support team'];
+const TOOLS: Record<string, string> = { 'packers-movers': 'Estimate your move', 'home-painting': 'Estimate painting cost', 'solar-rooftop': 'Solar savings calculator', 'furniture-rental': 'Pick furniture', 'appliance-rental': 'Pick appliances', 'property-management': 'Get started', 'property-inspection': 'Book an inspection', 'home-interiors': 'Estimate your interiors' };
+const tool = TOOLS[s.slug] as string | undefined;
+const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s.slug === 'home-interiors';
+---
+<Base title={s.title} description={s.sub}>
+  <section class="bg-brand-800 text-white">
+    <div class:list={['container-x grid gap-8 py-10 lg:items-start', !wide && 'lg:grid-cols-[1fr_520px]']}>
+      <div>
+        <Breadcrumbs items={[{ label: 'Services', href: '/services' }, { label: s.title }]} />
+        <p class="mt-4 text-4xl" aria-hidden="true">{s.icon}</p>
+        <h1 class="mt-2 text-3xl font-extrabold text-white sm:text-4xl">{s.title}</h1>
+        <p class="mt-2 max-w-xl text-brand-100">{s.sub}</p>
+        <ul class="mt-5 space-y-2">{s.points.map((p) => <li class="flex gap-2"><span class="text-accent-400">✓</span>{p}</li>)}</ul>
+      </div>
+      {!wide && (
+        <div class="rounded-2xl bg-white p-5 text-slate-800 shadow-xl">
+          <h2 class="mb-3 text-lg font-bold">{tool ?? 'Get a free consultation'}</h2>
+          {s.slug === 'packers-movers' && <PackersEstimator client:load />}
+          {s.slug === 'home-painting' && <PaintingEstimator client:load />}
+          {s.slug === 'solar-rooftop' && <SolarEstimator client:load />}
+          {s.slug === 'property-management' && <PropertyManagementForm client:load />}
+          {s.slug === 'property-inspection' && <InspectionBooking client:load />}
+          {!tool && <EnquiryForm client:visible subject={`Service: ${s.title}`} kind="service" contactName="Our service advisor" compact />}
+        </div>
+      )}
+    </div>
+  </section>
+  <div class="container-x py-12">
+    {s.slug === 'home-loans' && (
+      <section class="mb-12">
+        <h2 class="section-title mb-3">Compare home loan rates</h2>
+        <div class="mb-5 flex flex-wrap gap-2 text-sm">{[['/tools/emi-calculator', 'EMI calculator'], ['/tools/loan-eligibility', 'Eligibility'], ['/tools/balance-transfer', 'Balance transfer'], ['/tools/prepayment', 'Prepayment'], ['/tools/tax-benefit', 'Tax benefit'], ['/loans/personal-loan', 'Personal loan'], ['/loans/business-loan', 'Business loan'], ['/loans/loan-against-property', 'Loan against property'], ['/credit-cards', 'Credit cards']].map(([h, l]) => <a href={h} class="pill hover:bg-brand-100">{l}</a>)}</div>
+        <RateTable client:visible />
+      </section>
+    )}
+    {wide && (
+      <section class="mb-12">
+        <h2 class="section-title mb-5">{tool}</h2>
+        {s.slug === 'home-interiors' ? (
+          <div class="panel"><InteriorEstimator client:load /><p class="mt-6 text-sm text-neutral-600">Only need a kitchen? Try the <a class="font-semibold text-brand-700 underline" href="/tools/modular-kitchen">modular kitchen calculator</a>. Looking for inspiration? Browse <a class="font-semibold text-brand-700 underline" href="/design-ideas">design ideas</a>.</p></div>
+        ) : <RentalCatalogue client:load kind={s.slug === 'furniture-rental' ? 'furniture' : 'appliances'} />}
+      </section>
+    )}
+    <h2 class="section-title mb-5">How it works</h2>
+    <ol class:list={['grid gap-4 sm:grid-cols-2', steps.length > 4 ? 'lg:grid-cols-3' : 'lg:grid-cols-4']}>
+      {steps.map((t, i) => <li class="card p-5"><span class="grid h-9 w-9 place-items-center rounded-full bg-brand-600 font-bold text-white">{i + 1}</span><p class="mt-3 font-semibold">{t}</p></li>)}
+    </ol>
+    {c && (
+      <>
+        <h2 class="section-title mb-5 mt-12">Why book with InspiState</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{c.features.map(([t, d]) => <div class="panel"><p class="font-bold text-brand-900">{t}</p><p class="mt-1 text-sm text-neutral-600">{d}</p></div>)}</div>
+      </>
+    )}
+    {s.slug === 'property-inspection' && (
+      <>
+        <h2 class="section-title mb-5 mt-12">What we check</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{INSPECTION_CHECKS.map(([t, d]) => <div class="panel"><p class="font-bold text-brand-900">{t}</p><p class="mt-1 text-sm text-neutral-600">{d}</p></div>)}</div>
+      </>
+    )}
+    {s.slug === 'home-painting' && (
+      <>
+        <h2 class="section-title mb-5 mt-12">Which paint for which room</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{PAINT_TIPS.map(([t, d]) => <div class="panel"><p class="font-bold text-brand-900">{t}</p><p class="mt-1 text-sm text-neutral-600">{d}</p></div>)}</div>
+      </>
+    )}
+    {s.slug === 'property-management' && (
+      <>
+        <h2 class="section-title mb-5 mt-12">Managing it yourself vs a broker vs InspiState</h2>
+        <div class="overflow-x-auto rounded-xl border border-neutral-200 bg-white"><table class="w-full min-w-[640px] text-sm">
+          <thead class="bg-neutral-50 text-left text-xs uppercase text-neutral-500"><tr><th class="px-4 py-2"></th><th>Yourself</th><th>A broker</th><th class="text-brand-900">InspiState</th></tr></thead>
+          <tbody class="divide-y divide-neutral-100">{PM_COMPARE.map(([k, a, b, us]) => <tr><td class="px-4 py-2 font-medium">{k}</td><td class="text-neutral-600">{a}</td><td class="text-neutral-600">{b}</td><td class="font-semibold text-emerald-700">{us}</td></tr>)}</tbody>
+        </table></div>
+      </>
+    )}
+    {c && <div class="panel mt-12"><Faq items={c.faq} /></div>}
+    {c?.partnerNote && <p class="mt-4 text-xs text-neutral-500">{PARTNER_DISCLAIMER}</p>}
+    <h2 class="section-title mb-5 mt-12">Other services</h2>
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {SERVICES.filter((x) => x.slug !== s.slug).map((x) => <a href={`/services/${x.slug}`} class="card p-4 hover:border-brand-300"><span class="text-xl">{x.icon}</span><p class="mt-1 text-sm font-semibold">{x.title}</p></a>)}
+    </div>
+  </div>
+</Base>

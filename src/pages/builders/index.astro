@@ -1,0 +1,29 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { countProjectsByBuilder, getRefs } from '../../lib/repo';
+import { builderUrl } from '../../lib/urls';
+
+const [{ builders }, listed] = await Promise.all([getRefs(), countProjectsByBuilder()]);
+---
+<Base title="Top Real Estate Developers in India" description="Compare real estate developers by delivery record, ongoing projects and cities.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Builders' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">Real estate developers</h1>
+    <p class="text-sm text-slate-500">Check delivery history before you book.</p>
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {builders.map((b) => (
+        <a href={builderUrl(b.slug)} class="card p-5 transition hover:border-brand-300 hover:shadow-md">
+          <div class="grid h-14 w-14 place-items-center rounded-2xl text-lg font-extrabold text-white" style={`background:hsl(${b.hue} 40% 42%)`}>{b.name.split(' ').map((w) => w[0]).join('')}</div>
+          <p class="mt-4 text-lg font-bold">{b.name}</p>
+          <p class="text-sm text-slate-500">Est. {b.founded} · {b.hq}</p>
+          <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{b.delivered}</b>Delivered</div>
+            <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{b.ongoing}</b>Ongoing</div>
+            <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{listed.get(b.slug) ?? 0}</b>Listed</div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,85 @@
+import type { Locality, PropertyType } from '../data/types';
+
+export type Mode = 'buy' | 'rent' | 'commercial';
+export const MODES: Record<Mode, { label: string; heading: (city: string) => string; purpose?: 'buy' | 'rent' }> = {
+  buy: { label: 'Buy', heading: (c) => `Property for Sale in ${c}`, purpose: 'buy' },
+  rent: { label: 'Rent', heading: (c) => `Property for Rent in ${c}`, purpose: 'rent' },
+  commercial: { label: 'Commercial', heading: (c) => `Commercial Property in ${c}` },
+};
+
+export type Sort = 'relevance' | 'price-asc' | 'price-desc' | 'newest' | 'area-desc';
+export const SORTS: { value: Sort; label: string }[] = [
+  { value: 'relevance', label: 'Relevance' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'price-asc', label: 'Price: low to high' },
+  { value: 'price-desc', label: 'Price: high to low' },
+  { value: 'area-desc', label: 'Largest area' },
+];
+
+export interface Filters {
+  locality: string[];
+  bhk: number[];
+  type: PropertyType[];
+  furnishing: string[];
+  postedBy: string[];
+  possession: string[];
+  amenities: string[];
+  priceMin?: number;
+  priceMax?: number;
+  areaMin?: number;
+  areaMax?: number;
+  commercialPurpose?: 'buy' | 'rent';
+  verified: boolean;
+  managed?: boolean;
+  sort: Sort;
+  page: number;
+}
+
+export const PAGE_SIZE = 12;
+
+const list = (v: string | null) => (v ? v.split(',').filter(Boolean).slice(0, 20) : []);
+const num = (v: string | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+
+const TYPE_SLUGS: Record<string, PropertyType> = {
+  apartment: 'Apartment', 'builder-floor': 'Builder Floor', villa: 'Villa', plot: 'Plot', office: 'Office', shop: 'Shop',
+};
+
+/** Facet path segments give crawlable URLs: /buy/mumbai/powai/2-bhk/apartment */
+export function parseFacets(segments: string[], localities: Locality[]) {
+  const out: Pick<Filters, 'locality' | 'bhk' | 'type'> = { locality: [], bhk: [], type: [] };
+  for (const s of segments) {
+    const bhk = s.match(/^(\d)-bhk$/);
+    if (bhk) out.bhk.push(Number(bhk[1]));
+    else if (TYPE_SLUGS[s]) out.type.push(TYPE_SLUGS[s]);
+    else if (localities.some((l) => l.slug === s)) out.locality.push(s);
+    else return null;
+  }
+  return out;
+}
+
+export function parseFilters(url: URL, facets: Partial<Filters>): Filters {
+  const q = url.searchParams;
+  const sort = (q.get('sort') as Sort) || 'relevance';
+  const purpose = q.get('for');
+  return {
+    locality: [...new Set([...(facets.locality ?? []), ...list(q.get('locality'))])],
+    bhk: [...new Set([...(facets.bhk ?? []), ...list(q.get('bhk')).map(Number).filter((n) => n >= 1 && n <= 5)])],
+    type: [...new Set([...(facets.type ?? []), ...(list(q.get('type')) as PropertyType[])])],
+    furnishing: list(q.get('furnishing')),
+    postedBy: list(q.get('postedBy')),
+    possession: list(q.get('possession')),
+    amenities: list(q.get('amenities')).slice(0, 8),
+    priceMin: num(q.get('priceMin')),
+    priceMax: num(q.get('priceMax')),
+    areaMin: num(q.get('areaMin')),
+    areaMax: num(q.get('areaMax')),
+    commercialPurpose: purpose === 'buy' || purpose === 'rent' ? purpose : undefined,
+    verified: q.get('verified') === '1',
+    managed: q.get('managed') === '1',
+    sort: SORTS.some((s) => s.value === sort) ? sort : 'relevance',
+    page: Math.max(1, Math.floor(num(q.get('page')) ?? 1)),
+  };
+}
+
+export const BUY_BUDGETS = [500000, 1000000, 2000000, 3000000, 5000000, 7500000, 10000000, 15000000, 20000000, 30000000, 50000000, 100000000];
+export const RENT_BUDGETS = [5000, 10000, 15000, 20000, 30000, 50000, 75000, 100000, 150000, 250000, 500000];

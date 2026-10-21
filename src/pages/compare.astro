@@ -1,0 +1,91 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Cover from '../components/Cover.astro';
+import Stars from '../components/Stars.astro';
+import { getProjects, getProjectsByIds, getRefs } from '../lib/repo';
+import { ratingsFor } from '../lib/community';
+import { formatNumber, formatPrice, formatRate } from '../lib/format';
+import { projectUrl } from '../lib/urls';
+
+const ids = (Astro.url.searchParams.get('ids') ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 3);
+const refs = await getRefs();
+const found = await getProjectsByIds(ids);
+const projects = ids.map((id) => found.find((p) => p.id === id)).filter((p) => !!p);
+const [ratings, suggestions] = await Promise.all([ratingsFor(projects.map((p) => p.id)), projects.length < 3 ? getProjects({}, { limit: 9, orderBy: 'newest' }) : Promise.resolve([])]);
+const best = (vals: number[], lower = true) => (lower ? Math.min(...vals) : Math.max(...vals));
+
+const rows: { label: string; value: (p: (typeof projects)[number]) => string; num?: (p: (typeof projects)[number]) => number; lowerIsBetter?: boolean }[] = [
+  { label: 'Locality', value: (p) => `${refs.locality(p.citySlug, p.localitySlug)?.name}, ${refs.city(p.citySlug)?.name}` },
+  { label: 'Developer', value: (p) => refs.builder(p.builderSlug)?.name ?? '' },
+  { label: 'Price range', value: (p) => `${formatPrice(p.priceMin)} – ${formatPrice(p.priceMax)}`, num: (p) => p.priceMin, lowerIsBetter: true },
+  { label: 'Avg. rate', value: (p) => formatRate(p.ratePerSqft), num: (p) => p.ratePerSqft, lowerIsBetter: true },
+  { label: 'Configuration', value: (p) => p.bhkLabel },
+  { label: 'Status', value: (p) => p.status },
+  { label: 'Possession', value: (p) => p.possession },
+  { label: 'Land area', value: (p) => `${p.landAcres} acres`, num: (p) => p.landAcres, lowerIsBetter: false },
+  { label: 'Total units', value: (p) => formatNumber(p.totalUnits) },
+  { label: 'Density', value: (p) => `${Math.round(p.totalUnits / p.landAcres)} units/acre`, num: (p) => p.totalUnits / p.landAcres, lowerIsBetter: true },
+  { label: 'Amenities', value: (p) => `${p.amenities.length}`, num: (p) => p.amenities.length, lowerIsBetter: false },
+  { label: 'Rating', value: (p) => (ratings.get(p.id) ? `${ratings.get(p.id)!.rating.toFixed(1)} ★ (${ratings.get(p.id)!.count})` : '—'), num: (p) => ratings.get(p.id)?.rating ?? 0, lowerIsBetter: false },
+  { label: 'RERA', value: (p) => p.rera },
+];
+---
+<Base title="Compare Projects" description="Compare new projects side by side on price, size, possession, amenities and ratings." noindex={projects.length === 0}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Compare projects' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">Compare projects</h1>
+    <p class="text-sm text-slate-500">Add up to 3 projects using the “Compare” button on any project page. Best values are highlighted.</p>
+
+    {projects.length > 0 ? (
+      <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr>
+              <th class="w-40 p-4"></th>
+              {projects.map((p) => (
+                <th class="p-4 text-left align-top">
+                  <Cover hue={p.hue} class="h-24 rounded-xl" />
+                  <a href={projectUrl(p)} class="mt-2 block font-bold text-slate-900 hover:text-brand-700">{p.name}</a>
+                  {ratings.get(p.id) && <Stars value={ratings.get(p.id)!.rating} />}
+                  <a href={`/compare?ids=${ids.filter((x) => x !== p.id).join(',')}`} class="mt-1 block text-xs font-normal text-rose-600 hover:underline">Remove</a>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {rows.map((r) => {
+              const winner = r.num && projects.length > 1 ? best(projects.map(r.num), r.lowerIsBetter) : null;
+              return (
+                <tr>
+                  <th class="bg-slate-50 p-4 text-left font-medium text-slate-600">{r.label}</th>
+                  {projects.map((p) => <td class:list={['p-4', winner !== null && r.num!(p) === winner && 'bg-brand-50 font-semibold text-brand-800']}>{r.value(p)}</td>)}
+                </tr>
+              );
+            })}
+            <tr>
+              <th class="bg-slate-50 p-4 text-left font-medium text-slate-600">Top amenities</th>
+              {projects.map((p) => <td class="p-4 text-xs text-slate-600">{p.amenities.slice(0, 8).join(', ')}</td>)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div class="card mt-6 p-10 text-center"><p class="font-semibold">No projects selected yet.</p><p class="text-sm text-slate-500">Pick from the suggestions below.</p></div>
+    )}
+
+    {suggestions.length > 0 && (
+      <section class="mt-10">
+        <h2 class="section-title mb-4">Add a project</h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {suggestions.filter((s) => !ids.includes(s.id)).slice(0, 6).map((s) => (
+            <a href={`/compare?ids=${[...ids, s.id].join(',')}`} class="card flex items-center justify-between gap-3 p-4 hover:border-brand-300">
+              <span><span class="block font-semibold">{s.name}</span><span class="text-xs text-slate-500">{refs.locality(s.citySlug, s.localitySlug)?.name}, {refs.city(s.citySlug)?.name}</span></span>
+              <span class="text-sm font-semibold text-brand-700">+ Add</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</Base>

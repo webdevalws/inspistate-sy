@@ -1,0 +1,23 @@
+---
+interface Props { page: number; pages: number; url: URL }
+const { page, pages, url } = Astro.props;
+const href = (p: number) => {
+  const u = new URL(url);
+  if (p === 1) u.searchParams.delete('page');
+  else u.searchParams.set('page', String(p));
+  return u.pathname + u.search;
+};
+const nums = Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 1);
+---
+{pages > 1 && (
+  <nav aria-label="Pagination" class="mt-8 flex items-center justify-center gap-1">
+    {page > 1 && <a href={href(page - 1)} class="btn-ghost px-3 py-2">← Prev</a>}
+    {nums.map((n, i) => (
+      <>
+        {i > 0 && n - nums[i - 1] > 1 && <span class="px-2 text-slate-400">…</span>}
+        <a href={href(n)} aria-current={n === page ? 'page' : undefined} class:list={['grid h-10 w-10 place-items-center rounded-xl text-sm font-semibold', n === page ? 'bg-brand-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100']}>{n}</a>
+      </>
+    ))}
+    {page < pages && <a href={href(page + 1)} class="btn-ghost px-3 py-2">Next →</a>}
+  </nav>
+)}

@@ -1,0 +1,33 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getProjects, getRefs } from '../../lib/repo';
+
+const refs = await getRefs();
+const b = refs.builder(Astro.params.slug!);
+if (!b) return new Response(null, { status: 404 });
+const projects = await getProjects({ builderSlug: b.slug });
+const cityNames = [...new Set(projects.map((p) => refs.city(p.citySlug)?.name))];
+---
+<Base title={`${b.name} — Projects, Track Record & Reviews`} description={`${b.name}: ${b.delivered} projects delivered, ${b.ongoing} ongoing. See all ${b.name} projects with prices and RERA details.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Builders', href: '/builders' }, { label: b.name }]} />
+    <div class="card mt-4 flex flex-col gap-6 p-6 sm:flex-row sm:items-center">
+      <div class="grid h-20 w-20 shrink-0 place-items-center rounded-2xl text-2xl font-extrabold text-white" style={`background:hsl(${b.hue} 40% 42%)`}>{b.name.split(' ').map((w) => w[0]).join('')}</div>
+      <div class="flex-1">
+        <h1 class="text-2xl font-extrabold sm:text-3xl">{b.name}</h1>
+        <p class="mt-1 max-w-2xl text-slate-600">{b.about}</p>
+      </div>
+      <dl class="grid grid-cols-2 gap-3 text-center text-sm sm:grid-cols-4">
+        {[['Established', b.founded], ['Headquarters', b.hq], ['Delivered', b.delivered], ['Ongoing', b.ongoing]].map(([k, v]) => (
+          <div class="rounded-xl bg-slate-50 px-4 py-3"><dt class="text-xs text-slate-500">{k}</dt><dd class="font-bold">{v}</dd></div>
+        ))}
+      </dl>
+    </div>
+    <h2 class="section-title mt-10">Projects by {b.name} <span class="text-base font-medium text-slate-500">({projects.length})</span></h2>
+    {cityNames.length > 0 && <p class="text-sm text-slate-500">Present in {cityNames.join(', ')}</p>}
+    <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.map((p) => <ProjectCard project={p} />)}</div>
+    {projects.length === 0 && <p class="mt-4 text-slate-500">No projects listed yet.</p>}
+  </div>
+</Base>

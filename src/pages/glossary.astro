@@ -1,0 +1,55 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+
+const TERMS: [string, string][] = [
+  ['Allotment letter', 'Letter from the developer confirming a unit has been allotted to the buyer, with price and payment schedule.'],
+  ['Built-up area', 'Carpet area plus the thickness of walls and balconies.'],
+  ['Carpet area', 'Usable floor area inside the walls of a home. RERA requires prices to be quoted on carpet area.'],
+  ['Circle rate', 'Minimum value per sq.ft set by the state for calculating stamp duty. Also called ready reckoner or guidance value.'],
+  ['Commencement certificate (CC)', 'Municipal permission to start construction after plans are approved.'],
+  ['Conveyance deed', 'Document transferring ownership of the property (or land) to the buyer or society.'],
+  ['Encumbrance certificate (EC)', 'Certificate showing whether a property has any registered loans, mortgages or legal dues.'],
+  ['EMI', 'Equated monthly instalment — the fixed monthly payment that repays a loan with interest.'],
+  ['FOIR', 'Fixed obligation to income ratio — the share of monthly income lenders allow for all EMIs, usually 50–60%.'],
+  ['Floor space index (FSI/FAR)', 'Ratio of total built area permitted to the plot area.'],
+  ['Freehold', 'Ownership of the property and land with no time limit.'],
+  ['Khata', 'Property account record with the municipal body (common in Karnataka), used for tax and ownership.'],
+  ['Leasehold', 'Right to use land for a fixed term (e.g. 99 years) from the owner, often a development authority.'],
+  ['Loan-to-value (LTV)', 'Share of the property value a bank will lend — up to 90%, 80% or 75% depending on loan size.'],
+  ['Mutation', 'Updating municipal records to show the new owner after a sale.'],
+  ['No objection certificate (NOC)', 'Document from a society, bank or authority confirming it has no objection to a sale or transfer.'],
+  ['Occupancy certificate (OC)', 'Certificate confirming a building was built per approved plans and is fit to occupy.'],
+  ['Possession letter', 'Letter from the developer handing over possession of the unit on a stated date.'],
+  ['Power of attorney (PoA)', 'Legal authority given to another person to act on your behalf, e.g. for an NRI sale.'],
+  ['Pre-EMI', 'Interest-only payments on the disbursed part of a loan before full disbursement.'],
+  ['RERA', 'Real Estate (Regulation and Development) Act, 2016 — the law and state authorities regulating projects and agents.'],
+  ['Rental yield', 'Annual rent as a percentage of the property price.'],
+  ['Sale agreement', 'Contract between buyer and seller setting price, payment terms and timelines before the sale deed.'],
+  ['Sale deed', 'Registered document that legally transfers ownership from seller to buyer.'],
+  ['Stamp duty', 'State tax paid on registering a property transaction, typically 5–7% of the value.'],
+  ['Super built-up area', 'Built-up area plus a proportionate share of common areas like lobbies, stairs and clubhouse.'],
+  ['Title', 'Legal right of ownership. A clear title has no disputes or claims.'],
+  ['Token amount', 'Small advance paid to show intent to buy. Never pay one before verifying documents.'],
+  ['Under construction', 'A project still being built; payments are usually linked to construction milestones.'],
+];
+const letters = [...new Set(TERMS.map(([t]) => t[0].toUpperCase()))];
+---
+<Base title="Real Estate Glossary — Property Terms Explained" description="Plain-English meanings of common Indian real estate terms: carpet area, RERA, OC, EC, stamp duty, khata, LTV and more.">
+  <div class="container-x max-w-4xl py-6">
+    <Breadcrumbs items={[{ label: 'Glossary' }]} />
+    <section class="panel mt-3">
+      <h1 class="section-title">Real Estate Glossary</h1>
+      <p class="section-sub">Property terms you’ll hear while buying, selling or renting in India — explained simply.</p>
+      <nav class="mt-5 flex flex-wrap gap-2" aria-label="Letters">{letters.map((l) => <a href={`#${l}`} class="pill px-3 py-1.5">{l}</a>)}</nav>
+      <dl class="mt-6 divide-y divide-neutral-200">
+        {TERMS.map(([t, d], i) => (
+          <div id={i === 0 || TERMS[i - 1][0][0] !== t[0] ? t[0].toUpperCase() : undefined} class="scroll-mt-24 py-4">
+            <dt class="text-lg font-bold text-neutral-900">{t}</dt>
+            <dd class="mt-1 text-neutral-600">{d}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  </div>
+</Base>

@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Faq from '../components/Faq.astro';
+import { CardCatalogue } from '../components/islands/Finance';
+import { CREDIT_CARDS } from '../data/loans';
+
+// Credit card comparison. See docs/functions/credit-cards/desc.md.
+const types = [['Cashback', 'Money back on every spend — simplest to use.'], ['Rewards', 'Points you redeem for vouchers, miles or products.'], ['Travel', 'Air miles, lounge access and low forex mark-up.'], ['Fuel', 'Fuel surcharge waiver and value back at pumps.'], ['Lifetime free', 'No joining or annual fee — good first card.'], ['Secured', 'Issued against a fixed deposit; builds credit history.']];
+const faq = [
+  { q: 'Who can get a credit card?', a: 'Usually Indian residents aged 18+ with a steady income (often ₹1.5–5 lakh a year, varying by card) and a credit score above 750. Secured cards need only a fixed deposit.' },
+  { q: 'Does applying affect my credit score?', a: 'Each application creates a hard enquiry that can lower your score slightly. Compare first and apply only for cards you are likely to get.' },
+  { q: 'How do I avoid interest?', a: 'Pay the full outstanding by the due date every month. Interest of 36–45% a year applies to unpaid balances.' },
+];
+---
+<Base title={`Best Credit Cards in India — Compare ${CREDIT_CARDS.length} Cards`} description="Compare credit cards by cashback, rewards, travel, fuel and lifetime-free options. See joining and annual fees and apply.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Loans', href: '/services/home-loans' }, { label: 'Credit cards' }]} />
+    <h1 class="mt-3 text-3xl font-extrabold">Compare credit cards</h1>
+    <p class="mt-2 max-w-3xl text-neutral-600">Pick a category or bank, compare fees and benefits, and request a call to apply.</p>
+    <div class="mt-6"><CardCatalogue client:load /></div>
+    <h2 class="section-title mb-4 mt-12">Types of credit cards</h2>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{types.map(([t, s]) => <div class="panel"><p class="font-bold text-brand-900">{t}</p><p class="mt-1 text-sm text-neutral-600">{s}</p></div>)}</div>
+    <div class="panel mt-10"><Faq items={faq} /></div>
+    <p class="mt-4 text-xs text-neutral-500">Card names belong to the issuing banks. Fees and benefits are indicative; check the bank’s terms before applying.</p>
+  </div>
+</Base>

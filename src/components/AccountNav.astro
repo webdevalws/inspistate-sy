@@ -1,0 +1,54 @@
+---
+// Account sidebar. Items follow the role chosen at registration (User / Seller / Agent).
+import type { User } from '../lib/auth';
+import { roleLabel } from '../data/plans';
+
+interface Props { user: User; active: 'overview' | 'plans' }
+const { user, active } = Astro.props;
+const lister = user.role === 'seller' || user.role === 'agent';
+const P = {
+  overview: 'M4 11l8-7 8 7M6 10v10h12V10',
+  listings: 'M4 20V9l8-5 8 5v11M9 20v-6h6v6',
+  add: 'M12 5v14M5 12h14',
+  leads: 'M4 5h16v11H8l-4 4z',
+  plans: 'M3 8l4 4 5-7 5 7 4-4-2 11H5z',
+  heart: 'M12 20s-7-4.5-9-8.5A5 5 0 0 1 12 7a5 5 0 0 1 9 4.5c-2 4-9 8.5-9 8.5z',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+};
+const items: { label: string; href: string; icon: string; on?: boolean }[] = [
+  { label: 'Overview', href: '/account', icon: P.overview, on: active === 'overview' },
+  ...(lister ? [
+    { label: 'My Listings', href: '/account#listings', icon: P.listings },
+    { label: 'List Property', href: '/post-property', icon: P.add },
+    { label: 'Leads Received', href: '/account#leads', icon: P.leads },
+  ] : []),
+  ...(user.role === 'agent' ? [{ label: 'Subscription Plans', href: '/account/plans', icon: P.plans, on: active === 'plans' }] : []),
+  { label: 'Shortlist', href: '/account#shortlist', icon: P.heart },
+  { label: 'Saved Searches', href: '/account#searches', icon: P.search },
+  { label: 'My Enquiries', href: '/account#enquiries', icon: P.mail },
+  { label: 'Profile', href: '/account#profile', icon: P.user },
+];
+---
+<aside class="h-fit border-[0.5px] border-[#1C1A17]/15 bg-white lg:sticky lg:top-24">
+  <div class="border-b-[0.5px] border-[#1C1A17]/15 p-5">
+    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">{user.role ? `${roleLabel(user.role)} account` : 'Registration pending'}</p>
+    <p class="mt-1.5 truncate font-display text-lg font-bold">{user.name ?? `+91 ${user.phone}`}</p>
+    {user.company && <p class="truncate text-xs text-[#1C1A17]/60">{user.company}</p>}
+  </div>
+  <nav aria-label="Account" class="no-scrollbar flex overflow-x-auto lg:block">
+    {items.map((it) => (
+      <a href={it.href} class:list={['flex shrink-0 items-center gap-3 border-[#1C1A17]/10 px-5 py-3.5 text-sm font-medium transition lg:border-b-[0.5px]', it.on ? 'bg-[#1C1A17] text-sand-50' : 'hover:bg-sand-100']}>
+        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={it.icon} /></svg>
+        {it.label}
+      </a>
+    ))}
+    <form method="post" action="/api/auth/logout" class="shrink-0">
+      <button class="flex w-full cursor-pointer items-center gap-3 px-5 py-3.5 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50">
+        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" /></svg>
+        Logout
+      </button>
+    </form>
+  </nav>
+</aside>

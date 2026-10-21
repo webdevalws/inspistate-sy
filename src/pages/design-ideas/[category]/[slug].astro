@@ -1,0 +1,41 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import RoomArt from '../../../components/RoomArt.astro';
+import LeadDialog from '../../../components/islands/LeadDialog';
+import { IDEA_CATEGORIES, TIERS, ideasFor } from '../../../data/interiors';
+import { formatPrice } from '../../../lib/format';
+
+// Design idea detail: specs, indicative cost by package, similar ideas.
+const { category, slug } = Astro.params;
+const cat = IDEA_CATEGORIES.find((c) => c.slug === category);
+const all = cat ? ideasFor(cat.slug) : [];
+const idea = all.find((i) => i.slug === slug);
+if (!cat || !idea) return new Response(null, { status: 404 });
+const similar = all.filter((i) => i.id !== idea.id && (i.style === idea.style || i.colour === idea.colour)).slice(0, 3);
+const specs = [['Style', idea.style], ['Colour palette', idea.colour], ['Room size', idea.size], ['Highlight', idea.feature]];
+---
+<Base title={`${idea.title} | Design idea`} description={`${idea.title}. Indicative cost from ${formatPrice(idea.cost)}. Get this design for your home.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Design ideas', href: '/design-ideas' }, { label: cat.name, href: `/design-ideas/${cat.slug}` }, { label: idea.title }]} />
+    <div class="mt-4 grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div class="card overflow-hidden"><RoomArt category={idea.category} colour={idea.colour} style={idea.style} seed={idea.id} class="aspect-[16/10] w-full" title={idea.title} /></div>
+      <aside class="panel h-fit space-y-4">
+        <h1 class="text-2xl font-bold">{idea.title}</h1>
+        <dl class="grid grid-cols-2 gap-3 text-sm">{specs.map(([k, v]) => <div><dt class="text-neutral-500">{k}</dt><dd class="font-semibold">{v}</dd></div>)}</dl>
+        <div class="rounded-xl bg-brand-50 p-4 text-sm">
+          <p class="mb-2 font-semibold">Indicative cost</p>
+          {Object.values(TIERS).map((t) => <div class="flex justify-between py-0.5"><span>{t.label}</span><b>{formatPrice(Math.round((idea.cost * t.k) / 5000) * 5000)}</b></div>)}
+        </div>
+        <LeadDialog client:visible kind="callback" label="Get this design for my home" subject={`Design idea #${idea.id}: ${idea.title}`} className="btn-primary w-full" />
+        <a href="/tools/interior-cost" class="block text-center text-sm font-semibold text-brand-700 hover:underline">Estimate my full home →</a>
+      </aside>
+    </div>
+    {similar.length > 0 && (
+      <>
+        <h2 class="section-title mb-4 mt-12">Similar ideas</h2>
+        <div class="grid gap-4 sm:grid-cols-3">{similar.map((i) => <a href={`/design-ideas/${i.category}/${i.slug}`} class="card overflow-hidden hover:border-brand-300"><RoomArt category={i.category} colour={i.colour} style={i.style} seed={i.id} class="aspect-[4/3] w-full" /><p class="p-3 text-sm font-semibold">{i.title}</p></a>)}</div>
+      </>
+    )}
+  </div>
+</Base>

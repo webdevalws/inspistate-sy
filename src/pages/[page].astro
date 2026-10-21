@@ -1,0 +1,152 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Faq from '../components/Faq.astro';
+import EnquiryForm from '../components/islands/EnquiryForm';
+
+type Page = { title: string; intro: string; sections: readonly (readonly [string, string])[]; form?: string; list?: readonly (readonly [string, string, string])[] };
+const PAGES: Record<string, Page> = {
+  about: {
+    title: 'About InspiState',
+    intro: 'InspiState helps people across India find, compare and move into the right home — with honest prices, verified listings and RERA details up front.',
+    sections: [
+      ['What we do', 'We bring together resale and rental listings, new projects from developers, locality price data and the services you need after you find a home — loans, interiors, legal checks and moving.'],
+      ['How we keep listings honest', 'Owner listings are reviewed before they go live. Listings marked “Verified” have had ownership documents and photos checked. Every project page shows its RERA number so you can confirm it with the state authority.'],
+      ['Our data', 'Property rates, heatmaps and locality guides are calculated from active listings on InspiState and refreshed continuously.'],
+    ],
+  },
+  contact: {
+    title: 'Contact us',
+    intro: 'Questions about a listing, a project or your account? Send us a message and we’ll get back within one working day.',
+    sections: [['Customer support', 'Monday to Saturday, 9am – 9pm IST.'], ['For developers and agents', 'Want to list projects or properties at scale? Leave your details with “Partnership” in the message.']],
+  },
+  'fraud-awareness': {
+    title: 'Fraud awareness',
+    intro: 'Property fraud usually relies on urgency and advance payments. These checks keep you safe.',
+    sections: [
+      ['Never pay before you visit', 'Do not pay a token amount, deposit or “booking fee” for a property you haven’t seen in person or verified documents for.'],
+      ['Verify the owner', 'Ask for the sale deed or latest property tax receipt and check the name matches the person you are dealing with. For projects, confirm the RERA number on the state portal.'],
+      ['We never ask for OTPs or passwords', 'InspiState staff will never ask for your bank OTP, UPI PIN or card details. Report anyone who does.'],
+      ['Report a listing', 'If a listing looks suspicious, contact us with the listing ID and we will investigate and remove it.'],
+    ],
+  },
+  terms: {
+    title: 'Terms of use',
+    intro: 'Template terms for the prototype — have them reviewed by a lawyer before launch.',
+    sections: [
+      ['Use of the platform', 'You may use InspiState to search, list and enquire about properties for lawful purposes only.'],
+      ['Listings', 'Advertisers are responsible for the accuracy of their listings. InspiState may review, edit or remove any listing that violates these terms.'],
+      ['No guarantee', 'Information on the site, including price estimates and calculators, is indicative. Verify details independently before any transaction.'],
+      ['Accounts', 'You are responsible for activity on your account. Phone verification is required to log in.'],
+    ],
+  },
+  privacy: {
+    title: 'Privacy policy',
+    intro: 'Template policy for the prototype — have it reviewed for compliance with the Digital Personal Data Protection Act, 2023 before launch.',
+    sections: [
+      ['What we collect', 'Your phone number when you log in; your name, phone and email when you submit an enquiry or listing; photos you upload; and basic usage data.'],
+      ['How we use it', 'To show your listings, connect you with the seller, builder or service partner you contacted, and to keep the platform safe. We don’t sell personal data.'],
+      ['Your choices', 'You can update your profile, delete saved searches and request deletion of your account by contacting us.'],
+      ['Security', 'Login codes and session tokens are stored only in hashed form. Access to enquiry data is restricted to authorised staff.'],
+    ],
+  },
+  faq: {
+    title: 'Frequently asked questions',
+    intro: 'Quick answers about searching, listing and your account.',
+    sections: [],
+  },
+  careers: {
+    title: 'Careers at InspiState',
+    intro: 'Help millions of Indians find the right home. We are a small team building search, data and services for real estate.',
+    sections: [
+      ['How we work', 'Small teams own a product end to end — from research with home buyers to shipping and measuring. We value clear writing, honest data and kindness.'],
+      ['Benefits', 'Health cover for you and your family, flexible hours, a learning budget and hybrid work from our offices.'],
+      ['How to apply', 'Pick a role below and send us your details with the role name — our people team replies to every application within a week.'],
+    ],
+    list: [
+      ['Senior Frontend Engineer (Astro / React)', 'Engineering · Gurugram or remote', 'Full time'],
+      ['Data Analyst — Property Prices', 'Data · Bengaluru', 'Full time'],
+      ['Property Advisor', 'Sales · Mumbai, Pune, Noida', 'Full time'],
+      ['Home Loan Relationship Manager', 'Finance · Delhi NCR', 'Full time'],
+      ['Content Writer — Real Estate', 'Marketing · Remote', 'Contract'],
+    ],
+    form: 'Careers: job application',
+  },
+  press: {
+    title: 'Media & press',
+    intro: 'News, data and commentary from InspiState for journalists and partners.',
+    sections: [
+      ['Market data for stories', 'Our locality price trends, rental yields and heatmaps are free to cite with attribution to InspiState. Ask us for city-level cuts.'],
+      ['Spokespeople', 'Our research team is available for comment on housing prices, home loans, rentals and policy.'],
+      ['Brand assets', 'Need our logo or product screenshots? Request them below and mention the publication.'],
+    ],
+    form: 'Media enquiry',
+  },
+  'app-download': {
+    title: 'InspiState app',
+    intro: 'Search homes, save shortlists and get price alerts on your phone. Our mobile app is coming soon.',
+    sections: [
+      ['Install from your browser today', 'InspiState works like an app on any phone: open the site in Chrome or Safari and choose “Add to Home screen”.'],
+      ['What’s coming', 'Instant alerts for new listings matching your saved searches, one-tap calls to owners, document storage for your purchase and EMI reminders.'],
+    ],
+    form: 'App: notify me at launch',
+  },
+  'partner-with-us': {
+    title: 'Partner with InspiState',
+    intro: 'Developers, channel partners, agents and service providers — grow with India’s home buyers and renters.',
+    sections: [
+      ['Developers', 'List projects with floor plans, price lists, brochures and RERA details. Get verified enquiries and site-visit bookings.'],
+      ['Channel partners & agents', 'Access project inventory, co-broking and leads from buyers in your micro-market. List resale and rental properties in bulk.'],
+      ['Banks & lenders', 'Offer home loans, loans against property and personal loans to pre-qualified customers through our loan marketplace.'],
+      ['Service providers', 'Movers, painters, interior designers, solar installers and inspectors — receive requests with estimates from customers near you.'],
+    ],
+    form: 'Partnership enquiry',
+  },
+  advertise: {
+    title: 'Advertise with InspiState',
+    intro: 'Reach home buyers, renters and investors when they are deciding.',
+    sections: [
+      ['Project promotions', 'Featured placements on city, locality and search pages, homepage spotlights and newsletter features.'],
+      ['Lead campaigns', 'Pay for verified enquiries from buyers matching your budget, configuration and location.'],
+      ['Brand partnerships', 'Sponsor tools like the EMI calculator, cost of living calculator or locality guides for your audience.'],
+    ],
+    form: 'Advertising enquiry',
+  },
+  business: {
+    title: 'InspiState for businesses',
+    intro: 'Data, tools and services for developers, lenders and brokers.',
+    sections: [
+      ['Data intelligence', 'Locality-level price and rent trends, supply and absorption, buyer demand signals and custom research for land acquisition and pricing.'],
+      ['Mortgage partnerships', 'Embed our loan eligibility and lender comparison in your sales journey and close home loans faster for your buyers.'],
+      ['Sales acceleration', 'Inventory management, channel-partner network and site-visit scheduling for project launches and sustenance sales.'],
+      ['Agent tools', 'A CRM for agents with listings, leads, follow-ups and WhatsApp sharing — built for India’s brokers.'],
+      ['Virtual tours', '3D walkthroughs, 360° site tours and virtual sample flats for pre-launch projects.'],
+    ],
+    form: 'Business solutions enquiry',
+  },
+};
+
+const key = Astro.params.page as string;
+const page = PAGES[key];
+if (!page) return new Response(null, { status: 404 });
+const faq = [
+  { q: 'Is posting a property free?', a: 'Yes. Owners can list properties for free. Listings are reviewed within 24 hours before they go live.' },
+  { q: 'What does “Verified” mean?', a: 'Our team has checked ownership documents and photos for that listing.' },
+  { q: 'How do I log in?', a: 'Enter your mobile number and the one-time code we send. No password needed.' },
+  { q: 'Are the price estimates accurate?', a: 'Rates and valuations are averages of asking prices on InspiState and are meant as a guide. Final prices depend on the specific property.' },
+  { q: 'How do I save a search?', a: 'Log in, run a search and tap “Save search”. You’ll find it under My account.' },
+  { q: 'Can NRIs buy property through InspiState?', a: 'Yes. See our NRI guide and NRI services for documentation and payment rules.' },
+];
+---
+<Base title={page.title} description={page.intro}>
+  <div class="container-x max-w-3xl py-6">
+    <Breadcrumbs items={[{ label: page.title }]} />
+    <h1 class="mt-3 text-3xl font-extrabold">{page.title}</h1>
+    <p class="mt-2 text-lg text-slate-600">{page.intro}</p>
+    {page.sections.map(([h, b]) => <section class="mt-8"><h2 class="text-xl font-bold">{h}</h2><p class="mt-2 leading-relaxed text-slate-700">{b}</p></section>)}
+    {key === 'faq' && <div class="mt-8"><Faq items={faq} title="" /></div>}
+    {page.list && <div class="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">{page.list.map(([a, b, c]) => <div class="flex flex-wrap items-baseline justify-between gap-2 p-4"><div><p class="font-semibold">{a}</p><p class="text-sm text-slate-500">{b}</p></div><span class="pill">{c}</span></div>)}</div>}
+    {key === 'contact' && <div class="card mt-8 p-6"><EnquiryForm client:visible subject="Contact form" contactName="Our support team" /></div>}
+    {page.form && <div class="card mt-8 p-6"><h2 class="mb-3 text-lg font-bold">Get in touch</h2><EnquiryForm client:visible subject={page.form} contactName="Our team" /></div>}
+  </div>
+</Base>

@@ -1,0 +1,19 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { TOOLS } from '../../lib/catalog';
+---
+<Base title="Real Estate Calculators & Tools" description="Free home loan, EMI, affordability, buy vs rent, valuation, stamp duty, capital gains, vastu, interior cost, rent receipt and rent agreement tools.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Tools' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">Property tools & calculators</h1>
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {TOOLS.map((t) => (
+        <a href={`/tools/${t.slug}`} class="card group flex gap-4 p-6 transition hover:border-brand-300 hover:shadow-md">
+          <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-50 text-2xl font-bold text-brand-700">{t.icon}</span>
+          <span><span class="block text-lg font-bold group-hover:text-brand-700">{t.title}</span><span class="text-sm text-slate-500">{t.sub}</span></span>
+        </a>
+      ))}
+    </div>
+  </div>
+</Base>

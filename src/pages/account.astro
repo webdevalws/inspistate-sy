@@ -1,0 +1,167 @@
+---
+import Base from '../layouts/Base.astro';
+import AccountNav from '../components/AccountNav.astro';
+import ShortlistView from '../components/islands/ShortlistView';
+import SavedSearchList from '../components/islands/SavedSearchList';
+import { leadsReceived, listingAllowance, myEnquiries, myListings, savedSearches, subscriptionState } from '../lib/accounts';
+import { getRefs } from '../lib/repo';
+import { formatPrice, formatRent } from '../lib/format';
+import { ROLES, planByKey, roleLabel } from '../data/plans';
+
+const user = Astro.locals.user!; // middleware redirects anonymous users to /login
+const lister = user.role === 'seller' || user.role === 'agent';
+const [refs, listings, enquiries, searches, allowance, leads, subs] = await Promise.all([
+  getRefs(), myListings(user.id), myEnquiries(user.id), savedSearches(user.id), listingAllowance(user),
+  lister ? leadsReceived(user.id) : Promise.resolve([]), user.role === 'agent' ? subscriptionState(user.id) : Promise.resolve(null),
+]);
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const saved = Astro.url.searchParams.get('saved');
+const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700' };
+// Agents without a plan see masked buyer numbers; sellers always see leads on their own property.
+const maskPhones = user.role === 'agent' && !allowance.hasPlan;
+const mask = (p: string) => (maskPhones ? `${p.slice(0, 2)}••••••${p.slice(-2)}` : p);
+const plan = subs?.active ? planByKey(subs.active.plan) : null;
+const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:text-2xl';
+---
+<Base title="My account" noindex>
+  <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
+    <div class="container-x grid gap-8 py-8 lg:grid-cols-[260px_1fr] lg:py-12">
+      <AccountNav user={user} active="overview" />
+
+      <div class="min-w-0 space-y-12">
+        <!-- Overview -->
+        <section>
+          <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>{user.role ? `${roleLabel(user.role)} account` : 'Welcome'}</p>
+          <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Hello{user.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1>
+          <p class="mt-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#1C1A17]/55">+91 {user.phone}{user.city_slug && ` · ${refs.city(user.city_slug)?.name ?? ''}`}</p>
+
+          {!user.role && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+              <p class="text-sm">Finish creating your account — tell us whether you are a <b>User</b>, <b>Seller</b> or <b>Agent</b>.</p>
+              <a href="/login" data-auth-open class="ed-btn ed-btn-dark">Finish registration →</a>
+            </div>
+          )}
+
+          {lister && (
+            <div class="mt-6 grid border-[0.5px] border-[#1C1A17]/15 bg-white sm:grid-cols-3">
+              <div class="p-5">
+                <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Listings</p>
+                <p class="mt-2 font-display text-3xl font-bold">{allowance.used}<span class="text-lg text-[#1C1A17]/45"> / {allowance.limit ?? '∞'}</span></p>
+                {allowance.limit !== null && <div class="mt-3 h-1 bg-[#1C1A17]/10"><div class="h-1 bg-accent-500" style={`width:${Math.min(100, (allowance.used / Math.max(1, allowance.limit)) * 100)}%`}></div></div>}
+                <p class="mt-2 text-xs text-[#1C1A17]/60">{allowance.limit === null ? 'Unlimited with your plan' : allowance.canPost ? `${allowance.limit - allowance.used} free listing${allowance.limit - allowance.used === 1 ? '' : 's'} left` : 'Free listings used up'}</p>
+              </div>
+              <div class="border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
+                <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Leads received</p>
+                <p class="mt-2 font-display text-3xl font-bold">{leads.length}</p>
+                <p class="mt-2 text-xs text-[#1C1A17]/60">Buyer enquiries on your listings</p>
+              </div>
+              <div class="flex flex-col justify-between gap-3 border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
+                {user.role === 'agent' ? (
+                  <>
+                    <div>
+                      <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Plan</p>
+                      <p class="mt-2 font-display text-lg font-bold">{plan ? plan.name : subs?.requested ? 'Request in progress' : 'Free'}</p>
+                      <p class="text-xs text-[#1C1A17]/60">{subs?.active?.ends_at ? `Valid till ${fmtDate(subs.active.ends_at)}` : subs?.requested ? 'Our team will call to activate it' : '3 free listings'}</p>
+                    </div>
+                    {!plan && <a href="/account/plans" class="ed-link self-start">{subs?.requested ? 'View request' : 'Upgrade'} <span aria-hidden="true">→</span></a>}
+                  </>
+                ) : (
+                  <>
+                    <p class="text-sm text-[#1C1A17]/70">Ready to list another property?</p>
+                    <a href="/post-property" class:list={['ed-btn self-start', allowance.canPost ? 'ed-btn-dark' : 'ed-btn-ghost-dark pointer-events-none opacity-50']}>+ List property</a>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {user.role === 'user' && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5">
+              <div>
+                <p class="font-display text-lg font-bold">Want to sell or rent out a property?</p>
+                <p class="text-sm text-[#1C1A17]/60">Switch to a Seller account and get 3 free listings.</p>
+              </div>
+              <form method="post" action="/api/account/role"><input type="hidden" name="role" value="seller" /><input type="hidden" name="back" value="/post-property" /><button class="ed-btn ed-btn-dark">Become a seller →</button></form>
+            </div>
+          )}
+        </section>
+
+        {lister && (
+          <section id="listings" class="scroll-mt-28">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class={h2}>My Listings</h2><a href="/post-property" class="ed-link">+ List property</a></div>
+            {listings.length ? (
+              <ul class="border-t-[0.5px] border-[#1C1A17]/15">
+                {listings.map((l) => (
+                  <li class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4">
+                    <div class="min-w-0">
+                      <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">#{l.id} · {l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</a>
+                      <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
+                    </div>
+                    <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.status]]}>{l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected'}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t listed a property yet. <a href="/post-property" class="font-semibold underline">List your first one</a>.</p>}
+          </section>
+        )}
+
+        {lister && (
+          <section id="leads" class="scroll-mt-28">
+            <h2 class={h2}>Leads Received</h2>
+            {maskPhones && leads.length > 0 && <p class="mt-2 text-sm text-[#1C1A17]/65">Buyer numbers are hidden on the free plan. <a href="/account/plans" class="font-semibold underline">Choose a plan</a> to see them.</p>}
+            {leads.length ? (
+              <ul class="mt-4 border-t-[0.5px] border-[#1C1A17]/15">
+                {leads.map((d) => (
+                  <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3.5 text-sm">
+                    <span><b>{d.name}</b> · {maskPhones ? <span class="font-mono">+91 {mask(d.phone)}</span> : <a href={`tel:+91${d.phone}`} class="font-mono underline">+91 {d.phone}</a>} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{d.kind.replace('-', ' ')} · #{d.listing_id}</span></span>
+                    <span class="text-[#1C1A17]/55">{fmtDate(d.created_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p class="mt-4 border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">Enquiries from buyers on your listings will show up here.</p>}
+          </section>
+        )}
+
+        <section id="shortlist" class="scroll-mt-28">
+          <h2 class={`${h2} mb-4`}>Shortlist</h2>
+          <ShortlistView client:load />
+        </section>
+
+        <section id="searches" class="scroll-mt-28">
+          <h2 class={`${h2} mb-4`}>Saved Searches</h2>
+          <SavedSearchList client:visible initial={searches.map((s) => ({ id: s.id, label: s.label, url: s.url, created: fmtDate(s.created_at) }))} />
+        </section>
+
+        <section id="enquiries" class="scroll-mt-28">
+          <h2 class={`${h2} mb-4`}>My Enquiries</h2>
+          {enquiries.length ? (
+            <ul class="border-t-[0.5px] border-[#1C1A17]/15">
+              {enquiries.map((e) => <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3 text-sm"><span>{e.page ? <a href={e.page} class="font-medium underline">{e.subject}</a> : e.subject} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{e.kind.replace('-', ' ')}</span></span><span class="text-[#1C1A17]/55">{fmtDate(e.created_at)}</span></li>)}
+            </ul>
+          ) : <p class="text-sm text-[#1C1A17]/60">Enquiries you send while logged in appear here.</p>}
+        </section>
+
+        <section id="profile" class="scroll-mt-28">
+          <h2 class={`${h2} mb-4`}>Profile</h2>
+          {saved && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Profile saved.</p>}
+          <form method="post" action="/api/account/profile" class="grid gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5 sm:grid-cols-3 sm:items-end">
+            <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Name<input name="name" maxlength="100" value={user.name ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
+            <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Email<input name="email" type="email" maxlength="200" value={user.email ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
+            <button class="ed-btn ed-btn-dark">Save</button>
+          </form>
+          {user.role && (
+            <form method="post" action="/api/account/role" class="mt-4 flex flex-wrap items-end gap-3 border-[0.5px] border-[#1C1A17]/15 bg-white p-5">
+              <input type="hidden" name="back" value="/account#profile" />
+              <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Account type
+                <select name="role" class="input mt-1.5 min-w-48 rounded-none font-sans text-[15px] normal-case tracking-normal">
+                  {ROLES.map((r) => <option value={r.key} selected={r.key === user.role}>{r.label} — {r.sub}</option>)}
+                </select>
+              </label>
+              <button class="ed-btn ed-btn-ghost-dark">Change type</button>
+            </form>
+          )}
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,17 @@
+---
+// Shows an uploaded photo from R2 when one exists, otherwise the generated placeholder.
+import Cover from './Cover.astro';
+import { photoUrl } from '../lib/listing';
+
+interface Props { photo?: string; hue: number; kind?: 'tower' | 'house' | 'plot' | 'office'; label?: string; alt: string; class?: string }
+const { photo, hue, kind, label, alt, class: cls = '' } = Astro.props;
+---
+{photo ? (
+  <div class:list={['relative overflow-hidden bg-slate-200', cls]}>
+    <img src={photoUrl(photo)} alt={alt} loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
+    {label && <span class="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700">{label}</span>}
+    <slot />
+  </div>
+) : (
+  <Cover hue={hue} kind={kind} label={label} class={cls}><slot /></Cover>
+)}

@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Cover from '../../components/Cover.astro';
+import { GUIDES } from '../../data/guides';
+---
+<Base title="Real Estate Guides for Buyers, Sellers, Tenants & NRIs" description="Practical guides on buying, selling and renting property in India, RERA, home loans and NRI investment.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Guides' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">Guides & insights</h1>
+    <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {GUIDES.map((g, i) => (
+        <a href={`/guides/${g.slug}`} class="card group overflow-hidden transition hover:shadow-md">
+          <Cover hue={170 + i * 30} kind={i % 3 === 2 ? 'office' : 'house'} class="h-36" label={g.audience} />
+          <div class="p-5">
+            <p class="font-bold group-hover:text-brand-700">{g.title}</p>
+            <p class="mt-1 text-sm text-slate-500">{g.summary}</p>
+            <p class="mt-3 text-xs text-slate-400">{g.readMins} min read</p>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</Base>

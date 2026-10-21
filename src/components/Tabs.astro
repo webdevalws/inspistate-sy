@@ -1,0 +1,51 @@
+---
+// Accessible tabs with no framework JS. Panels are passed as named slots: tab-0, tab-1, …
+// variant "line" = underlined tabs; "pill" = dark selected pill (city switchers); "box" = boxed tabs;
+// "mono" = editorial hairline tabs with mono uppercase labels (landing page).
+interface Props { labels: string[]; id: string; variant?: 'line' | 'pill' | 'box' | 'mono' }
+const { labels, id, variant = 'line' } = Astro.props;
+const panels = await Promise.all(labels.map((_, i) => Astro.slots.render(`tab-${i}`)));
+const listCls = {
+  line: 'flex gap-2 overflow-x-auto border-b border-slate-200 pb-px',
+  pill: 'inline-flex p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/70 gap-1 overflow-x-auto max-w-full scrollbar-none',
+  box: 'flex gap-2 overflow-x-auto pl-6',
+  mono: 'flex gap-6 overflow-x-auto no-scrollbar border-b-[0.5px] border-[#1C1A17]/15 sm:gap-8',
+}[variant];
+const tabCls = {
+  line: '-mb-px shrink-0 border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-900 aria-selected:border-brand-950 aria-selected:text-brand-950 transition',
+  pill: 'shrink-0 rounded-xl px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold text-slate-600 transition-all duration-200 hover:text-brand-950 aria-selected:bg-brand-950 aria-selected:text-white aria-selected:shadow-sm cursor-pointer',
+  box: 'shrink-0 rounded-t-xl border border-b-0 border-slate-200 bg-white px-7 py-3 text-[15px] font-semibold text-slate-800 aria-selected:border-brand-950 aria-selected:bg-brand-950 aria-selected:text-white transition',
+  mono: '-mb-px shrink-0 border-b border-transparent pb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#1C1A17]/50 transition hover:text-[#1C1A17] aria-selected:border-[#1C1A17] aria-selected:text-[#1C1A17] cursor-pointer',
+}[variant];
+---
+<div class="tabs" data-tabs>
+  <div role="tablist" aria-label={id} class={listCls}>
+    {labels.map((l, i) => (
+      <button type="button" role="tab" id={`${id}-t${i}`} aria-controls={`${id}-p${i}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} class={tabCls}>{l}</button>
+    ))}
+  </div>
+  {panels.map((html, i) => (
+    <div role="tabpanel" id={`${id}-p${i}`} aria-labelledby={`${id}-t${i}`} hidden={i !== 0} class:list={[variant === 'box' ? '' : variant === 'mono' ? 'pt-8' : 'pt-5']} set:html={html} />
+  ))}
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>(':scope > [role=tablist] > [role=tab]')];
+    const select = (t: HTMLButtonElement) => {
+      for (const x of tabs) {
+        const on = x === t;
+        x.setAttribute('aria-selected', String(on));
+        x.tabIndex = on ? 0 : -1;
+        document.getElementById(x.getAttribute('aria-controls')!)!.hidden = !on;
+      }
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(t));
+      t.addEventListener('keydown', (e) => {
+        const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; select(n); n.focus(); }
+      });
+    });
+  }
+</script>

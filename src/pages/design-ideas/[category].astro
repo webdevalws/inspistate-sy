@@ -1,0 +1,58 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import RoomArt from '../../components/RoomArt.astro';
+import LeadDialog from '../../components/islands/LeadDialog';
+import { IDEA_CATEGORIES, IDEA_FILTERS, ideasFor, type Idea } from '../../data/interiors';
+import { formatPrice } from '../../lib/format';
+
+// Category gallery with style / colour / size filters (query params) and search. "search" covers all categories.
+const slug = Astro.params.category!;
+const isSearch = slug === 'search';
+const cat = IDEA_CATEGORIES.find((c) => c.slug === slug);
+if (!cat && !isSearch) return new Response(null, { status: 404 });
+const q = Astro.url.searchParams;
+const f = { style: q.get('style') ?? '', colour: q.get('colour') ?? '', size: q.get('size') ?? '' };
+const text = (q.get('q') ?? '').trim().toLowerCase();
+const pool: Idea[] = isSearch ? IDEA_CATEGORIES.flatMap((c) => ideasFor(c.slug)) : ideasFor(slug);
+const words = text.split(/\s+/).filter(Boolean);
+const ideas = pool.filter((i) => (!f.style || i.style === f.style) && (!f.colour || i.colour === f.colour) && (!f.size || i.size === f.size)
+  && words.every((w) => `${i.title} ${i.category}`.toLowerCase().includes(w)));
+const PAGE = 12;
+const page = Math.max(1, Number(q.get('page')) || 1);
+const shown = ideas.slice(0, page * PAGE);
+const link = (k: keyof typeof f | 'page', v: string) => { const u = new URLSearchParams(q); if (v) u.set(k, v); else u.delete(k); if (k !== 'page') u.delete('page'); const s = u.toString(); return `/design-ideas/${slug}${s ? `?${s}` : ''}`; };
+const name = isSearch ? `Results for “${text || 'all ideas'}”` : `${cat!.name} design ideas`;
+---
+<Base title={isSearch ? 'Search design ideas' : `${cat!.name} Design Ideas — ${ideas.length} designs`} description={cat?.blurb ?? 'Search interior design ideas by theme, colour and feature.'}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Design ideas', href: '/design-ideas' }, { label: isSearch ? 'Search' : cat!.name }]} />
+    <div class="mt-3 flex flex-wrap items-end justify-between gap-4">
+      <div><h1 class="text-3xl font-extrabold">{name}</h1><p class="mt-1 text-neutral-600">{ideas.length} designs{cat ? ` · ${cat.blurb}` : ''}</p></div>
+      <form action={`/design-ideas/${slug}`} class="flex gap-2">{Object.entries(f).map(([k, v]) => v && <input type="hidden" name={k} value={v} />)}<input name="q" value={text} class="input w-64" placeholder="Search by theme, finish, feature…" aria-label="Search" /><button class="btn-ghost">Search</button></form>
+    </div>
+    <div class="mt-5 space-y-2">
+      {(Object.keys(IDEA_FILTERS) as (keyof typeof IDEA_FILTERS)[]).map((k) => (
+        <div class="flex flex-wrap items-center gap-2"><span class="w-14 text-xs font-semibold uppercase text-neutral-500">{k}</span>
+          <a href={link(k, '')} class:list={['pill', !f[k] && 'bg-brand-900 text-white']}>All</a>
+          {IDEA_FILTERS[k].map((v) => <a href={link(k, f[k] === v ? '' : v)} class:list={['pill', f[k] === v && 'bg-brand-900 text-white']} aria-current={f[k] === v ? 'true' : undefined}>{v}</a>)}
+        </div>
+      ))}
+    </div>
+    {shown.length === 0 ? <p class="panel mt-8 text-center text-neutral-600">No designs match these filters. <a href={`/design-ideas/${slug}`} class="font-semibold text-brand-700 underline">Clear filters</a></p> : (
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {shown.map((i) => (
+          <article class="card overflow-hidden">
+            <a href={`/design-ideas/${i.category}/${i.slug}`}><RoomArt category={i.category} colour={i.colour} style={i.style} seed={i.id} class="aspect-[4/3] w-full" title={i.title} /></a>
+            <div class="p-4">
+              <a href={`/design-ideas/${i.category}/${i.slug}`} class="font-semibold text-brand-900 hover:underline">{i.title}</a>
+              <div class="mt-2 flex flex-wrap gap-1.5 text-xs"><span class="pill">{i.style}</span><span class="pill">{i.colour}</span><span class="pill">{i.size}</span></div>
+              <div class="mt-3 flex items-center justify-between"><p class="text-sm">From <b>{formatPrice(i.cost)}</b></p><LeadDialog client:visible kind="enquiry" label="Get this design" subject={`Design idea #${i.id}: ${i.title}`} className="btn-ghost py-1.5 text-sm" /></div>
+            </div>
+          </article>
+        )).flatMap((el, n) => n === 5 ? [el, <a href="/tools/interior-cost" class="card flex flex-col justify-center bg-brand-900 p-6 text-white"><p class="text-sm text-white/70">Plan your budget</p><p class="mt-1 text-xl font-bold">How much will your interiors cost?</p><p class="mt-3 font-semibold text-accent-400">Get an instant estimate →</p></a>] : [el])}
+      </div>
+    )}
+    {shown.length < ideas.length && <div class="mt-8 text-center"><a href={link('page', String(page + 1))} class="btn-ghost">Load more designs</a></div>}
+  </div>
+</Base>

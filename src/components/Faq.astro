@@ -1,0 +1,24 @@
+---
+interface Props { items: { q: string; a: string }[]; title?: string }
+const { items, title = 'Frequently asked questions' } = Astro.props;
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((i) => ({ '@type': 'Question', name: i.q, acceptedAnswer: { '@type': 'Answer', text: i.a } })),
+};
+---
+<section>
+  <h2 class="section-title mb-4">{title}</h2>
+  <div class="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+    {items.map((i) => (
+      <details class="group p-4">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-800">
+          {i.q}
+          <span class="text-brand-600 transition group-open:rotate-45" aria-hidden="true">+</span>
+        </summary>
+        <p class="mt-2 text-sm leading-relaxed text-slate-600">{i.a}</p>
+      </details>
+    ))}
+  </div>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+</section>

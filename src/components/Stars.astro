@@ -1,0 +1,16 @@
+---
+interface Props { value: number; size?: 'sm' | 'md' | 'lg' }
+const { value, size = 'sm' } = Astro.props;
+const px = { sm: 'h-3.5 w-3.5', md: 'h-5 w-5', lg: 'h-6 w-6' }[size];
+---
+<span class="inline-flex items-center" role="img" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+  {[1, 2, 3, 4, 5].map((i) => {
+    const fill = Math.max(0, Math.min(1, value - (i - 1)));
+    return (
+      <svg viewBox="0 0 20 20" class={px} aria-hidden="true">
+        <defs><linearGradient id={`g${i}-${Math.round(fill * 100)}`}><stop offset={`${fill * 100}%`} stop-color="#c9a576" /><stop offset={`${fill * 100}%`} stop-color="#e7e0d6" /></linearGradient></defs>
+        <path fill={`url(#g${i}-${Math.round(fill * 100)})`} d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" />
+      </svg>
+    );
+  })}
+</span>

@@ -1,0 +1,38 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/Faq.astro';
+import { LoanEmi, RateTable } from '../../components/islands/LoanTools';
+import { LoanRequest, ProductEligibility } from '../../components/islands/Finance';
+import { LOAN_PRODUCTS } from '../../data/loans';
+
+// Personal loan, business loan and loan against property. See docs/functions/<product>/desc.md.
+const p = LOAN_PRODUCTS.find((x) => x.slug === Astro.params.product);
+if (!p) return new Response(null, { status: 404 });
+const lowest = Math.min(...p.lenders.map((l) => l.min));
+const nav = [['#eligibility', 'Eligibility'], ['#emi', 'EMI calculator'], ['#rates', 'Interest rates'], ['#documents', 'Documents'], ['#faq', 'FAQ']];
+---
+<Base title={`${p.name} — Compare ${p.lenders.length} Lenders from ${lowest}%`} description={`${p.tagline} Compare interest rates, check eligibility and calculate EMI.`}>
+  <section class="bg-brand-900 text-white">
+    <div class="container-x grid gap-8 py-10 lg:grid-cols-[1fr_460px]">
+      <div>
+        <Breadcrumbs items={[{ label: 'Loans', href: '/services/home-loans' }, { label: p.name }]} />
+        <h1 class="mt-4 text-3xl font-extrabold text-white sm:text-4xl">{p.name}</h1>
+        <p class="mt-2 max-w-xl text-white/80">{p.tagline}</p>
+        <dl class="mt-6 grid gap-3 sm:grid-cols-2">{p.glance.map(([k, v]) => <div class="rounded-xl bg-white/10 p-3"><dt class="text-xs text-white/60">{k}</dt><dd class="font-semibold">{v}</dd></div>)}</dl>
+      </div>
+      <div class="rounded-2xl bg-white p-5 text-neutral-800 shadow-xl"><h2 class="mb-3 text-lg font-bold">Get offers from {p.lenders.length} lenders</h2><LoanRequest client:load product={p.name} kind={p.kind} /></div>
+    </div>
+  </section>
+  <nav class="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur" aria-label="On this page"><div class="container-x flex gap-5 overflow-x-auto py-3 text-sm font-semibold">{nav.map(([h, l]) => <a href={h} class="shrink-0 text-brand-700 hover:underline">{l}</a>)}</div></nav>
+  <div class="container-x space-y-12 py-10">
+    <section id="eligibility"><h2 class="section-title mb-4">Check your {p.name.toLowerCase()} eligibility</h2><div class="panel"><ProductEligibility client:visible kind={p.kind} /></div>
+      <div class="mt-4 overflow-x-auto rounded-xl border border-neutral-200 bg-white"><table class="w-full text-sm"><tbody class="divide-y divide-neutral-100">{p.eligibility.map(([k, v]) => <tr><td class="px-4 py-2 font-medium">{k}</td><td class="px-4 py-2 text-neutral-600">{v}</td></tr>)}</tbody></table></div>
+    </section>
+    <section id="emi"><h2 class="section-title mb-4">{p.name} EMI calculator</h2><div class="panel"><LoanEmi client:visible kind={p.kind} /></div></section>
+    <section id="rates"><h2 class="section-title mb-4">{p.name} interest rates</h2><RateTable client:visible lenders={p.lenders} product={p.name} perLakhYears={p.perLakhYears} /></section>
+    <section id="documents"><h2 class="section-title mb-4">Documents required</h2><ul class="grid gap-2 md:grid-cols-2">{p.documents.map((d) => <li class="panel flex gap-2 text-sm"><span class="text-emerald-600">✓</span>{d}</li>)}</ul></section>
+    <section id="faq" class="panel"><Faq items={p.faq} /></section>
+    <p class="text-xs text-neutral-500">Rates and terms are indicative and set by each lender. InspiState helps you compare and apply; the loan decision is the lender’s.</p>
+  </div>
+</Base>

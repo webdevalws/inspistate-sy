@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/Faq.astro';
+import { cityStats, getRefs } from '../../lib/repo';
+import { localityMarket } from '../../lib/community';
+import { formatNumber, formatPrice, formatRate } from '../../lib/format';
+
+const refs = await getRefs();
+const city = refs.city(Astro.params.city!);
+if (!city) return new Response(null, { status: 404 });
+const [market, statsFor] = await Promise.all([localityMarket(city.slug), cityStats()]);
+const s = statsFor(city.slug);
+const sort = Astro.url.searchParams.get('sort') ?? 'rate';
+const rows = refs.localitiesOf(city.slug).map((l) => {
+  const m = market.get(l.slug);
+  return { l, rate: m?.sale_rate ?? l.ratePerSqft, rent: m?.rent_rate ?? l.rentPerSqft, yieldPct: ((l.rentPerSqft * 12) / l.ratePerSqft) * 100, listings: m?.n ?? 0, from: m?.min_price ?? null };
+}).sort((a, b) => (sort === 'growth' ? b.l.yoyGrowthPct - a.l.yoyGrowthPct : sort === 'yield' ? b.yieldPct - a.yieldPct : sort === 'name' ? a.l.name.localeCompare(b.l.name) : b.rate - a.rate));
+const growth = rows.reduce((t, r) => t + r.l.yoyGrowthPct, 0) / Math.max(1, rows.length);
+const top = [...rows].sort((a, b) => b.l.yoyGrowthPct - a.l.yoyGrowthPct)[0];
+const faq = [
+  { q: `What is the average property rate in ${city.name}?`, a: `The average sale rate across InspiState listings is ${formatRate(s.avgRate)}, up about ${growth.toFixed(1)}% over the last year.` },
+  { q: `Which locality in ${city.name} has the highest price growth?`, a: top ? `${top.l.name} grew ${top.l.yoyGrowthPct}% year on year.` : '—' },
+  { q: 'How are these rates calculated?', a: 'Rates are averages of asking prices per sq.ft for active residential listings in each locality. Growth compares with the same period last year.' },
+];
+---
+<Base title={`Property Rates in ${city.name} — Locality-wise Price per Sq.ft`} description={`Latest property rates in ${city.name}: average ${formatRate(s.avgRate)}, ${growth.toFixed(1)}% yearly growth. Compare sale price, rent and rental yield by locality.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: 'Property rates' }]} />
+    <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">Property rates in {city.name}</h1>
+    <div class="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+      {[['Avg. sale rate', formatRate(s.avgRate)], ['Yearly growth', `▲ ${growth.toFixed(1)}%`], ['Live listings', formatNumber(s.total)], ['Localities tracked', String(rows.length)]].map(([k, v]) => <div class="card p-5"><p class="text-xs uppercase tracking-wide text-slate-500">{k}</p><p class="mt-1 text-2xl font-extrabold">{v}</p></div>)}
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <a href={`/heatmap/${city.slug}`} class="btn-ghost">◉ View on heatmap</a>
+      {(['affordable', 'emerging', 'premium', 'rental-yield'] as const).map((t) => <a href={`/localities/${city.slug}/${t}`} class="btn-ghost capitalize">{t.replace('-', ' ')} localities</a>)}
+    </div>
+
+    <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <table class="w-full min-w-[760px] text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            {[['name', 'Locality'], ['rate', 'Avg. sale rate'], ['', 'Avg. rent'], ['growth', 'YoY change'], ['yield', 'Rental yield'], ['', 'Listings'], ['', 'Starting from']].map(([k, l]) => (
+              <th class="px-4 py-3">{k ? <a href={`?sort=${k}`} class:list={['hover:text-brand-700', sort === k && 'text-brand-700']}>{l}{sort === k && ' ↓'}</a> : l}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {rows.map((r) => (
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3"><a href={`/locality/${city.slug}/${r.l.slug}`} class="font-semibold text-brand-700 hover:underline">{r.l.name}</a></td>
+              <td class="px-4 py-3 font-semibold">{formatRate(r.rate)}</td>
+              <td class="px-4 py-3">₹{r.rent.toFixed(1)}/sq.ft/mo</td>
+              <td class="px-4 py-3 font-semibold text-brand-700">▲ {r.l.yoyGrowthPct}%</td>
+              <td class="px-4 py-3">{r.yieldPct.toFixed(1)}%</td>
+              <td class="px-4 py-3">{r.listings}</td>
+              <td class="px-4 py-3">{r.from ? formatPrice(r.from) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-12"><Faq items={faq} /></div>
+    <div class="mt-8 flex flex-wrap gap-2">{refs.cities.filter((c) => c.slug !== city.slug).map((c) => <a href={`/property-rates/${c.slug}`} class="rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:text-brand-700">Rates in {c.name}</a>)}</div>
+  </div>
+</Base>

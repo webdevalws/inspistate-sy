@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Faq from '../components/Faq.astro';
+import LeadDialog from '../components/islands/LeadDialog';
+import { WOMEN_CONCESSIONS, STAMP_DUTY } from '../data/stamp-duty';
+
+// See docs/functions/women-homebuyers/desc.md
+const saving = (male: number, female: number, value = 10000000) => Math.round(((male - female) / 100) * value);
+const regFree = STAMP_DUTY.filter((s) => s.registration.womenFree).map((s) => s.state);
+const benefits = [
+  { icon: '§', t: 'Lower stamp duty', s: `${WOMEN_CONCESSIONS.length} states charge women a lower stamp duty rate — up to 2 percentage points less.`, href: '/tools/stamp-duty', cta: 'Calculate stamp duty' },
+  { icon: '%', t: 'Cheaper home loans', s: 'Many banks and housing finance companies price loans for women borrowers slightly lower, typically by about 0.05%. Ask every lender for its women-borrower rate.', href: '/services/home-loans', cta: 'Compare loan offers' },
+  { icon: '🏠', t: 'PMAY housing support', s: 'Under Pradhan Mantri Awas Yojana, a woman owner or co-owner is required or preferred for eligible households, and eligible buyers can get an interest subsidy on the home loan.', href: '/guides/women-home-buyers', cta: 'Read the guide' },
+  { icon: '🧾', t: 'Income tax deductions', s: 'Each co-owner who is also a co-borrower can claim the home loan deductions separately — doubling the family’s total benefit.', href: '/tools/capital-gains', cta: 'Tax tools' },
+];
+const tax = [
+  ['Section 80C', 'Principal repayment, stamp duty and registration', 'Up to ₹1.5 lakh a year (old tax regime)'],
+  ['Section 24(b)', 'Interest on a loan for a self-occupied home', 'Up to ₹2 lakh a year (old tax regime)'],
+  ['Section 24(b) — let-out', 'Interest on a loan for a rented-out home', 'Full interest, with house-property loss set-off capped at ₹2 lakh'],
+];
+const checklist = [
+  'Register the home in your name, or as the first-named joint owner, to get the stamp duty concession.',
+  'Be a co-borrower on the loan if you want to claim the tax deductions yourself.',
+  'Ask lenders for their women-borrower rate and compare the total cost, not just the rate.',
+  'Check your state’s concession cap — some states limit it by property value or to the first home.',
+  'Keep income proof, PAN, Aadhaar and bank statements for every co-borrower ready.',
+];
+const faq = [
+  { q: 'Do women pay less stamp duty in every state?', a: `No. Concessions currently apply in states such as ${WOMEN_CONCESSIONS.map((c) => c.state).slice(0, 6).join(', ')}. Other states charge everyone the same rate.` },
+  { q: 'Does joint ownership with a woman get the concession?', a: 'In most concession states joint ownership gets a rate between the men’s and women’s rates. The full concession needs the woman to be the sole owner.' },
+  { q: 'Can I claim tax benefits if the loan is in my husband’s name?', a: 'Only borrowers who repay the loan and are owners can claim the deductions. Become a co-owner and co-borrower to claim your share.' },
+  { q: 'Is the lower loan rate worth it?', a: 'On a ₹50 lakh, 20-year loan, a 0.05% lower rate saves roughly ₹35,000–40,000 in interest over the term.' },
+];
+---
+<Base title="Women Homebuyers — Stamp Duty, Loan and Tax Benefits" description="Benefits for women buying a home in India: lower stamp duty by state, women-borrower loan rates, PMAY and income tax deductions.">
+  <section class="bg-brand-900 text-white">
+    <div class="container-x py-12">
+      <Breadcrumbs items={[{ label: 'Guides', href: '/guides' }, { label: 'Women homebuyers' }]} />
+      <h1 class="mt-4 max-w-3xl font-serif text-4xl font-bold text-white sm:text-5xl">Own your home. <span class="text-accent-400">Save more doing it.</span></h1>
+      <p class="mt-3 max-w-2xl text-white/80">Women buyers in India pay less stamp duty in many states, can get lower loan rates and claim their own tax deductions. Here’s everything in one place.</p>
+      <div class="mt-6 flex flex-wrap gap-3"><LeadDialog client:visible kind="callback" label="Get in touch" subject="Women homebuyers: advice" className="btn-primary" /><a href="/tools/stamp-duty" class="btn-ghost bg-white">Stamp duty calculator</a></div>
+    </div>
+  </section>
+  <div class="container-x py-10">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {benefits.map((b) => <div class="panel flex flex-col"><span class="text-2xl" aria-hidden="true">{b.icon}</span><p class="mt-2 font-bold text-brand-900">{b.t}</p><p class="mt-1 flex-1 text-sm text-neutral-600">{b.s}</p><a href={b.href} class="view-all mt-3">{b.cta} →</a></div>)}
+    </div>
+
+    <h2 class="section-title mb-4 mt-12">Stamp duty concessions by state</h2>
+    <div class="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+      <table class="w-full min-w-[560px] text-sm">
+        <thead class="bg-neutral-50 text-left text-xs uppercase text-neutral-500"><tr><th class="px-4 py-2">State</th><th>Men</th><th>Women</th><th>You save on a ₹1 Cr home</th></tr></thead>
+        <tbody class="divide-y divide-neutral-100">
+          {WOMEN_CONCESSIONS.map((c) => <tr><td class="px-4 py-2 font-medium">{c.state}</td><td>{c.male}%</td><td class="font-semibold text-emerald-700">{c.female}%</td><td>₹{saving(c.male, c.female).toLocaleString('en-IN')}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    {regFree.length > 0 && <p class="mt-2 text-sm text-neutral-600">No registration fee for women buyers in: {regFree.join(', ')}.</p>}
+    <p class="mt-1 text-xs text-neutral-500">Indicative rates; some states cap the concession by property value or limit it to the first home.</p>
+
+    <h2 class="section-title mb-4 mt-12">Income tax benefits</h2>
+    <div class="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+      <table class="w-full min-w-[560px] text-sm">
+        <thead class="bg-neutral-50 text-left text-xs uppercase text-neutral-500"><tr><th class="px-4 py-2">Section</th><th>What it covers</th><th>Limit per owner-borrower</th></tr></thead>
+        <tbody class="divide-y divide-neutral-100">{tax.map(([a, b, c]) => <tr><td class="px-4 py-2 font-medium">{a}</td><td>{b}</td><td>{c}</td></tr>)}</tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title mb-4 mt-12">Before you buy: checklist</h2>
+    <ul class="grid gap-2 md:grid-cols-2">{checklist.map((c) => <li class="panel flex gap-3 text-sm"><span class="text-emerald-600">✓</span>{c}</li>)}</ul>
+
+    <div class="mt-12 flex flex-wrap items-center gap-4 rounded-2xl bg-accent-100 p-6">
+      <p class="flex-1 font-semibold text-brand-900">Talk to an advisor about loans, concessions and properties that suit you.</p>
+      <LeadDialog client:visible kind="callback" label="Get in touch" subject="Women homebuyers: advice" className="btn-dark" />
+    </div>
+    <div class="panel mt-10"><Faq items={faq} /></div>
+  </div>
+</Base>

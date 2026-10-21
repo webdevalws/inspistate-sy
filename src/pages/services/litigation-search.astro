@@ -1,0 +1,48 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/Faq.astro';
+import { LitigationOrder } from '../../components/islands/LegalOrders';
+import { LITIGATION_SEARCH_PRICE } from '../../data/services';
+
+// See docs/functions/litigation-search/desc.md
+const takeaways = [
+  ['Why search?', 'Find out before you pay whether the seller, builder or the property itself is tied up in a court case that could delay or block your purchase.'],
+  ['What is covered', 'Civil and criminal matters in district courts, high courts and tribunals such as RERA and consumer forums, wherever records are published online.'],
+  ['What you get', 'A written report listing every matching case with court, case number, parties, status (pending, active or disposed) and next hearing date.'],
+];
+const steps = ['Enter the party’s name, PAN and the property details', 'Pay securely — the report is ordered immediately', 'Our legal team searches court and tribunal records', 'Receive a verified report by email in 3–5 working days'];
+const caseTypes = ['Ownership and inheritance disputes', 'Builder delays, defects and refund claims', 'Bank recovery and mortgage enforcement', 'Partition and boundary disputes', 'Cheque-bounce and contract cases against the seller'];
+const faq = [
+  { q: 'What is a litigation search?', a: 'A check of court and tribunal records for cases involving a person, company or property, done before you buy, lend or rent.' },
+  { q: 'Why do I need a litigation report?', a: 'A property under dispute can be attached by a court or its sale set aside. A report helps you avoid paying for a property you may not be able to own peacefully.' },
+  { q: 'How long does it take?', a: 'Usually 3–5 working days after the order is confirmed and paid.' },
+  { q: 'Which courts are covered?', a: 'District courts, high courts, the Supreme Court and major tribunals (RERA, NCLT, consumer commissions, DRT) where records are available online.' },
+  { q: 'Does it replace a title search?', a: 'No. A title search checks ownership and mortgages in registry records; a litigation search checks court cases. Most buyers order both.' },
+];
+---
+<Base title="Litigation Search — Check Court Cases Before You Buy" description={`Order a litigation search report on a seller or property: court and tribunal cases, status and hearings. ₹${LITIGATION_SEARCH_PRICE.toLocaleString('en-IN')}.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Services', href: '/services' }, { label: 'Legal services', href: '/services/legal-services' }, { label: 'Litigation Search' }]} />
+    <div class="mt-4 grid gap-6 lg:grid-cols-[1fr_540px]">
+      <section class="panel">
+        <p class="eyebrow">Legal services</p>
+        <h1 class="mt-1 text-3xl font-bold">Litigation Search</h1>
+        <p class="mt-2 text-neutral-600">Check whether a seller, developer or property is involved in any court case — before you sign or pay.</p>
+        <div class="mt-6 space-y-2">
+          {takeaways.map(([t, s], i) => <details class="rounded-xl bg-brand-50 p-4" open={i === 0}><summary class="cursor-pointer font-semibold text-brand-900">{t}</summary><p class="mt-2 text-sm text-neutral-600">{s}</p></details>)}
+        </div>
+        <h2 class="mt-8 text-lg font-bold">Cases we look for</h2>
+        <ul class="mt-3 grid gap-2 sm:grid-cols-2">{caseTypes.map((c) => <li class="flex gap-2 text-sm"><span class="text-accent-600">●</span>{c}</li>)}</ul>
+        <h2 class="mt-8 text-lg font-bold">How it works</h2>
+        <ol class="mt-3 space-y-2">{steps.map((s, i) => <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-500 text-sm font-bold text-brand-900">{i + 1}</span><span class="pt-0.5 text-sm">{s}</span></li>)}</ol>
+      </section>
+      <section class="panel h-fit">
+        <h2 class="text-xl font-bold">New request</h2>
+        <p class="mb-4 text-xs text-neutral-500">Fields marked * are mandatory</p>
+        <LitigationOrder client:load />
+      </section>
+    </div>
+    <div class="panel mt-6"><Faq items={faq} /></div>
+  </div>
+</Base>

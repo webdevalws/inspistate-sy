@@ -1,0 +1,32 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import HeatMap from '../../components/islands/HeatMap';
+import { getRefs } from '../../lib/repo';
+import { localityMarket } from '../../lib/community';
+import { formatRate } from '../../lib/format';
+
+const refs = await getRefs();
+const city = refs.city(Astro.params.city!);
+if (!city) return new Response(null, { status: 404 });
+const market = await localityMarket(city.slug);
+const points = refs.localitiesOf(city.slug).map((l) => ({
+  slug: l.slug, name: l.name, lat: l.lat, lng: l.lng,
+  rate: market.get(l.slug)?.sale_rate ?? l.ratePerSqft, rent: l.rentPerSqft, growth: l.yoyGrowthPct,
+  listings: market.get(l.slug)?.n ?? 0, href: `/locality/${city.slug}/${l.slug}`,
+}));
+const sorted = [...points].sort((a, b) => b.rate - a.rate);
+---
+<Base title={`${city.name} Property Price Heatmap`} description={`Interactive map of property prices, rents and growth across ${city.name} localities.`}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: 'Price heatmap' }]} />
+    <h1 class="mb-1 mt-3 text-2xl font-extrabold sm:text-3xl">{city.name} property price heatmap</h1>
+    <p class="mb-5 text-sm text-slate-500">Circle colour shows the selected metric; size shows how many listings are live. Click a locality for details.</p>
+    <HeatMap client:only="react" points={points} center={[city.lat, city.lng]} />
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div class="card p-5"><h2 class="font-bold">Most expensive</h2><ol class="mt-2 space-y-1 text-sm">{sorted.slice(0, 3).map((p) => <li class="flex justify-between"><a href={p.href} class="text-brand-700 hover:underline">{p.name}</a><span>{formatRate(p.rate)}</span></li>)}</ol></div>
+      <div class="card p-5"><h2 class="font-bold">Most affordable</h2><ol class="mt-2 space-y-1 text-sm">{sorted.slice(-3).reverse().map((p) => <li class="flex justify-between"><a href={p.href} class="text-brand-700 hover:underline">{p.name}</a><span>{formatRate(p.rate)}</span></li>)}</ol></div>
+    </div>
+    <div class="mt-6 flex flex-wrap gap-2">{refs.cities.filter((c) => c.slug !== city.slug).map((c) => <a href={`/heatmap/${c.slug}`} class="rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:text-brand-700">{c.name} heatmap</a>)}</div>
+  </div>
+</Base>

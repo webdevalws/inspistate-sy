@@ -1,0 +1,337 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import Cover from '../../../components/Cover.astro';
+import PriceTrend from '../../../components/PriceTrend.astro';
+import ProjectCard from '../../../components/ProjectCard.astro';
+import ListingCard from '../../../components/ListingCard.astro';
+import Faq from '../../../components/Faq.astro';
+import Tabs from '../../../components/Tabs.astro';
+import Stars from '../../../components/Stars.astro';
+import FloorPlans from '../../../components/islands/FloorPlans';
+import EnquiryForm from '../../../components/islands/EnquiryForm';
+import EmiCalculator from '../../../components/islands/EmiCalculator';
+import ShortlistButton from '../../../components/islands/ShortlistButton';
+import ShareButton from '../../../components/islands/ShareButton';
+import CompareButton from '../../../components/islands/CompareButton';
+import LeadDialog from '../../../components/islands/LeadDialog';
+import ReviewForm from '../../../components/islands/ReviewForm';
+import TravelTime from '../../../components/islands/TravelTime';
+import { env } from 'cloudflare:workers';
+import { amenityGroups } from '../../../data/amenities';
+import { countProjectsByBuilder, getProject, getProjectListings, getProjects, getRefs } from '../../../lib/repo';
+import { projectReviews, projectTransactions } from '../../../lib/community';
+import { formatNumber, formatPrice, formatRate } from '../../../lib/format';
+import { builderUrl, projectUrl, searchUrl } from '../../../lib/urls';
+
+const p = await getProject(Astro.params.city!, Astro.params.slug!);
+if (!p) return new Response(null, { status: 404 });
+const refs = await getRefs();
+const city = refs.city(p.citySlug)!;
+const loc = refs.locality(p.citySlug, p.localitySlug)!;
+const builder = refs.builder(p.builderSlug)!;
+const [min, max] = [p.priceMin, p.priceMax];
+const sizes = p.units.map((u) => u.carpetSqft);
+const [cityProjects, projectListings, byBuilder, { reviews, summary }, transactions, builderProjects] = await Promise.all([
+  getProjects({ citySlug: city.slug }),
+  getProjectListings(p.id, 12),
+  countProjectsByBuilder(),
+  projectReviews(p.id),
+  projectTransactions(p.id),
+  getProjects({ builderSlug: p.builderSlug }),
+]);
+const similar = cityProjects.filter((x) => x.id !== p.id).sort((a, b) => Math.abs(a.ratePerSqft - p.ratePerSqft) - Math.abs(b.ratePerSqft - p.ratePerSqft)).slice(0, 3);
+const resale = projectListings.filter((l) => l.purpose === 'buy').slice(0, 3);
+const rentals = projectListings.filter((l) => l.purpose === 'rent').slice(0, 3);
+const vsLocality = ((p.ratePerSqft - loc.ratePerSqft) / loc.ratePerSqft) * 100;
+const whatsapp = (env as unknown as { PUBLIC_WHATSAPP?: string }).PUBLIC_WHATSAPP;
+const user = Astro.locals.user;
+
+const keyFacts = [
+  ['Price range', `${formatPrice(min)} – ${formatPrice(max)}`],
+  ['Avg. rate', formatRate(p.ratePerSqft)],
+  ['Configuration', `${p.bhkLabel} Apartments`],
+  ['Carpet area', `${formatNumber(Math.min(...sizes))} – ${formatNumber(Math.max(...sizes))} sq.ft`],
+  ['Project status', p.status],
+  ['Possession from', p.possession],
+  ['Land area', `${p.landAcres} acres`],
+  ['Towers / floors', `${p.towers} towers · G+${p.floors}`],
+  ['Total units', formatNumber(p.totalUnits)],
+  ['Density', `${Math.round(p.totalUnits / p.landAcres)} units/acre`],
+  ['RERA no.', p.rera],
+  ['Launched', String(p.launchedYear)],
+];
+const sections = [
+  ['overview', 'Overview'], ['floor-plans', 'Floor Plans & Pricing'], ['insights', 'Transactions & Trends'], ['gallery', 'Master Plan & Media'],
+  ['amenities', 'Amenities'], ['location', 'Location'], ['rera', 'RERA'], ['reviews', 'Reviews'], ['developer', 'Developer'], ['faq', 'FAQ'],
+];
+const grouped = Object.entries(amenityGroups).map(([g, list]) => [g, list.filter((a) => p.amenities.includes(a))] as const).filter(([, l]) => l.length);
+const nearbyByKind = Object.entries(Object.groupBy(p.nearby, (n) => n.kind));
+const faq = [
+  { q: `Where exactly is ${p.name} located?`, a: `${p.name} is in ${loc.name}, ${city.name}. ${p.nearby.filter((n) => n.km < 3).map((n) => `${n.name} is ${n.km} km away`).join('; ') || 'It is well connected to the city’s main roads'}.` },
+  { q: `What is the starting price of ${p.name}?`, a: `Prices start at ${formatPrice(p.priceMin)} and go up to ${formatPrice(max)}, plus applicable charges.` },
+  { q: `Who is the developer of ${p.name}?`, a: `${p.name} is developed by ${builder.name}, founded in ${builder.founded}, with ${builder.delivered} projects delivered.` },
+  { q: `What configurations and unit sizes are available?`, a: `${p.bhkLabel} apartments from ${formatNumber(Math.min(...sizes))} to ${formatNumber(Math.max(...sizes))} sq.ft carpet area.` },
+  { q: `Is ${p.name} RERA registered?`, a: `Yes. Its RERA registration number is ${p.rera}. Always verify it on the ${city.state} RERA portal before booking.` },
+  { q: `When is possession of ${p.name}?`, a: p.status === 'Ready to Move' ? 'The project is ready to move in.' : `Possession is expected from ${p.possession}.` },
+  { q: `What amenities are available at ${p.name}?`, a: `${p.amenities.slice(0, 8).join(', ')}${p.amenities.length > 8 ? ` and ${p.amenities.length - 8} more` : ''}.` },
+  { q: `How many homes are there in ${p.name}?`, a: `${formatNumber(p.totalUnits)} units across ${p.towers} towers on ${p.landAcres} acres.` },
+];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ApartmentComplex',
+  name: p.name,
+  address: { '@type': 'PostalAddress', addressLocality: loc.name, addressRegion: city.state, addressCountry: 'IN' },
+  geo: { '@type': 'GeoCoordinates', latitude: loc.lat, longitude: loc.lng },
+  numberOfAccommodationUnits: p.totalUnits,
+  ...(summary.count ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: summary.rating.toFixed(1), reviewCount: summary.count } } : {}),
+};
+const bbox = `${loc.lng - 0.02},${loc.lat - 0.012},${loc.lng + 0.02},${loc.lat + 0.012}`;
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+---
+<Base title={`${p.name}, ${loc.name} — Price List, Floor Plans & Reviews`} description={`${p.name} by ${builder.name} in ${loc.name}, ${city.name}: ${p.bhkLabel} from ${formatPrice(min)}. Floor plans, transactions, price trends, amenities, reviews, RERA ${p.rera} and possession ${p.possession}.`} jsonLd={jsonLd}>
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: loc.name, href: `/locality/${city.slug}/${loc.slug}` }, { label: p.name }]} />
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-3 sm:grid-rows-2">
+      <Cover hue={p.hue} class="h-56 rounded-2xl sm:col-span-2 sm:row-span-2 sm:h-full" label={p.status} />
+      <Cover hue={p.hue + 25} kind="house" class="hidden h-40 rounded-2xl sm:block" label="Clubhouse" />
+      <Cover hue={p.hue - 25} kind="plot" class="hidden h-40 rounded-2xl sm:block" label="Master plan" />
+    </div>
+
+    <div class="mt-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <h1 class="text-2xl font-extrabold sm:text-3xl">{p.name}</h1>
+        <p class="text-slate-600">{loc.name}, {city.name} · by <a href={builderUrl(builder.slug)} class="font-semibold text-brand-700 hover:underline">{builder.name}</a></p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          {summary.count > 0 ? (
+            <a href="#reviews" class="flex items-center gap-1.5 text-sm"><Stars value={summary.rating} /><b>{summary.rating.toFixed(1)}</b><span class="text-slate-500">({summary.count} reviews)</span></a>
+          ) : <a href="#reviews" class="text-sm font-semibold text-brand-700 hover:underline">Be the first one to review</a>}
+          <span class="chip bg-brand-50 text-brand-700">RERA {p.rera}</span>
+          <span class="chip">Possession {p.possession}</span>
+        </div>
+      </div>
+      <div class="text-left lg:text-right">
+        <p class="text-2xl font-extrabold">{formatPrice(min)} – {formatPrice(max)}</p>
+        <p class="text-sm text-slate-500">{formatRate(p.ratePerSqft)} · + applicable charges</p>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+      <ShortlistButton client:load kind="project" id={p.id} withLabel />
+      <CompareButton client:idle id={p.id} />
+      <ShareButton client:idle title={p.name} />
+      <LeadDialog client:idle kind="brochure" label="⤓ Download Brochure" subject={`Brochure — ${p.name}`} projectId={p.id} successHref={`${projectUrl(p)}/brochure`} />
+      {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}, ${loc.name}`)}`} target="_blank" rel="noopener" class="btn border border-[#25D366] bg-white text-[#128C7E] hover:bg-[#25D366]/10">WhatsApp</a>}
+      <LeadDialog client:idle kind="callback" label="Request a Call Back" subject={p.name} projectId={p.id} className="btn-primary" />
+    </div>
+
+    <nav class="sticky top-16 z-30 -mx-4 mt-6 overflow-x-auto border-y border-slate-200 bg-slate-50/95 px-4 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-2" aria-label="Page sections">
+      <ul class="flex gap-1 whitespace-nowrap py-2 text-sm">
+        {sections.map(([id, label]) => <li><a href={`#${id}`} class="rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:bg-white hover:text-brand-700">{label}</a></li>)}
+      </ul>
+    </nav>
+
+    <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
+      <div class="min-w-0 space-y-12">
+        <section id="overview" class="scroll-mt-32">
+          <h2 class="section-title mb-4">About {p.name}</h2>
+          <p class="mb-5 leading-relaxed text-slate-700">{p.name} by {builder.name} is {p.status === 'Under Construction' ? 'an' : 'a'} {p.status.toLowerCase()} residential project in {loc.name}, {city.name}, spread across {p.landAcres} acres with {formatNumber(p.totalUnits)} homes in {p.towers} towers. It offers {p.bhkLabel} apartments from {formatNumber(Math.min(...sizes))} to {formatNumber(Math.max(...sizes))} sq.ft, priced from {formatPrice(min)}. Possession starts {p.possession}.</p>
+          <h3 class="mb-3 text-lg font-bold">Key project details</h3>
+          <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-3">
+            {keyFacts.map(([k, v]) => <div class="bg-white p-4"><dt class="text-xs text-slate-500">{k}</dt><dd class="mt-0.5 font-semibold text-slate-900">{v}</dd></div>)}
+          </dl>
+          <h3 class="mt-8 text-lg font-bold">Why you should consider {p.name}</h3>
+          <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+            {p.highlights.map((h) => <li class="flex gap-2 rounded-xl bg-white p-3 text-sm ring-1 ring-slate-200"><span class="text-brand-600">✓</span>{h}</li>)}
+          </ul>
+        </section>
+
+        <section id="floor-plans" class="scroll-mt-32">
+          <h2 class="section-title mb-4">{p.name} floor plans and pricing</h2>
+          <FloorPlans client:visible units={p.units} hue={p.hue} />
+        </section>
+
+        <section id="insights" class="scroll-mt-32">
+          <h2 class="section-title mb-4">Recent transactions and price trends</h2>
+          <div class="card p-5">
+            <Tabs id="insights" labels={['Recent Transactions', 'Price Trends', 'Comparable Projects', `Rentals (${rentals.length})`]}>
+              <div slot="tab-0">
+                {transactions.length ? (
+                  <div class="overflow-x-auto">
+                    <table class="w-full min-w-[520px] text-sm">
+                      <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="py-2">Registered</th><th>Tower / Unit</th><th>Floor</th><th>Area</th><th>Price</th><th class="text-right">Rate</th></tr></thead>
+                      <tbody class="divide-y divide-slate-100">
+                        {transactions.map((t) => <tr><td class="py-2">{fmtDate(t.registered_on)}</td><td>{t.tower} · {t.unit}</td><td>{t.floor}</td><td>{formatNumber(t.area_sqft)} sq.ft</td><td class="font-semibold">{formatPrice(t.price)}</td><td class="text-right">{formatRate(t.price / t.area_sqft)}</td></tr>)}
+                      </tbody>
+                    </table>
+                    <p class="mt-2 text-xs text-slate-400">Demo data. In production these come from state registration records.</p>
+                  </div>
+                ) : <p class="text-sm text-slate-500">No registered transactions yet — this project recently launched.</p>}
+              </div>
+              <div slot="tab-1">
+                <PriceTrend points={p.priceTrend} />
+                <p class="mt-3 text-sm text-slate-600">
+                  {p.name} is priced at {formatRate(p.ratePerSqft)}, <b class={vsLocality > 0 ? 'text-accent-600' : 'text-brand-700'}>{Math.abs(vsLocality).toFixed(1)}% {vsLocality > 0 ? 'above' : 'below'}</b> the {loc.name} average of {formatRate(loc.ratePerSqft)}. The locality grew {loc.yoyGrowthPct}% in the last year.
+                </p>
+              </div>
+              <div slot="tab-2">
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[520px] text-sm">
+                    <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="py-2">Project</th><th>Locality</th><th>Rate</th><th>Status</th><th class="text-right">Price range</th></tr></thead>
+                    <tbody class="divide-y divide-slate-100">
+                      {[p, ...similar].map((x) => <tr class:list={[x.id === p.id && 'bg-brand-50/60 font-semibold']}><td class="py-2"><a href={projectUrl(x)} class="text-brand-700 hover:underline">{x.name}</a></td><td>{refs.locality(x.citySlug, x.localitySlug)?.name}</td><td>{formatRate(x.ratePerSqft)}</td><td>{x.status}</td><td class="text-right">{formatPrice(x.priceMin)} – {formatPrice(x.priceMax)}</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+                <a href={`/compare?ids=${[p, ...similar].map((x) => x.id).join(',')}`} class="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline">Compare side by side →</a>
+              </div>
+              <div slot="tab-3">
+                {rentals.length ? <div class="space-y-4">{rentals.map((l) => <ListingCard listing={l} />)}</div> : <p class="text-sm text-slate-500">No rental listings in {p.name} right now. <a href={searchUrl('rent', city.slug, loc.slug)} class="font-semibold text-brand-700 hover:underline">See rentals in {loc.name}</a></p>}
+              </div>
+            </Tabs>
+          </div>
+        </section>
+
+        <section id="gallery" class="scroll-mt-32">
+          <h2 class="section-title mb-4">Master plan, photos & brochure</h2>
+          <Tabs id="gallery" labels={['Master Plan', 'Photos', 'Walkthrough']}>
+            <div slot="tab-0"><Cover hue={p.hue - 25} kind="plot" class="h-72 rounded-2xl" label={`${p.landAcres} acres · ${p.towers} towers`} /></div>
+            <div slot="tab-1"><div class="grid grid-cols-2 gap-3 sm:grid-cols-3">{['Exterior', 'Clubhouse', 'Living room', 'Bedroom', 'Kitchen', 'Landscape'].map((l, i) => <Cover hue={p.hue + i * 15} kind={i % 2 ? 'house' : 'tower'} class="h-32 rounded-xl" label={l} />)}</div></div>
+            <div slot="tab-2"><div class="grid h-60 place-items-center rounded-2xl bg-slate-900 text-slate-300"><p>▶ Walkthrough video will appear here once the developer uploads it.</p></div></div>
+          </Tabs>
+          <div class="mt-4"><LeadDialog client:visible kind="brochure" label="⤓ Get all downloads (brochure, price sheet)" subject={`Brochure — ${p.name}`} projectId={p.id} successHref={`${projectUrl(p)}/brochure`} className="btn-ghost" /></div>
+        </section>
+
+        <section id="amenities" class="scroll-mt-32">
+          <h2 class="section-title mb-4">Amenities & specifications</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            {grouped.map(([g, list]) => (
+              <div class="card p-5">
+                <h3 class="font-semibold">{g}</h3>
+                <ul class="mt-3 flex flex-wrap gap-2">{list.map((a) => <li class="chip bg-brand-50 text-brand-800">{a}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+          <div class="card mt-4 p-5">
+            <h3 class="font-semibold">Specifications</h3>
+            <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              {[['Flooring', 'Vitrified tiles in living and bedrooms; anti-skid in bathrooms'], ['Kitchen', 'Granite platform with stainless steel sink'], ['Doors & windows', 'Laminated flush doors; UPVC sliding windows'], ['Electrical', 'Concealed copper wiring with modular switches'], ['Structure', 'RCC framed, earthquake resistant'], ['Bathrooms', 'Branded CP fittings and sanitaryware']].map(([k, v]) => <div><dt class="font-medium text-slate-800">{k}</dt><dd class="text-slate-600">{v}</dd></div>)}
+            </dl>
+          </div>
+        </section>
+
+        <section id="location" class="scroll-mt-32">
+          <h2 class="section-title mb-4">Location and connectivity around {loc.name}</h2>
+          <div class="grid gap-4 md:grid-cols-2">
+            <iframe title={`Map of ${loc.name}`} class="h-72 w-full rounded-2xl border border-slate-200" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${loc.lat},${loc.lng}`}></iframe>
+            <TravelTime client:visible places={p.nearby} origin={p.name} />
+          </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {nearbyByKind.map(([kind, list]) => (
+              <div class="card p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{kind}</p>
+                {list!.map((n) => <p class="mt-1 flex justify-between text-sm"><span>{n.name}</span><span class="font-semibold text-brand-700">{n.km} km</span></p>)}
+              </div>
+            ))}
+          </div>
+          <a href={`/locality/${city.slug}/${loc.slug}`} class="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline">Explore {loc.name} locality guide →</a>
+        </section>
+
+        <section id="rera" class="scroll-mt-32">
+          <h2 class="section-title mb-4">RERA details of {p.name}</h2>
+          <div class="card grid gap-4 p-5 sm:grid-cols-3">
+            <div><p class="text-xs text-slate-500">Registration no.</p><p class="font-semibold">{p.rera}</p></div>
+            <div><p class="text-xs text-slate-500">Authority</p><p class="font-semibold">{city.state} RERA</p></div>
+            <div><p class="text-xs text-slate-500">Registered developer</p><p class="font-semibold">{builder.name}</p></div>
+            <div class="sm:col-span-3">
+              <p class="text-sm font-semibold">Key buyer protections</p>
+              <ul class="mt-1 list-inside list-disc text-sm text-slate-600">
+                <li>Price must be quoted on carpet area</li><li>70% of payments held in a project escrow account</li><li>Compensation for delayed possession</li><li>5-year structural defect liability</li>
+              </ul>
+            </div>
+            <a href="/guides/rera-explained" class="text-sm font-semibold text-brand-700 hover:underline sm:col-span-3">What to verify before booking →</a>
+          </div>
+        </section>
+
+        <section id="reviews" class="scroll-mt-32">
+          <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <h2 class="section-title">Reviews of {p.name}</h2>
+            <ReviewForm client:visible projectId={p.id} projectName={p.name} defaultName={user?.name ?? undefined} />
+          </div>
+          {summary.count > 0 ? (
+            <div class="grid gap-6 md:grid-cols-[260px_1fr]">
+              <div class="card p-5 text-center">
+                <p class="text-5xl font-extrabold">{summary.rating.toFixed(1)}</p>
+                <Stars value={summary.rating} size="md" />
+                <p class="mt-1 text-sm text-slate-500">{summary.count} reviews</p>
+                <div class="mt-4 space-y-1">
+                  {summary.distribution.map((n, i) => (
+                    <div class="flex items-center gap-2 text-xs"><span class="w-6">{5 - i}★</span><span class="h-2 flex-1 rounded-full bg-slate-100"><span class="block h-2 rounded-full bg-accent-500" style={`width:${(n / summary.count) * 100}%`}></span></span><span class="w-4 text-right">{n}</span></div>
+                  ))}
+                </div>
+                <dl class="mt-4 space-y-1 text-left text-sm">
+                  {[['Connectivity', summary.connectivity], ['Amenities', summary.amenities], ['Construction', summary.construction]].map(([k, v]) => <div class="flex justify-between"><dt class="text-slate-500">{k}</dt><dd class="font-semibold">{(v as number).toFixed(1)}</dd></div>)}
+                </dl>
+              </div>
+              <ul class="space-y-3">
+                {reviews.map((r) => (
+                  <li class="card p-4">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="font-semibold">{r.author} {r.residentType && <span class="chip ml-1">{r.residentType}</span>}</p>
+                      <Stars value={r.rating} />
+                    </div>
+                    <p class="mt-2 text-sm text-slate-700">{r.body}</p>
+                    <p class="mt-2 text-xs text-slate-400">{fmtDate(r.createdAt)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : <p class="text-sm text-slate-500">No reviews yet. Live here or visited? Share your experience.</p>}
+        </section>
+
+        <section id="developer" class="scroll-mt-32">
+          <h2 class="section-title mb-4">{builder.name} track record</h2>
+          <div class="card flex flex-col gap-4 p-5 sm:flex-row">
+            <div class="grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-xl font-extrabold text-white" style={`background:hsl(${builder.hue} 40% 42%)`}>{builder.name.split(' ').map((w) => w[0]).join('')}</div>
+            <div class="flex-1">
+              <a href={builderUrl(builder.slug)} class="text-lg font-bold hover:text-brand-700">{builder.name}</a>
+              <p class="mt-1 text-sm text-slate-600">{builder.about}</p>
+              <dl class="mt-3 flex flex-wrap gap-6 text-sm">
+                <div><dt class="text-slate-500">Established</dt><dd class="font-bold">{builder.founded}</dd></div>
+                <div><dt class="text-slate-500">Delivered</dt><dd class="font-bold">{builder.delivered}</dd></div>
+                <div><dt class="text-slate-500">Ongoing</dt><dd class="font-bold">{builder.ongoing}</dd></div>
+                <div><dt class="text-slate-500">On InspiState</dt><dd class="font-bold">{byBuilder.get(builder.slug) ?? 0}</dd></div>
+              </dl>
+              {builderProjects.length > 1 && <p class="mt-3 text-sm">Other projects: {builderProjects.filter((x) => x.id !== p.id).map((x, i) => <>{i > 0 && ', '}<a href={projectUrl(x)} class="font-semibold text-brand-700 hover:underline">{x.name}</a></>)}</p>}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <Tabs id="more" labels={['Similar Projects', `Resale in ${p.name} (${resale.length})`]}>
+            <div slot="tab-0"><div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{similar.map((s) => <ProjectCard project={s} />)}</div></div>
+            <div slot="tab-1">{resale.length ? <div class="space-y-4">{resale.map((l) => <ListingCard listing={l} />)}</div> : <p class="text-sm text-slate-500">No resale listings yet.</p>}</div>
+          </Tabs>
+        </section>
+
+        <section>
+          <h2 class="section-title mb-4">Plan your purchase</h2>
+          <div class="card p-5"><EmiCalculator client:visible price={min} /></div>
+          <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[['Property valuation', '/tools/property-valuation'], ['Check vastu', '/tools/vastu'], ['Interior cost', '/tools/interior-cost'], [`Stamp duty in ${city.state}`, '/tools/stamp-duty']].map(([l, h]) => <a href={h} class="card p-4 text-center text-sm font-semibold hover:border-brand-300 hover:text-brand-700">{l}</a>)}
+          </div>
+        </section>
+
+        <div id="faq" class="scroll-mt-32"><Faq items={faq} title={`Frequently asked questions about ${p.name}`} /></div>
+      </div>
+
+      <aside>
+        <div class="card sticky top-32 p-5" id="contact">
+          <h2 class="text-lg font-bold">Interested in {p.name}?</h2>
+          <div class="mt-3"><EnquiryForm client:visible subject={p.name} projectId={p.id} contactName={`${builder.name}'s sales team`} /></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</Base>

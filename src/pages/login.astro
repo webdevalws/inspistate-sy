@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+import AuthFlow from '../components/islands/AuthFlow';
+import { getRefs } from '../lib/repo';
+import { ROLES } from '../data/plans';
+
+const raw = Astro.url.searchParams.get('next') ?? '';
+// Only allow same-site relative redirects.
+const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
+const user = Astro.locals.user;
+if (user?.role) return Astro.redirect(next ?? '/account');
+const cities = (await getRefs()).cities.map((c) => ({ slug: c.slug, name: c.name }));
+const defaultRole = next?.startsWith('/post-property') ? 'seller' : next?.startsWith('/account/plans') ? 'agent' : 'user';
+---
+<Base title="Login or Register" noindex>
+  <div class="bg-sand-100">
+    <div class="container-x grid max-w-5xl gap-12 py-14 md:grid-cols-2 md:items-center lg:py-20">
+      <div>
+        <p class="ed-label text-[#1C1A17]/60"><span class="bracket"></span>One account, three ways in</p>
+        <h1 class="mt-4 font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.02] tracking-[-0.02em] !text-[#1C1A17]">Log in or create your InspiState account.</h1>
+        <ul class="mt-8 border-t-[0.5px] border-[#1C1A17]/15">
+          {ROLES.map((r) => (
+            <li class="flex gap-5 border-b-[0.5px] border-[#1C1A17]/15 py-4">
+              <span class="w-16 shrink-0 font-display text-lg font-bold">{r.label}</span>
+              <span class="text-sm text-[#1C1A17]/65">{r.perks.join(' · ')}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="border-[0.5px] border-[#1C1A17]/15 bg-sand-50 p-6 sm:p-8">
+        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={user?.phone ?? ''} defaultRole={defaultRole} />
+      </div>
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,75 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PostPropertyForm from '../components/islands/PostPropertyForm';
+import { getRefs } from '../lib/repo';
+import { listingAllowance } from '../lib/accounts';
+
+const refs = await getRefs();
+const user = Astro.locals.user;
+const allowance = await listingAllowance(user);
+const cities = refs.cities.map((c) => ({ slug: c.slug, name: c.name, localities: refs.localitiesOf(c.slug).map((l) => ({ slug: l.slug, name: l.name })) }));
+---
+<Base title="Post Your Property Free" description="List your property for sale or rent for free and reach verified buyers and tenants.">
+  <div class="container-x grid max-w-5xl gap-8 py-6 lg:grid-cols-[1fr_300px]">
+    <div>
+      <Breadcrumbs items={[{ label: 'Post Property' }]} />
+      <h1 class="mb-6 mt-3 text-2xl font-extrabold sm:text-3xl">Post your property — free</h1>
+      {allowance.canPost ? (
+        <>
+          {allowance.limit !== null && <p class="mb-5 border-[0.5px] border-[#1C1A17]/15 bg-sand-100 px-4 py-3 text-sm">You have <b>{allowance.limit - allowance.used} of {allowance.limit}</b> free listings left on your {user?.role === 'agent' ? 'Agent' : 'Seller'} account.{user?.role === 'agent' && <> <a href="/account/plans" class="font-semibold underline">Go unlimited</a></>}</p>}
+          <PostPropertyForm client:load cities={cities} />
+        </>
+      ) : (
+        <div class="border-[0.5px] border-[#1C1A17]/15 bg-white p-6 sm:p-8">
+          {allowance.reason === 'login' && (
+            <>
+              <p class="font-display text-xl font-bold">Log in to list your property</p>
+              <p class="mt-2 text-sm text-slate-600">Sign in with your mobile number. New here? Register as a <b>Seller</b> (3 free listings) or an <b>Agent</b>.</p>
+              <a href="/login?next=/post-property" data-auth-open data-auth-next="/post-property" class="ed-btn ed-btn-dark mt-6">Login / Register →</a>
+            </>
+          )}
+          {allowance.reason === 'register' && (
+            <>
+              <p class="font-display text-xl font-bold">Finish creating your account</p>
+              <p class="mt-2 text-sm text-slate-600">Choose Seller or Agent to start listing.</p>
+              <a href="/login?next=/post-property" data-auth-open data-auth-next="/post-property" class="ed-btn ed-btn-dark mt-6">Finish registration →</a>
+            </>
+          )}
+          {allowance.reason === 'buyer' && (
+            <>
+              <p class="font-display text-xl font-bold">Your account is set up to buy or rent</p>
+              <p class="mt-2 text-sm text-slate-600">Switch to a Seller account to list your own property — it’s free for up to 3 listings.</p>
+              <form method="post" action="/api/account/role" class="mt-6 flex flex-wrap gap-3">
+                <input type="hidden" name="back" value="/post-property" />
+                <button name="role" value="seller" class="ed-btn ed-btn-dark">Switch to seller →</button>
+                <button name="role" value="agent" class="ed-btn ed-btn-ghost-dark">I’m an agent</button>
+              </form>
+            </>
+          )}
+          {allowance.reason === 'limit' && (
+            <>
+              <p class="font-display text-xl font-bold">You’ve used all {allowance.limit} free listings</p>
+              {user?.role === 'agent' ? (
+                <>
+                  <p class="mt-2 text-sm text-slate-600">Choose a plan for unlimited listings and full buyer contact details.</p>
+                  <a href="/account/plans" class="ed-btn ed-btn-dark mt-6">View plans →</a>
+                </>
+              ) : (
+                <>
+                  <p class="mt-2 text-sm text-slate-600">Live and under-review listings count towards the limit. Once one is sold, rented or removed you can post another.</p>
+                  <a href="/account#listings" class="ed-btn ed-btn-dark mt-6">Manage my listings →</a>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+    <aside class="space-y-3 lg:pt-20">
+      {[['3 free listings', 'Sellers list up to 3 properties free; agents can go unlimited with a plan.'], ['Reviewed within 24 hours', 'Every listing is checked before it goes live.'], ['Fair-price insight', 'See how your price compares to the locality.']].map(([t, s]) => (
+        <div class="card p-4"><p class="font-semibold">✓ {t}</p><p class="text-sm text-slate-500">{s}</p></div>
+      ))}
+    </aside>
+  </div>
+</Base>

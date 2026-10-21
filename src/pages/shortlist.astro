@@ -1,0 +1,13 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ShortlistView from '../components/islands/ShortlistView';
+---
+<Base title="Your Shortlist" description="Properties and projects you have saved.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Shortlist' }]} />
+    <h1 class="mb-6 mt-3 text-2xl font-extrabold sm:text-3xl">Your shortlist</h1>
+    <ShortlistView client:load />
+    <p class="mt-6 text-xs text-slate-500">Your shortlist is saved on this device. Sign-in to sync across devices is coming soon.</p>
+  </div>
+</Base>

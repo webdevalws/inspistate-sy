@@ -1,0 +1,45 @@
+---
+import Base from '../layouts/Base.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import LeadDialog from '../components/islands/LeadDialog';
+import { getRefs } from '../lib/repo';
+import { agentsDirectory } from '../lib/community';
+
+const refs = await getRefs();
+const city = refs.city(Astro.url.searchParams.get('city') ?? '')?.slug;
+const agents = await agentsDirectory(city);
+---
+<Base title={`Real Estate Agents${city ? ` in ${refs.city(city)!.name}` : ''}`} description="Find active property agents by city, with their live listings and the localities they cover.">
+  <div class="container-x py-6">
+    <Breadcrumbs items={[{ label: 'Agents' }]} />
+    <section class="panel mt-3">
+      <h1 class="section-title">Find a Property Agent{city ? ` in ${refs.city(city)!.name}` : ''}</h1>
+      <p class="section-sub">Agents with active listings on InspiState, ranked by inventory. Verified badges mean documents were checked on their listings.</p>
+      <div class="mt-5 flex gap-3 overflow-x-auto pb-1">
+        <a href="/agents" class:list={['pill', !city && 'pill-active']}>All cities</a>
+        {refs.cities.map((c) => <a href={`/agents?city=${c.slug}`} class:list={['pill', c.slug === city && 'pill-active']}>{c.name}</a>)}
+      </div>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {agents.map((a) => (
+          <div class="flex flex-col rounded-xl border border-neutral-200 p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid h-14 w-14 place-items-center rounded-full bg-neutral-900 text-xl font-bold text-accent-400">{a.name.split(' ').map((w) => w[0]).join('')}</span>
+              <div>
+                <p class="text-lg font-bold text-neutral-900">{a.name} {a.verified > 0 && <span class="chip-gold ml-1">Verified</span>}</p>
+                <p class="text-sm text-neutral-500">{refs.city(a.city_slug)?.name} · {a.listings} active listing{a.listings > 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            <dl class="mt-4 grid grid-cols-2 gap-2 text-center text-sm">
+              <div class="rounded-lg bg-neutral-100 py-2"><dt class="text-neutral-500">For sale</dt><dd class="font-bold">{a.sale}</dd></div>
+              <div class="rounded-lg bg-neutral-100 py-2"><dt class="text-neutral-500">For rent</dt><dd class="font-bold">{a.rent}</dd></div>
+            </dl>
+            <p class="mt-3 text-xs font-semibold uppercase text-neutral-500">Localities</p>
+            <div class="mt-1 flex flex-wrap gap-1.5">{a.localities.slice(0, 4).map((l) => <a href={`/buy/${a.city_slug}/${l}?postedBy=Agent`} class="chip-gold">{refs.locality(a.city_slug, l)?.name}</a>)}</div>
+            <div class="mt-auto pt-4"><LeadDialog client:visible kind="callback" label="Contact Agent" subject={`Agent: ${a.name} (${refs.city(a.city_slug)?.name})`} className="btn-primary w-full" /></div>
+          </div>
+        ))}
+      </div>
+      {agents.length === 0 && <p class="mt-6 text-neutral-500">No agents listed in this city yet.</p>}
+    </section>
+  </div>
+</Base>

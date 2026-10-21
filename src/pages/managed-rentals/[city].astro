@@ -1,0 +1,56 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ListingCard from '../../components/ListingCard.astro';
+import Pagination from '../../components/Pagination.astro';
+import Faq from '../../components/Faq.astro';
+import LeadDialog from '../../components/islands/LeadDialog';
+import { getRefs, searchListings } from '../../lib/repo';
+import { parseFilters } from '../../lib/search';
+
+// Owner-managed rental homes: low deposit, zero brokerage, maintenance handled. See docs/functions/managed-rentals/desc.md.
+const refs = await getRefs();
+const city = refs.cities.find((c) => c.slug === Astro.params.city);
+if (!city) return new Response(null, { status: 404 });
+const f = { ...parseFilters(Astro.url, {}), managed: true, commercialPurpose: undefined };
+const res = await searchListings('rent', city.slug, f);
+const q = Astro.url.searchParams;
+const link = (k: string, v: string) => { const u = new URLSearchParams(q); if (v && u.get(k) !== v) u.set(k, v); else u.delete(k); u.delete('page'); const s = u.toString(); return `/managed-rentals/${city.slug}${s ? `?${s}` : ''}`; };
+const budgets: [string, string, string][] = [['Under ₹20K', '', '20000'], ['₹20K–40K', '20000', '40000'], ['₹40K–75K', '40000', '75000'], ['₹75K+', '75000', '']];
+const budgetLink = (min: string, max: string) => { const u = new URLSearchParams(q); const on = (u.get('priceMin') ?? '') === min && (u.get('priceMax') ?? '') === max; u.delete('priceMin'); u.delete('priceMax'); if (!on) { if (min) u.set('priceMin', min); if (max) u.set('priceMax', max); } u.delete('page'); const s = u.toString(); return { href: `/managed-rentals/${city.slug}${s ? `?${s}` : ''}`, on }; };
+const usps = [['🚫', 'Zero brokerage', 'Rent directly — no broker fee.'], ['💰', 'One-month deposit', 'Instead of the usual 2–10 months.'], ['🛠', 'Maintenance handled', 'Raise repair requests and track them online.'], ['🧾', 'Online rent & receipts', 'Pay rent online; receipts for HRA every month.'], ['🔑', 'Move-in support', 'Inspection report and help on move-in and move-out.']];
+const faq = [
+  { q: 'What is a managed rental?', a: 'A home whose owner has handed day-to-day management to InspiState: we find and verify tenants, collect rent and handle repairs. You deal with one accountable team.' },
+  { q: 'How much deposit do I pay?', a: 'Managed homes ask for one month’s rent as the security deposit, refunded after move-out inspection.' },
+  { q: 'Is there brokerage?', a: 'No. Managed homes have zero brokerage for tenants.' },
+  { q: 'I own a flat — can you manage it?', a: 'Yes. See property management to list your home with us.' },
+];
+---
+<Base title={`Managed Rental Homes in ${city.name} — Zero Brokerage, Low Deposit`} description={`${res.total} owner-managed rental homes in ${city.name} with zero brokerage, one-month deposit and maintenance support.`}>
+  <section class="bg-brand-900 text-white">
+    <div class="container-x py-10">
+      <Breadcrumbs items={[{ label: 'Rent', href: `/rent/${city.slug}` }, { label: 'Managed rentals' }]} />
+      <h1 class="mt-4 font-serif text-4xl font-bold text-white">Rent your next home in {city.name} — <span class="text-accent-400">no brokerage, low deposit</span></h1>
+      <p class="mt-2 max-w-2xl text-white/80">Fully managed homes with verified owners, a one-month deposit and a team that fixes things when they break.</p>
+      <div class="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">{usps.map(([i, t, s]) => <div class="rounded-xl bg-white/10 p-3"><p class="font-semibold"><span aria-hidden="true">{i}</span> {t}</p><p class="mt-1 text-xs text-white/70">{s}</p></div>)}</div>
+    </div>
+  </section>
+  <div class="container-x grid gap-8 py-8 lg:grid-cols-[1fr_320px]">
+    <div>
+      <div class="mb-3 flex flex-wrap gap-2">{refs.cities.map((c) => <a href={`/managed-rentals/${c.slug}`} class:list={['pill', c.slug === city.slug && 'bg-brand-900 text-white']}>{c.name}</a>)}</div>
+      <div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
+        <span class="font-semibold text-neutral-500">BHK</span>{['1', '2', '3', '4'].map((b) => <a href={link('bhk', b)} class:list={['pill', q.get('bhk') === b && 'bg-brand-900 text-white']}>{b} BHK</a>)}
+        <span class="ml-3 font-semibold text-neutral-500">Budget</span>{budgets.map(([l, mn, mx]) => { const b = budgetLink(mn, mx); return <a href={b.href} class:list={['pill', b.on && 'bg-brand-900 text-white']}>{l}</a>; })}
+        <span class="ml-3 font-semibold text-neutral-500">Furnishing</span>{['Furnished', 'Semi-Furnished', 'Unfurnished'].map((x) => <a href={link('furnishing', x)} class:list={['pill', q.get('furnishing') === x && 'bg-brand-900 text-white']}>{x}</a>)}
+      </div>
+      <p class="mb-4 text-sm text-neutral-600">Showing <b>{res.total}</b> managed homes in {city.name}</p>
+      {res.items.length ? <div class="space-y-4">{res.items.map((l) => <ListingCard listing={l} />)}</div> : <p class="panel text-center text-neutral-600">No managed homes match these filters. <a class="font-semibold underline" href={`/managed-rentals/${city.slug}`}>Clear filters</a> or browse <a class="font-semibold underline" href={`/rent/${city.slug}`}>all rentals</a>.</p>}
+      <div class="mt-6"><Pagination page={res.page} pages={res.pages} url={Astro.url} /></div>
+    </div>
+    <aside class="space-y-4 lg:sticky lg:top-4 lg:h-fit">
+      <div class="panel"><p class="font-bold">Talk to a rental expert</p><p class="mb-3 text-sm text-neutral-600">Tell us your budget and move-in date — we’ll shortlist homes and arrange visits.</p><LeadDialog client:visible kind="callback" label="Request a callback" subject={`Managed rentals: ${city.name}`} className="btn-primary w-full" /></div>
+      <div class="panel"><p class="font-bold">Own a home in {city.name}?</p><p class="mb-3 text-sm text-neutral-600">Get verified tenants, on-time rent and zero hassle.</p><a href="/services/property-management" class="btn-ghost w-full text-center">Get it managed</a></div>
+    </aside>
+  </div>
+  <div class="container-x pb-12"><div class="panel"><Faq items={faq} /></div></div>
+</Base>

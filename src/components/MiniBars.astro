@@ -1,0 +1,21 @@
+---
+interface Props { bars: { label: string; n: number }[]; color?: string }
+const { bars, color = '#b48b5d' } = Astro.props;
+const W = 300, H = 150, P = { l: 26, r: 6, t: 10, b: 38 };
+const max = Math.max(1, ...bars.map((b) => b.n));
+const bw = (W - P.l - P.r) / Math.max(1, bars.length);
+---
+<svg viewBox={`0 0 ${W} ${H}`} class="w-full" role="img" aria-label="Listings by price per sq.ft">
+  <line x1={P.l} x2={W - P.r} y1={H - P.b} y2={H - P.b} stroke="#e5e5e5" />
+  <text x={P.l - 6} y={P.t + 6} text-anchor="end" font-size="10" fill="#737373">{max}</text>
+  <text x={P.l - 6} y={H - P.b} text-anchor="end" font-size="10" fill="#737373">0</text>
+  {bars.map((b, i) => {
+    const h = ((H - P.t - P.b) * b.n) / max;
+    return (
+      <g>
+        <rect x={P.l + i * bw + bw * 0.22} y={H - P.b - h} width={bw * 0.56} height={h} rx="2" fill={color}><title>₹{b.label}/sq.ft: {b.n} listings</title></rect>
+        <text x={P.l + i * bw + bw / 2} y={H - P.b + 12} font-size="8.5" fill="#737373" text-anchor="end" transform={`rotate(-35 ${P.l + i * bw + bw / 2} ${H - P.b + 12})`}>{b.label}</text>
+      </g>
+    );
+  })}
+</svg>

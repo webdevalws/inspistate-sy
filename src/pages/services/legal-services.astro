@@ -1,0 +1,37 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/Faq.astro';
+import LeadDialog from '../../components/islands/LeadDialog';
+import { LegalCatalogue } from '../../components/islands/LegalOrders';
+
+// See docs/functions/legal-services/desc.md
+const usps = [
+  ['In-house property lawyers', 'Every document and report is handled by our own legal team, not passed on to unknown vendors.'],
+  ['From simple to complex', 'From a quick document check to filing a complaint against a builder — one place for every property legal need.'],
+  ['Fixed, upfront prices', 'Know the fee before you book. No hourly billing or surprise charges.'],
+];
+const faq = [
+  { q: 'Do I need a lawyer to buy a flat?', a: 'It is not mandatory, but a document review and title search before paying a token amount protects you from forged papers, missing approvals and hidden loans.' },
+  { q: 'What is included in due diligence?', a: 'Title chain, encumbrances and mortgages, building approvals and occupancy certificate, RERA registration and a litigation check on the seller or project.' },
+  { q: 'Can you file a complaint against my builder?', a: 'Yes. We assess your case, send a legal notice and, if needed, file before RERA, the consumer commission or arbitration.' },
+  { q: 'Is the document review really free?', a: 'Yes — a lawyer reviews your sale documents and tells you what is missing. Paid services are only suggested if you need them.' },
+];
+---
+<Base title="Legal Services for Real Estate — Title, Litigation, Agreements" description="Property legal services at fixed prices: free document review, title and litigation search, agreements, power of attorney, due diligence and builder complaints.">
+  <section class="bg-brand-900 text-white">
+    <div class="container-x py-10">
+      <Breadcrumbs items={[{ label: 'Services', href: '/services' }, { label: 'Legal services' }]} />
+      <h1 class="mt-4 text-3xl font-extrabold text-white sm:text-4xl">Legal services for property</h1>
+      <p class="mt-2 max-w-2xl text-white/80">Buy, sell or rent with confidence. Fixed-price legal help from property lawyers — start with a free document review.</p>
+      <div class="mt-5"><LeadDialog client:visible kind="callback" label="Talk to a lawyer" subject="Legal services: general enquiry" className="btn-primary" /></div>
+    </div>
+  </section>
+  <div class="container-x py-10">
+    <h2 class="section-title mb-5">Choose a service</h2>
+    <LegalCatalogue client:load />
+    <h2 class="section-title mb-5 mt-12">Why InspiState legal</h2>
+    <div class="grid gap-4 md:grid-cols-3">{usps.map(([t, s]) => <div class="panel"><p class="font-bold text-brand-900">{t}</p><p class="mt-1 text-sm text-neutral-600">{s}</p></div>)}</div>
+    <div class="panel mt-10"><Faq items={faq} /></div>
+  </div>
+</Base>
