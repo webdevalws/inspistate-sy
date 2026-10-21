@@ -18,7 +18,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: 'Enter a valid email address.' }, { status: 422 });
   if (!(await getRefs()).city(citySlug)) return Response.json({ error: 'Choose your city.' }, { status: 422 });
   await completeRegistration(locals.user.id, { name, email, role, citySlug, company });
-  // Where each role naturally starts.
-  const home = role === 'seller' ? '/post-property' : role === 'agent' ? '/account/plans' : null;
-  return Response.json({ ok: true, role, home });
+  // Where to go next is decided in the browser by destinationAfterRegister (src/lib/redirect.ts).
+  return Response.json({ ok: true, role });
 };
