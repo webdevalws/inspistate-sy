@@ -151,13 +151,13 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       <div className="mt-5 grid gap-4">
         <label className="block"><span className={label}>Full name</span><input required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Your full name" className={field} /></label>
         {role === 'agent' && (
-          <label className="block"><span className={label}>Agency / firm name <span className="normal-case tracking-normal">(optional)</span></span><input maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" placeholder="e.g. Skyline Realty" className={field} /></label>
+          <label className="block"><span className={label}>Agency / firm name</span><input required minLength={2} maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" placeholder="e.g. Skyline Realty" className={field} /></label>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block"><span className={label}>Email <span className="normal-case tracking-normal">(optional)</span></span><input type="email" maxLength={200} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com" className={field} /></label>
-          <label className="block"><span className={label}>City</span>
-            <select required value={city} onChange={(e) => setCity(e.target.value)} className={`${field} cursor-pointer`}>
-              <option value="" disabled>Choose a city</option>
+          <label className="block"><span className={label}>City <span className="normal-case tracking-normal">(optional)</span></span>
+            <select value={city} onChange={(e) => setCity(e.target.value)} className={`${field} cursor-pointer`}>
+              <option value="">Choose a city</option>
               {cities.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
             </select>
           </label>

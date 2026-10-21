@@ -7,11 +7,11 @@ Passwordless sign-in that doubles as registration, opened from the header's **Lo
 Mobile number → **Continue** → 6-digit code → returning accounts are logged in; new numbers go on to
 **Create your account**, where they pick one of three roles (button "Create account as {Role} →"):
 **Buyer** (buy / rent — stored as role `user`), **Seller** (3 free listings) or **Agent** (3 free, unlimited with a plan), plus
-name, optional email, city and (agents) an optional agency name.
+name, optional email, optional city and (agents) a required agency name.
 
 ## Inputs
 - Mobile number, 6-digit code
-- Register: role, full name, email (optional), city, agency name (agents, optional)
+- Register: role, full name, email (optional), city (optional), agency / firm name (agents, required)
 
 ## Outputs
 - HttpOnly session cookie (30 days); `users.role`, `city_slug`, `company`
@@ -57,7 +57,11 @@ name, optional email, city and (agents) an optional agency name.
   `//x`), the same patterns after up to two rounds of URL-decoding (`%5C`, `%2F%2F`, `%255C`), broken
   encoding, or anything that resolves to another origin are rejected. Rejected values fall back to "no
   `next`" (stay on the page / `/account`), or `/account` for the role switch.
-- `/api/account/register` validates role, name, email and city; cross-origin POSTs are rejected by middleware.
+- `/api/account/register` is **only for new accounts**: if the account already has a role it answers 409
+  "Your account is already set up. Change your account type from your account page." (the `UPDATE` is
+  also limited to `role IS NULL`), so role changes only happen through `/api/account/role`. It validates
+  role, name (2+ chars), email (optional), city (optional, must be a listed city if given) and, for agents,
+  the agency / firm name (required, 2+ chars). Cross-origin POSTs are rejected by middleware.
 
 ## Files
 - `src/components/islands/AuthFlow.tsx` — the three steps (shared by dialog and page)

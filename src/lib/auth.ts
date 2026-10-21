@@ -145,12 +145,12 @@ export async function logout(cookies: AstroCookies) {
   cookies.delete(SESSION_COOKIE, { path: '/' });
 }
 
-export interface Registration { name: string; email: string | null; role: Role; citySlug: string; company: string | null }
+export interface Registration { name: string; email: string | null; role: Role; citySlug: string | null; company: string | null }
 
-/** Finish a new account (or update an existing one's role and details). */
+/** Finish a new account. Accounts that already have a role are left alone (role changes use setRole). */
 export async function completeRegistration(userId: number, r: Registration) {
   await db()
-    .prepare('UPDATE users SET name = ?, email = ?, role = ?, city_slug = ?, company = ? WHERE id = ?')
+    .prepare('UPDATE users SET name = ?, email = ?, role = ?, city_slug = ?, company = ? WHERE id = ? AND role IS NULL')
     .bind(r.name, r.email, r.role, r.citySlug, r.role === 'agent' ? r.company : null, userId)
     .run();
 }

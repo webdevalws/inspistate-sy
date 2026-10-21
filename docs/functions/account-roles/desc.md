@@ -3,7 +3,9 @@
 **Area:** Accounts · **Routes:** `/account`, `/account/plans`, `/post-property` · **Status:** built
 
 ## What it does
-Every account is a **Buyer**, **Seller** or **Agent** (chosen at registration, changeable in Profile).
+Every account is a **Buyer**, **Seller** or **Agent** (chosen once at registration; after that it can
+only be changed in Profile → Account type, via `/api/account/role` — `/api/account/register` refuses
+accounts that already have a role). Agents must give an agency / firm name when they register.
 "Buyer" is only the label (`ROLES` in `src/data/plans.ts`); the stored role value is still `user`.
 - **Buyer** (`user`) — shortlist, saved searches, enquiries. Cannot post; offered "Become a seller".
 - **Seller** — up to 3 live/under-review listings, sees full contact details of buyers who enquire on
