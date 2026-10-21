@@ -3,9 +3,10 @@
 **Area:** Accounts · **Route:** `/login` and a site-wide dialog · **Status:** built
 
 ## What it does
-Passwordless sign-in that doubles as registration. Mobile number → **Continue** → 6-digit code →
-returning accounts are logged in; new numbers go on to **Register**, where they pick one of three roles:
-**User** (buy / rent), **Seller** (3 free listings) or **Agent** (3 free, unlimited with a plan), plus
+Passwordless sign-in that doubles as registration, opened from the header's **Login / Register** link.
+Mobile number → **Continue** → 6-digit code → returning accounts are logged in; new numbers go on to
+**Create your account**, where they pick one of three roles (button "Create account as {Role} →"):
+**Buyer** (buy / rent — stored as role `user`), **Seller** (3 free listings) or **Agent** (3 free, unlimited with a plan), plus
 name, optional email, city and (agents) an optional agency name.
 
 ## Inputs
@@ -17,7 +18,7 @@ name, optional email, city and (agents) an optional agency name.
 - Redirect after **login** (returning account): the safe `next`, else stay on the current page
   (`/login` itself then forwards to `/account`).
 - Redirect after **register** (new account), from `destinationAfterRegister(role, next)`:
-  - User (buyer) → the safe `next`, else stay on the current page
+  - Buyer (`user`) → the safe `next`, else stay on the current page
   - Seller → `/post-property`, unless `next` is already a seller page (`/post-property…` or `/account…`)
   - Agent → `/account`, unless `next` is already an account page (`/account` or `/account/…`)
 
@@ -69,7 +70,7 @@ name, optional email, city and (agents) an optional agency name.
 ## Reference behaviour (Square Yards)
 From user-supplied screenshots: "Login" opens a modal; a new number gets a **Register** modal with
 "I am an — Individual (3 free listings) / Agent (unlimited listings)", name, mobile, email, city.
-InspiState adds a third role (User for buyers/tenants) and splits Individual into Seller.
+InspiState adds a third role (Buyer, for buyers/tenants; stored as `user`) and splits Individual into Seller.
 
 ## Gaps vs reference
 - No Google / email login.

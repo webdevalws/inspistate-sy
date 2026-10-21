@@ -3,8 +3,9 @@
 **Area:** Accounts · **Routes:** `/account`, `/account/plans`, `/post-property` · **Status:** built
 
 ## What it does
-Every account is a **User**, **Seller** or **Agent** (chosen at registration, changeable in Profile).
-- **User** — shortlist, saved searches, enquiries. Cannot post; offered "Become a seller".
+Every account is a **Buyer**, **Seller** or **Agent** (chosen at registration, changeable in Profile).
+"Buyer" is only the label (`ROLES` in `src/data/plans.ts`); the stored role value is still `user`.
+- **Buyer** (`user`) — shortlist, saved searches, enquiries. Cannot post; offered "Become a seller".
 - **Seller** — up to 3 live/under-review listings, sees full contact details of buyers who enquire on
   their own (Owner-posted) listings.
 - **Agent** — 3 free listings; a Yearly or Half-Yearly plan unlocks unlimited listings, buyer phone

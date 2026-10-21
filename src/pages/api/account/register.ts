@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const email = str('email', 200) || null;
   const citySlug = str('city', 60);
   const company = str('company', 120) || null;
-  if (!isRole(role)) return Response.json({ error: 'Choose whether you are a user, seller or agent.' }, { status: 422 });
+  if (!isRole(role)) return Response.json({ error: 'Choose whether you are a buyer, seller or agent.' }, { status: 422 });
   if (name.length < 2) return Response.json({ error: 'Enter your full name.' }, { status: 422 });
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: 'Enter a valid email address.' }, { status: 422 });
   if (!(await getRefs()).city(citySlug)) return Response.json({ error: 'Choose your city.' }, { status: 422 });

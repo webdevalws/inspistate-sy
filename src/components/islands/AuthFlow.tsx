@@ -3,7 +3,7 @@ import { readShortlist } from './shortlist';
 import { ROLES, type Role } from '../../data/plans';
 import { destinationAfterRegister, safeNext } from '../../lib/redirect';
 
-// Mobile number → one-time code → (new accounts only) "I am a User / Seller / Agent" registration.
+// Mobile number → one-time code → (new accounts only) "I am a Buyer / Seller / Agent" registration.
 // Used inside the header login dialog and on the /login page.
 type Step = 'phone' | 'code' | 'register';
 interface Props {
@@ -125,7 +125,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
 
   return (
     <form onSubmit={register}>
-      <h2 className="font-display text-2xl font-bold tracking-tight !text-[#1C1A17]">Register</h2>
+      <h2 className="font-display text-2xl font-bold tracking-tight !text-[#1C1A17]">Create your account</h2>
       <p className="mt-1.5 text-sm text-[#1C1A17]/60">Tell us who you are so we can set up the right account.</p>
 
       <fieldset className="mt-5">
@@ -165,7 +165,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       </div>
 
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
-      <button className={`${primary} mt-6`} disabled={busy}>{busy ? 'Creating account…' : `Register as ${selected.label} →`}</button>
+      <button className={`${primary} mt-6`} disabled={busy}>{busy ? 'Creating account…' : `Create account as ${selected.label} →`}</button>
     </form>
   );
 }
