@@ -19,6 +19,18 @@ export function applyCoupon(amount: number, code: string | null) {
 }
 
 
+/**
+ * Each coupon can be used once per person: true if a non-cancelled order already used `coupon` from this
+ * phone number or (when logged in) this account. No separate table — it reads service_orders.
+ */
+export async function couponUsed(coupon: string, phone: string | null, userId: number | null) {
+  const row = await env.DB.prepare(`SELECT 1 FROM service_orders WHERE coupon = ? AND status != 'cancelled'
+      AND (phone = ? OR (? IS NOT NULL AND user_id = ?)) LIMIT 1`)
+    .bind(coupon, phone, userId, userId)
+    .first();
+  return !!row;
+}
+
 export async function createOrder(o: { kind: OrderKind; userId: number | null; name: string; phone: string; email: string | null; details: unknown; amount: number; coupon: string | null; status: 'submitted' | 'awaiting_payment' }) {
   return (await env.DB.prepare('INSERT INTO service_orders (kind, user_id, name, phone, email, details, amount, coupon, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id')
     .bind(o.kind, o.userId, o.name, o.phone, o.email, JSON.stringify(o.details), o.amount, o.coupon, o.status)

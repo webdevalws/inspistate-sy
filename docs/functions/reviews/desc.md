@@ -19,7 +19,9 @@ Reviews of InspiState by service line and city, plus published project reviews; 
 ## How it works
 - `platform_reviews` table (migration 0009), status pending → published by admin (`/admin#platform-reviews`).
 - `listReviews` UNIONs platform and project reviews with filters.
-- `POST /api/platform-reviews`: same-origin, 30–2,000 chars, rating 1–5.
+- `POST /api/platform-reviews`: same-origin, 30–2,000 chars, rating 1–5; at most 5 per IP per day.
+- `POST /api/reviews` (project reviews): same-origin, at most 5 per IP per day. Both use `guard()` in
+  `src/lib/limits.ts` (see `docs/functions/leads/desc.md` for all limits).
 
 ## Files
 - `src/pages/reviews.astro`

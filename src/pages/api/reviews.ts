@@ -1,9 +1,13 @@
 import type { APIRoute } from 'astro';
 import { createReview } from '../../lib/community';
 import { getProjectsByIds } from '../../lib/repo';
+import { guard } from '../../lib/limits';
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+export const POST: APIRoute = async (ctx) => {
+  const { request, locals } = ctx;
+  const blocked = await guard(ctx, 'reviews', 5);
+  if (blocked) return blocked;
+  const b =(await request.json().catch(() => ({}))) as Record<string, unknown>;
   const projectId = Number(b.projectId);
   const [project] = Number.isInteger(projectId) ? await getProjectsByIds([projectId]) : [];
   if (!project) return Response.json({ error: 'Unknown project' }, { status: 422 });

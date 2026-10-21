@@ -1,14 +1,16 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createLead, LEAD_KINDS, listingContact, type LeadKind } from '../../lib/repo';
-import { overDailyLimit, tooManyToday } from '../../lib/limits';
+import { guard, overDailyLimit, tooManyToday } from '../../lib/limits';
 import { safeNext } from '../../lib/redirect';
 
 /** Owner numbers a logged-in account can reveal per day ("View number"). */
 const VIEW_NUMBER_PER_USER_PER_DAY = 20;
 
-export const POST: APIRoute = async ({ request, locals, url }) => {
-  if (request.headers.get('origin') !== url.origin) return new Response('Forbidden', { status: 403 });
+export const POST: APIRoute = async (ctx) => {
+  const blocked = await guard(ctx, 'enquiry', 30);
+  if (blocked) return blocked;
+  const { request, locals } = ctx;
   let body: Record<string, unknown>;
   try {
     body = await request.json();
