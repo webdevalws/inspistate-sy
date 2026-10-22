@@ -61,7 +61,7 @@ const socials: [string, string][] = [
       ))}
       <div>
         <h3 class="ed-label !text-sand-50/55"><span class="bracket"></span>Popular Cities</h3>
-        <ul class="mt-5 space-y-2.5 text-[13px]">{cities.slice(0, 10).map((c) => <li><a href={`/city/${c.slug}`} class="nav-line text-sand-50/70 transition hover:text-sand-50">{c.name}</a></li>)}</ul>
+        <ul class="mt-5 space-y-2.5 text-[13px]">{cities.map((c) => <li><a href={`/city/${c.slug}`} class="nav-line text-sand-50/70 transition hover:text-sand-50">{c.name}</a></li>)}</ul>
       </div>
     </nav>
   </div>

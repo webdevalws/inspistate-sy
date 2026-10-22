@@ -7,6 +7,8 @@ export interface ParsedQuery {
   summary: string[];
   mode: 'buy' | 'rent' | 'commercial' | 'new-projects';
   city: City;
+  /** True when the text named one of our cities or localities, a mode or any filter. */
+  matched: boolean;
 }
 
 const CITY_ALIASES: Record<string, string> = { bangalore: 'bengaluru', gurgaon: 'gurugram', bombay: 'mumbai', calcutta: 'kolkata', madras: 'chennai', 'new delhi': 'delhi' };
@@ -33,14 +35,17 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
   const locs = [...localities].sort((a, b) => b.name.length - a.name.length);
   const loc = locs.find((l) => (!city || l.citySlug === city.slug) && q.includes(` ${l.name.toLowerCase()} `));
   if (!city && loc) city = cities.find((c) => c.slug === loc.citySlug);
+  const namedPlace = !!city || !!loc;
   city ??= fallbackCity;
   summary.push(loc ? `${loc.name}, ${city.name}` : city.name);
 
   let mode: ParsedQuery['mode'] = defaultMode;
-  if (/\b(buy|buying|sale|purchase|resale)\b/.test(q)) mode = 'buy';
-  if (/\b(rent|rental|lease|pg|tenant)\b/.test(q)) mode = 'rent';
-  if (/\b(office|shop|showroom|commercial|retail|coworking)\b/.test(q)) mode = 'commercial';
-  if (/\b(new project|new launch|upcoming|pre ?launch|builder project)s?\b/.test(q)) mode = 'new-projects';
+  const modeWords: [RegExp, ParsedQuery['mode']][] = [
+    [/\b(buy|buying|sale|purchase|resale)\b/, 'buy'], [/\b(rent|rental|lease|pg|tenant)\b/, 'rent'],
+    [/\b(office|shop|showroom|commercial|retail|coworking)\b/, 'commercial'], [/\b(new project|new launch|upcoming|pre ?launch|builder project)s?\b/, 'new-projects'],
+  ];
+  for (const [re, m] of modeWords) if (re.test(q)) mode = m;
+  const namedMode = modeWords.some(([re]) => re.test(q));
   if (mode === 'commercial' && /\b(rent|lease)\b/.test(q)) { params.set('for', 'rent'); summary.push('for lease'); }
   summary.unshift({ buy: 'For sale', rent: 'For rent', commercial: 'Commercial', 'new-projects': 'New projects' }[mode]);
 
@@ -79,5 +84,7 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
     const qs = params.toString();
     url = `/${mode}/${city.slug}${loc ? `/${loc.slug}` : ''}${qs ? `?${qs}` : ''}`;
   }
-  return { url, summary, mode, city };
+  // Did the text say anything we understood? (Otherwise the result is just the fallback city.)
+  const matched = namedPlace || namedMode || params.toString() !== '';
+  return { url, summary, mode, city, matched };
 }

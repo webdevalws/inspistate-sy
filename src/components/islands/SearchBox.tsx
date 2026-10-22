@@ -1,4 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { parseQuery } from '../../lib/nlsearch';
+import { uncoveredCityIn } from '../../data/indian-cities';
+import type { City, Locality } from '../../data/types';
 
 type Option = { slug: string; name: string; lat?: number; lng?: number };
 type Suggestion = { label: string; sub: string; href: string };
@@ -42,8 +45,19 @@ export default function SearchBox({ cities, localities, projects, builders, init
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<'' | 'voice' | 'geo'>('');
   const [note, setNote] = useState('');
-  // "Near me" found no locality within 60 km: the nearest city we cover, to offer instead.
-  const [far, setFar] = useState<{ slug: string; name: string; km: number } | null>(null);
+  // A place we don't cover: "near me" found no locality within 60 km (the nearest city we cover is offered
+  // instead), or the typed text named a city we're not in yet. Shown with links to all our cities.
+  const [cover, setCover] = useState<{ kind: 'far'; slug: string; name: string; km: number } | { kind: 'city'; name: string } | null>(null);
+  // Results of a search or "near me" that don't navigate must be seen: bring them into view (below the
+  // sticky header) and move focus to the "not covered" box so keyboard and screen-reader users land on it.
+  const coverBox = useRef<HTMLDivElement>(null);
+  const noteBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = cover ? coverBox.current : note ? noteBox.current : null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (cover) el.focus({ preventScroll: true });
+  }, [cover, note]);
   const input = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -61,11 +75,26 @@ export default function SearchBox({ cities, localities, projects, builders, init
   function submit(e: React.SyntheticEvent) {
     e.preventDefault();
     const q = query.trim();
+    setNote('');
+    setCover(null);
+    if (!q) {
+      window.location.href = target(tab, city);
+      return;
+    }
     if (suggestions.length > 0) {
       window.location.href = suggestions[0].href;
       return;
     }
-    window.location.href = target(tab, city) + (q ? `?q=${encodeURIComponent(q)}` : '');
+    // Never quietly search another city: a city we don't cover gets "We're not in … yet", and text we
+    // can't read at all gets "No matches"; neither navigates.
+    const other = uncoveredCityIn(q);
+    if (other) return setCover({ kind: 'city', name: other });
+    const asCities = cities as unknown as City[];
+    const here = asCities.find((c) => c.slug === city) ?? asCities[0];
+    const mode = tab === 'plots' ? 'buy' : tab;
+    const parsed = parseQuery(q, asCities, localities as unknown as Locality[], here, mode);
+    if (!parsed.matched) return setNote(`No matches for ‘${q}’. Try a locality, project or builder in one of our cities.`);
+    window.location.href = tab === 'plots' ? parseQuery(`${q} plot`, asCities, localities as unknown as Locality[], here, 'buy').url : parsed.url;
   }
 
   function voice() {
@@ -88,7 +117,8 @@ export default function SearchBox({ cities, localities, projects, builders, init
   }
 
   function nearMe() {
-    setFar(null);
+    setCover(null);
+    setNote('');
     if (!navigator.geolocation) return setNote('Location is not available in this browser.');
     setBusy('geo');
     navigator.geolocation.getCurrentPosition(
@@ -104,7 +134,7 @@ export default function SearchBox({ cities, localities, projects, builders, init
           const city = placed.sort((a, b) => distKm(me, a) - distKm(me, b))[0];
           if (!city) return setNote('We don’t have listings near you yet. Pick a city instead.');
           const km = distKm(me, city);
-          return setFar({ slug: city.slug, name: city.name, km: km >= 100 ? Math.round(km / 10) * 10 : Math.round(km) });
+          return setCover({ kind: 'far', slug: city.slug, name: city.name, km: km >= 100 ? Math.round(km / 10) * 10 : Math.round(km) });
         }
         window.location.href = target(tab, nearest.citySlug, nearest.slug);
       },
@@ -221,17 +251,21 @@ export default function SearchBox({ cities, localities, projects, builders, init
         </button>
       </form>
       {note && (
-        <div className={`mt-2.5 inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
+        <div ref={noteBox} className={`mt-2.5 inline-flex scroll-mt-28 items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
           <span>ℹ</span>
           <span>{note}</span>
         </div>
       )}
-      {far && (
-        <div className={`mt-2.5 rounded-xl px-3.5 py-2 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
-          <p>
-            <span>ℹ </span>We don’t cover your area yet. Nearest city: {far.name} (~{far.km.toLocaleString('en-IN')} km).{' '}
-            <a href={target(tab, far.slug)} className="font-semibold underline">View homes in {far.name} →</a>
-          </p>
+      {cover && (
+        <div ref={coverBox} tabIndex={-1} className={`mt-2.5 scroll-mt-28 rounded-xl px-3.5 py-2 text-xs font-medium outline-none ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'border border-amber-300 bg-amber-50 text-amber-900'}`} role="status">
+          {cover.kind === 'far' ? (
+            <p>
+              <span>ℹ </span>We don’t cover your area yet. Nearest city: {cover.name} (~{cover.km.toLocaleString('en-IN')} km).{' '}
+              <a href={target(tab, cover.slug)} className="font-semibold underline">View homes in {cover.name} →</a>
+            </p>
+          ) : (
+            <p><span>ℹ </span>We’re not in {cover.name} yet. Pick one of our cities:</p>
+          )}
           <p className="mt-1">Our cities: {cities.map((c, i) => <span key={c.slug}>{i > 0 && ' · '}<a href={target(tab, c.slug)} className="underline">{c.name}</a></span>)}</p>
         </div>
       )}

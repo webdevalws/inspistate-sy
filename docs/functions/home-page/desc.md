@@ -60,7 +60,7 @@ search form puts city + Search on one row under the query field.
   sticky espresso bar.
 - **City picker** (`islands/CityPicker.tsx`, next to the wordmark on every page and screen size): the
   trigger shows the current city in the header's mono nav-link style and opens the existing dialog
-  (search box + the 10 cities with live listing counts; native `<dialog>`, so Tab/Enter work and Esc or
+  (search box + every city in the `cities` table — 11 in the demo data — with live listing counts; native `<dialog>`, so Tab/Enter work and Esc or
   a backdrop click closes it). Choosing a city stores it in the `is_city` cookie (1 year) and goes to the
   same page for that city on city pages (`/buy/{city}…` etc.), else to `/city/{city}`. The current city is
   `currentCity()` (`src/lib/city.ts`): city in the URL, else the cookie, else the first city — used by

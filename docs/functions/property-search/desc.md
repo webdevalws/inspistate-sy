@@ -21,12 +21,21 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   single locality, BHK or type in the path and the rest in the query string, e.g. Powai + 2 BHK +
   Apartment → `/buy/mumbai/powai/2-bhk/apartment`; two localities → `?locality=a,b`. Query values the
   panel doesn't own (e.g. `managed=1`) are kept; `page` resets.
-- **Free-text search (`?q=`):** when nothing in the search box's autocomplete matches, it submits
-  `/{tab}/{city}?q=…`. The search page (and `/new-projects/{city}`) reads `q` with the Ask AI parser
-  (`parseQuery` in `src/lib/nlsearch.ts`) — using the page's city, mode and path facets as defaults — and
-  302-redirects to the resulting filtered URL, e.g. `/buy/mumbai?q=3 bhk ready to move under 2 cr` →
-  `/buy/mumbai?bhk=3&priceMax=20000000&possession=Ready+to+Move`. Text the parser can't read leads to the
-  plain city (or city + facet) page.
+- **Search box (home hero and the search-page bar, `SearchBox.tsx`) — what pressing Search does:**
+  1. Empty box → the chosen tab and city (`/buy/mumbai`).
+  2. An autocomplete match (locality, project, builder) → its page, e.g. "powai" → `/buy/mumbai/powai`.
+  3. A major Indian city we don't cover (`src/data/indian-cities.ts`, e.g. Jaipur, Kanpur, "mysore") →
+     **no navigation**; the note under the box says "We're not in Jaipur yet. Pick one of our cities:" with
+     links to all our cities (same box as the near-me note). It never quietly shows another city.
+  4. Otherwise the text is read with the Ask AI parser (`parseQuery`, using the chosen city and tab as
+     defaults). If it understood something (`matched`: one of our cities or localities, buy/rent/office/new
+     project words, or a filter) → that URL, e.g. "3 bhk ready to move under 2 cr" →
+     `/buy/mumbai?bhk=3&priceMax=20000000&possession=Ready+to+Move`, "pune" → `/buy/pune`.
+  5. Nothing understood (e.g. "asdfgh") → **no navigation**; note "No matches for 'asdfgh'. Try a locality,
+     project or builder in one of our cities."
+- **`?q=` on a search URL** (old links, typed URLs): the search page (and `/new-projects/{city}`) still
+  reads `q` with `parseQuery`, using the page's city, mode and path facets as defaults, and 302-redirects
+  to the result.
 - Unknown mode, city or facet segment → 404. Lookups use `Object.hasOwn`, so built-in object names such
   as `constructor` or `toString` (`/constructor/mumbai`, `/buy/mumbai/constructor`) are a 404, not a 500.
   The same applies to `/localities/{city}/{theme}`, the company pages `/{page}` (e.g. `/constructor`),
@@ -39,11 +48,22 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   Nearest city: {City} (~{N} km). View homes in {City} →" plus links to all our cities, for the current
   tab. Permission refused → "Location permission was denied."; timeout or position unavailable →
   "Couldn't get your location. Try again or pick a city." Needs `localhost` or https.
-- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/lucknow`, `/rent/…`,
+- **Notes under the search box** behave the same on the home hero and the search-page bar: they appear
+  right under the search bar, are scrolled into view (clear of the sticky header), and the "not covered"
+  box (near me outside our cities, or a typed city we don't cover) also takes keyboard focus. On the bar it
+  uses the site's amber callout style (`border-amber-300 bg-amber-50 text-amber-900`) so it stands out
+  on the light page; on the hero it keeps the dark amber style.
+- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/jaipur`, `/rent/…`,
   `/commercial/…`, `/new-projects/…`, `/city/…`, `/property-rates/…`, `/heatmap/…`, `/managed-rentals/…`,
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
-  Lucknow yet" with links to the same section for our cities (city hub for the locality pages). Any
+  Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
+- **Cities:** 11 — the ten original demo cities plus **Lucknow** (hand-written sample data: 5 localities,
+  4 listings and 3 projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer,
+  home city strip and "Popular cities", search box city menu, "Our cities" links, the 404 page, near me)
+  reads the `cities` table, so a new city appears everywhere automatically. The home page's market-insight
+  and locality tabs show the first 8 cities plus the most recently added city (last in sort order) when it
+  has projects — today Mumbai…Chennai plus Lucknow (9 tabs).
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

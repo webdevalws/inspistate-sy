@@ -31,7 +31,9 @@ function sample<T>(arr: readonly T[], n: number): T[] {
   return out;
 }
 
-export const cities: City[] = [
+// The ten original demo cities. Generated localities, projects and listings loop over these only, so the
+// random stream (and every generated row) stays the same when a hand-written city like Lucknow is added.
+const generatedCities: City[] = [
   { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra', stampDutyPct: 6, lat: 19.076, lng: 72.8777 },
   { slug: 'bengaluru', name: 'Bengaluru', state: 'Karnataka', stampDutyPct: 5.6, lat: 12.9716, lng: 77.5946 },
   { slug: 'delhi', name: 'Delhi', state: 'Delhi', stampDutyPct: 6, lat: 28.6139, lng: 77.209 },
@@ -43,6 +45,19 @@ export const cities: City[] = [
   { slug: 'thane', name: 'Thane', state: 'Maharashtra', stampDutyPct: 7, lat: 19.2183, lng: 72.9781 },
   { slug: 'kolkata', name: 'Kolkata', state: 'West Bengal', stampDutyPct: 6, lat: 22.5726, lng: 88.3639 },
 ];
+
+// Lucknow: hand-written sample data (no projects). Real place names and coordinates; prices, people and
+// descriptions are fictional, like the rest of the demo data. Stamp duty 7% matches Noida (Uttar Pradesh).
+const lucknow: City = { slug: 'lucknow', name: 'Lucknow', state: 'Uttar Pradesh', stampDutyPct: 7, lat: 26.8467, lng: 80.9462 };
+const lucknowLocalities: Locality[] = [
+  { slug: 'gomti-nagar', name: 'Gomti Nagar', citySlug: 'lucknow', ratePerSqft: 8500, rentPerSqft: 23, yoyGrowthPct: 9.5, lat: 26.8521, lng: 81.0012 },
+  { slug: 'hazratganj', name: 'Hazratganj', citySlug: 'lucknow', ratePerSqft: 11000, rentPerSqft: 28, yoyGrowthPct: 6.2, lat: 26.8505, lng: 80.9470 },
+  { slug: 'indira-nagar', name: 'Indira Nagar', citySlug: 'lucknow', ratePerSqft: 7000, rentPerSqft: 18.5, yoyGrowthPct: 7.8, lat: 26.8785, lng: 80.9989 },
+  { slug: 'aliganj', name: 'Aliganj', citySlug: 'lucknow', ratePerSqft: 6500, rentPerSqft: 17, yoyGrowthPct: 6.8, lat: 26.8957, lng: 80.9413 },
+  { slug: 'sushant-golf-city', name: 'Sushant Golf City', citySlug: 'lucknow', ratePerSqft: 6000, rentPerSqft: 15, yoyGrowthPct: 11.4, lat: 26.7745, lng: 80.9886 },
+];
+
+export const cities: City[] = [...generatedCities, lucknow];
 
 const localitySeeds: Record<string, [string, number][]> = {
   mumbai: [['Andheri West', 32000], ['Powai', 28000], ['Bandra West', 58000], ['Malad West', 24000], ['Chembur', 26000], ['Borivali West', 22000]],
@@ -57,7 +72,7 @@ const localitySeeds: Record<string, [string, number][]> = {
   kolkata: [['New Town', 6000], ['Rajarhat', 5500], ['Salt Lake', 9000], ['EM Bypass', 7500]],
 };
 
-export const localities: Locality[] = cities.flatMap((c) =>
+export const localities: Locality[] = [...generatedCities.flatMap((c) =>
   localitySeeds[c.slug].map(([name, rate]) => ({
     slug: slugify(name),
     name,
@@ -68,7 +83,7 @@ export const localities: Locality[] = cities.flatMap((c) =>
     lat: c.lat + between(-0.08, 0.08),
     lng: c.lng + between(-0.08, 0.08),
   })),
-);
+), ...lucknowLocalities];
 
 const builderSeeds: [string, string][] = [
   ['Aravalli Habitat', 'Gurugram'],
@@ -112,7 +127,7 @@ function priceFor(sqft: number, rate: number) {
 
 let projectId = 1001;
 const usedNames = new Set<string>();
-export const projects: SeedProject[] = cities.flatMap((c) => {
+export const projects: SeedProject[] = generatedCities.flatMap((c) => {
   const locs = localities.filter((l) => l.citySlug === c.slug);
   return sample(locs, 3).map((loc) => {
     const builder = pick(builders);
@@ -226,9 +241,90 @@ function makeListing(citySlug: string, purpose: 'buy' | 'rent', commercial: bool
   };
 }
 
-export const listings: SeedListing[] = cities.flatMap((c) => [
+export const listings: SeedListing[] = generatedCities.flatMap((c) => [
   ...Array.from({ length: 40 }, () => makeListing(c.slug, 'buy', false)),
   ...Array.from({ length: 26 }, () => makeListing(c.slug, 'rent', false)),
   ...Array.from({ length: 8 }, () => makeListing(c.slug, 'buy', true)),
   ...Array.from({ length: 6 }, () => makeListing(c.slug, 'rent', true)),
 ]);
+
+/**
+ * Hand-written sample projects (Lucknow), appended after the generated ones (ids 1031–1033) with existing
+ * fictional builders. Unit prices use the same formula as generated projects; the RERA numbers are marked
+ * DEMO. Map positions come from the locality, as for every project.
+ */
+const lucknowUnits = (rate: number, units: [number, number][]): UnitConfig[] =>
+  units.map(([bhk, carpet]) => ({ bhk, label: `${bhk} BHK Apartment`, carpetSqft: carpet, price: priceFor(carpet * 1.3, rate) }));
+const lucknowTrend = (rate: number, startPct: number) =>
+  Array.from({ length: 8 }, (_, i) => ({ label: `${['Q1', 'Q2', 'Q3', 'Q4'][i % 4]} ${2025 + Math.floor(i / 4)}`, rate: roundTo(rate * (startPct + ((1 - startPct) * i) / 7), 10) }));
+const lucknowNearby = (locality: string, km: [number, number, number, number, number, number, number]): NearbyPlace[] => [
+  { kind: 'School', name: 'Greenfield Public School', km: km[0] }, { kind: 'Hospital', name: 'Lifeline Multispeciality', km: km[1] },
+  { kind: 'Metro', name: `${locality} Metro Station`, km: km[2] }, { kind: 'Mall', name: 'Central Square Mall', km: km[3] },
+  { kind: 'Office Hub', name: 'Business District', km: km[4] }, { kind: 'Airport', name: 'Lucknow International Airport', km: km[5] },
+  { kind: 'Railway', name: `${locality} Railway Station`, km: km[6] },
+];
+export const extraProjects: SeedProject[] = [
+  {
+    id: 1031, slug: 'ganga-gomti-heights-gomti-nagar', name: 'Ganga Gomti Heights', citySlug: 'lucknow', localitySlug: 'gomti-nagar',
+    builderSlug: 'ganga-infra', status: 'Under Construction', possession: 'Dec 2027', rera: 'UPRERA-DEMO-LKO-1031',
+    landAcres: 6.5, totalUnits: 420, towers: 4, floors: 22, ratePerSqft: 9300,
+    units: lucknowUnits(9300, [[2, 720], [2, 810], [3, 1050], [3, 1180]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Landscaped Gardens', 'EV Charging'],
+    highlights: ['Gomti Nagar address close to the Business District', '70% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(9300, 0.82), nearby: lucknowNearby('Gomti Nagar', [0.8, 1.6, 1.2, 2.1, 3.4, 18.5, 4.2]), hue: 200, launchedYear: 2024,
+  },
+  {
+    id: 1032, slug: 'meridian-golf-vista-sushant-golf-city', name: 'Meridian Golf Vista', citySlug: 'lucknow', localitySlug: 'sushant-golf-city',
+    builderSlug: 'meridian-spaces', status: 'New Launch', possession: 'Mar 2030', rera: 'UPRERA-DEMO-LKO-1032',
+    landAcres: 11.2, totalUnits: 640, towers: 6, floors: 28, ratePerSqft: 6800,
+    units: lucknowUnits(6800, [[2, 690], [2, 760], [3, 1020], [3, 1140]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Yoga Deck', 'Badminton Court', 'Tennis Court', 'Power Backup', '24x7 Security', 'Lift', 'Covered Parking', 'Senior Citizen Zone', 'Pet Park'],
+    highlights: ['Sushant Golf City address with quick access to the Business District', '75% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(6800, 0.85), nearby: lucknowNearby('Sushant Golf City', [1.1, 2.4, 2.8, 3.0, 5.6, 9.5, 6.1]), hue: 207, launchedYear: 2026,
+  },
+  {
+    id: 1033, slug: 'vistaar-awadh-residency-indira-nagar', name: 'Vistaar Awadh Residency', citySlug: 'lucknow', localitySlug: 'indira-nagar',
+    builderSlug: 'vistaar-homes', status: 'Ready to Move', possession: 'Oct 2023', rera: 'UPRERA-DEMO-LKO-1033',
+    landAcres: 3.8, totalUnits: 260, towers: 3, floors: 14, ratePerSqft: 7600,
+    units: lucknowUnits(7600, [[2, 700], [2, 780], [3, 1010], [3, 1120]]),
+    amenities: ['Gymnasium', 'Clubhouse', 'Kids Play Area', 'Multipurpose Hall', 'Landscaped Gardens', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Rainwater Harvesting'],
+    highlights: ['Indira Nagar address close to the metro', '65% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Occupancy certificate received — move in now'],
+    priceTrend: lucknowTrend(7600, 0.78), nearby: lucknowNearby('Indira Nagar', [0.6, 1.4, 0.9, 1.8, 4.0, 14.2, 5.0]), hue: 214, launchedYear: 2019,
+  },
+];
+
+/** Hand-written sample listings (Lucknow), appended after the generated ones; unlike those they carry a description. */
+export const extraListings: (SeedListing & { description: string })[] = [
+  {
+    id: 50801, purpose: 'buy', segment: 'residential', type: 'Apartment', bhk: 2, bathrooms: 2, areaSqft: 1150, price: 9800000,
+    citySlug: 'lucknow', localitySlug: 'gomti-nagar', projectId: null, furnishing: 'Semi-Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 6, totalFloors: 14, facing: 'East', ageYears: 4,
+    amenities: ['Lift', 'Power Backup', 'Covered Parking', '24x7 Security', 'Kids Play Area'], postedDaysAgo: 3,
+    contactName: 'Ritika Srivastava', verified: true, hue: 205,
+    description: 'Bright east-facing 2 BHK on the 6th floor, a short walk from Gomti Nagar’s markets. Modular kitchen, two balconies and covered parking.',
+  },
+  {
+    id: 50802, purpose: 'buy', segment: 'residential', type: 'Apartment', bhk: 3, bathrooms: 3, areaSqft: 1600, price: 11200000,
+    citySlug: 'lucknow', localitySlug: 'indira-nagar', projectId: null, furnishing: 'Semi-Furnished', postedBy: 'Agent',
+    possession: 'Ready to Move', floor: 3, totalFloors: 10, facing: 'North-East', ageYears: 7,
+    amenities: ['Lift', 'Power Backup', 'Gymnasium', 'Clubhouse', 'Covered Parking', 'CCTV Surveillance'], postedDaysAgo: 9,
+    contactName: 'Amit Verma', verified: true, hue: 180,
+    description: 'Spacious 3 BHK with a large living room and a study corner, in a gated society close to schools and the Indira Nagar metro station.',
+  },
+  {
+    id: 50803, purpose: 'rent', segment: 'residential', type: 'Apartment', bhk: 2, bathrooms: 2, areaSqft: 1000, price: 28000,
+    citySlug: 'lucknow', localitySlug: 'hazratganj', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 2, totalFloors: 5, facing: 'North', ageYears: 10,
+    amenities: ['Power Backup', '24x7 Security', 'Lift'], postedDaysAgo: 5,
+    contactName: 'Saba Rizvi', verified: false, hue: 230,
+    description: 'Fully furnished 2 BHK in the heart of Hazratganj — walk to cafés, offices and the metro. Suits a small family or working professionals.',
+  },
+  {
+    id: 50804, purpose: 'rent', segment: 'residential', type: 'Apartment', bhk: 1, bathrooms: 1, areaSqft: 560, price: 9500,
+    citySlug: 'lucknow', localitySlug: 'aliganj', projectId: null, furnishing: 'Unfurnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 1, totalFloors: 4, facing: 'West', ageYears: 12,
+    amenities: ['Power Backup', 'Covered Parking'], postedDaysAgo: 12,
+    contactName: 'Pankaj Tiwari', verified: true, hue: 160,
+    description: 'Compact 1 BHK in a quiet lane of Aliganj with a separate entrance and two-wheeler parking. Close to Kapoorthala market.',
+  },
+];

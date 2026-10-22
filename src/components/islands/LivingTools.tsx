@@ -20,6 +20,7 @@ const TAX_RATE: Record<string, { rate: number; method: string }> = {
   chennai: { rate: 3.0, method: 'Annual rental value by zone (GCC)' },
   thane: { rate: 4.2, method: 'Annual rateable value (TMC)' },
   kolkata: { rate: 3.4, method: 'Unit area assessment, blocks A–G (KMC)' },
+  lucknow: { rate: 2.4, method: 'Annual rental value (LMC)' },
 };
 const CONSTRUCTION = { rcc: { label: 'RCC / pucca', f: 1 }, semi: { label: 'Semi-pucca', f: 0.7 }, kutcha: { label: 'Kutcha', f: 0.5 } } as const;
 export function PropertyTax({ cities }: { cities: { slug: string; name: string }[] }) {
