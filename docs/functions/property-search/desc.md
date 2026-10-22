@@ -58,11 +58,11 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
   Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
-- **Cities:** 11 — the ten original demo cities plus **Lucknow** (sample data: 5 localities, 4 listings, no
-  projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer, home city strip and
-  "Popular cities", search box city menu, "Our cities" links, the 404 page, near me) reads the `cities`
-  table, so a new city appears everywhere automatically. The home page's market-insight and locality tabs
-  show the first 8 cities only.
+- **Cities:** 11 — the ten original demo cities plus **Lucknow** (hand-written sample data: 5 localities,
+  4 listings and 3 projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer,
+  home city strip and "Popular cities", search box city menu, "Our cities" links, the 404 page, near me)
+  reads the `cities` table, so a new city appears everywhere automatically. The home page's market-insight
+  and locality tabs show the cities that have projects, up to 9 (currently the first 8 plus Lucknow).
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

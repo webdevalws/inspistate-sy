@@ -13,6 +13,14 @@ Full project dossier.
 
 ## How it works
 - Loads project + units, transactions, reviews, similar projects in parallel.
+- **Images:** the project page's gallery and the listing pages use the generated SVG illustrations
+  (`Cover.astro`: `public/images/project-1…6.svg` chosen by `hue`, plus villa/plot illustrations). Project
+  **cards** (`ProjectCard.astro`) use a set of six stock `.jpg` photos chosen by `id % 6`.
+- **Demo data:** 30 generated projects (ids 1001–1030) plus 3 hand-written Lucknow projects (ids
+  1031–1033: Ganga Gomti Heights in Gomti Nagar, under construction; Meridian Golf Vista in Sushant Golf
+  City, new launch; Vistaar Awadh Residency in Indira Nagar, ready to move), with existing fictional
+  builders and RERA numbers marked `UPRERA-DEMO-…`. Their transactions and reviews are generated after
+  all the others, so the rest of the seed is unchanged.
 - **Brochure (lead-gated on the server):** "Download Brochure" opens the lead dialog; after a successful
   `brochure` enquiry, `/api/enquiry` sets the HttpOnly `is_brochures` cookie (`<leadId>.<sig>`, sig =
   SHA-256 of the lead id and the visitor's phone; last 20 kept, 30 days) and the dialog opens

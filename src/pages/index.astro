@@ -20,7 +20,8 @@ const { cities, builders } = refs;
 const [projects, statsFor, sb, totals, ins, mkt] = await Promise.all([
   getProjects({}, { orderBy: 'newest' }), cityStats(), searchBoxProps(), platformTotals(), homeInsights(), homeMarket(),
 ]);
-const topCities = cities.slice(0, 8);
+// Cities for the market-insight and locality tabs: those with projects (the insight charts need them), up to 9.
+const topCities = cities.filter((x) => projects.some((p) => p.citySlug === x.slug)).slice(0, 9);
 const pct = (a: number, b: number) => (a ? ((b - a) / a) * 100 : 0);
 
 // Market-insight series per city, all from our own data.

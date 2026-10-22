@@ -248,6 +248,51 @@ export const listings: SeedListing[] = generatedCities.flatMap((c) => [
   ...Array.from({ length: 6 }, () => makeListing(c.slug, 'rent', true)),
 ]);
 
+/**
+ * Hand-written sample projects (Lucknow), appended after the generated ones (ids 1031–1033) with existing
+ * fictional builders. Unit prices use the same formula as generated projects; the RERA numbers are marked
+ * DEMO. Map positions come from the locality, as for every project.
+ */
+const lucknowUnits = (rate: number, units: [number, number][]): UnitConfig[] =>
+  units.map(([bhk, carpet]) => ({ bhk, label: `${bhk} BHK Apartment`, carpetSqft: carpet, price: priceFor(carpet * 1.3, rate) }));
+const lucknowTrend = (rate: number, startPct: number) =>
+  Array.from({ length: 8 }, (_, i) => ({ label: `${['Q1', 'Q2', 'Q3', 'Q4'][i % 4]} ${2025 + Math.floor(i / 4)}`, rate: roundTo(rate * (startPct + ((1 - startPct) * i) / 7), 10) }));
+const lucknowNearby = (locality: string, km: [number, number, number, number, number, number, number]): NearbyPlace[] => [
+  { kind: 'School', name: 'Greenfield Public School', km: km[0] }, { kind: 'Hospital', name: 'Lifeline Multispeciality', km: km[1] },
+  { kind: 'Metro', name: `${locality} Metro Station`, km: km[2] }, { kind: 'Mall', name: 'Central Square Mall', km: km[3] },
+  { kind: 'Office Hub', name: 'Business District', km: km[4] }, { kind: 'Airport', name: 'Lucknow International Airport', km: km[5] },
+  { kind: 'Railway', name: `${locality} Railway Station`, km: km[6] },
+];
+export const extraProjects: SeedProject[] = [
+  {
+    id: 1031, slug: 'ganga-gomti-heights-gomti-nagar', name: 'Ganga Gomti Heights', citySlug: 'lucknow', localitySlug: 'gomti-nagar',
+    builderSlug: 'ganga-infra', status: 'Under Construction', possession: 'Dec 2027', rera: 'UPRERA-DEMO-LKO-1031',
+    landAcres: 6.5, totalUnits: 420, towers: 4, floors: 22, ratePerSqft: 9300,
+    units: lucknowUnits(9300, [[2, 720], [2, 810], [3, 1050], [3, 1180]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Landscaped Gardens', 'EV Charging'],
+    highlights: ['Gomti Nagar address close to the Business District', '70% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(9300, 0.82), nearby: lucknowNearby('Gomti Nagar', [0.8, 1.6, 1.2, 2.1, 3.4, 18.5, 4.2]), hue: 200, launchedYear: 2024,
+  },
+  {
+    id: 1032, slug: 'meridian-golf-vista-sushant-golf-city', name: 'Meridian Golf Vista', citySlug: 'lucknow', localitySlug: 'sushant-golf-city',
+    builderSlug: 'meridian-spaces', status: 'New Launch', possession: 'Mar 2030', rera: 'UPRERA-DEMO-LKO-1032',
+    landAcres: 11.2, totalUnits: 640, towers: 6, floors: 28, ratePerSqft: 6800,
+    units: lucknowUnits(6800, [[2, 690], [2, 760], [3, 1020], [3, 1140]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Yoga Deck', 'Badminton Court', 'Tennis Court', 'Power Backup', '24x7 Security', 'Lift', 'Covered Parking', 'Senior Citizen Zone', 'Pet Park'],
+    highlights: ['Sushant Golf City address with quick access to the Business District', '75% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(6800, 0.85), nearby: lucknowNearby('Sushant Golf City', [1.1, 2.4, 2.8, 3.0, 5.6, 9.5, 6.1]), hue: 207, launchedYear: 2026,
+  },
+  {
+    id: 1033, slug: 'vistaar-awadh-residency-indira-nagar', name: 'Vistaar Awadh Residency', citySlug: 'lucknow', localitySlug: 'indira-nagar',
+    builderSlug: 'vistaar-homes', status: 'Ready to Move', possession: 'Oct 2023', rera: 'UPRERA-DEMO-LKO-1033',
+    landAcres: 3.8, totalUnits: 260, towers: 3, floors: 14, ratePerSqft: 7600,
+    units: lucknowUnits(7600, [[2, 700], [2, 780], [3, 1010], [3, 1120]]),
+    amenities: ['Gymnasium', 'Clubhouse', 'Kids Play Area', 'Multipurpose Hall', 'Landscaped Gardens', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Rainwater Harvesting'],
+    highlights: ['Indira Nagar address close to the metro', '65% open space with landscaped central greens', '2, 3 BHK homes designed for cross-ventilation', 'Occupancy certificate received — move in now'],
+    priceTrend: lucknowTrend(7600, 0.78), nearby: lucknowNearby('Indira Nagar', [0.6, 1.4, 0.9, 1.8, 4.0, 14.2, 5.0]), hue: 214, launchedYear: 2019,
+  },
+];
+
 /** Hand-written sample listings (Lucknow), appended after the generated ones; unlike those they carry a description. */
 export const extraListings: (SeedListing & { description: string })[] = [
   {
