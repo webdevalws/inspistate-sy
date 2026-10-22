@@ -17,6 +17,8 @@ Turns a sentence into a search URL.
   the text (buy/sale → buy, rent/lease → rent, office/shop → commercial, new launch → new projects),
   otherwise `defaultMode`. The search pages also use it for the search box's free text (`?q=`), passing the
   current tab as `defaultMode` (see `docs/functions/property-search/desc.md`).
+- It also returns `matched`: true when the text named one of our cities or localities, a mode word, or any
+  filter. The search box only navigates when `matched` is true (otherwise "No matches for …").
 - **Chat widget** (`islands/ChatWidget.tsx`): the floating ✦ button on the listing search pages
   (`/{buy|rent|commercial}/{city}/…`) and city pages (`/city/{city}`). It sends the page's city with each
   question, so "2 BHK under 1 Cr" searches that city. It is labelled honestly: subtitle "Rule-based search

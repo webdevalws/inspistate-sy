@@ -21,12 +21,21 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   single locality, BHK or type in the path and the rest in the query string, e.g. Powai + 2 BHK +
   Apartment → `/buy/mumbai/powai/2-bhk/apartment`; two localities → `?locality=a,b`. Query values the
   panel doesn't own (e.g. `managed=1`) are kept; `page` resets.
-- **Free-text search (`?q=`):** when nothing in the search box's autocomplete matches, it submits
-  `/{tab}/{city}?q=…`. The search page (and `/new-projects/{city}`) reads `q` with the Ask AI parser
-  (`parseQuery` in `src/lib/nlsearch.ts`) — using the page's city, mode and path facets as defaults — and
-  302-redirects to the resulting filtered URL, e.g. `/buy/mumbai?q=3 bhk ready to move under 2 cr` →
-  `/buy/mumbai?bhk=3&priceMax=20000000&possession=Ready+to+Move`. Text the parser can't read leads to the
-  plain city (or city + facet) page.
+- **Search box (home hero and the search-page bar, `SearchBox.tsx`) — what pressing Search does:**
+  1. Empty box → the chosen tab and city (`/buy/mumbai`).
+  2. An autocomplete match (locality, project, builder) → its page, e.g. "powai" → `/buy/mumbai/powai`.
+  3. A major Indian city we don't cover (`src/data/indian-cities.ts`, e.g. Lucknow, Jaipur, "mysore") →
+     **no navigation**; the note under the box says "We're not in Lucknow yet. Pick one of our cities:" with
+     links to all our cities (same box as the near-me note). It never quietly shows another city.
+  4. Otherwise the text is read with the Ask AI parser (`parseQuery`, using the chosen city and tab as
+     defaults). If it understood something (`matched`: one of our cities or localities, buy/rent/office/new
+     project words, or a filter) → that URL, e.g. "3 bhk ready to move under 2 cr" →
+     `/buy/mumbai?bhk=3&priceMax=20000000&possession=Ready+to+Move`, "pune" → `/buy/pune`.
+  5. Nothing understood (e.g. "asdfgh") → **no navigation**; note "No matches for 'asdfgh'. Try a locality,
+     project or builder in one of our cities."
+- **`?q=` on a search URL** (old links, typed URLs): the search page (and `/new-projects/{city}`) still
+  reads `q` with `parseQuery`, using the page's city, mode and path facets as defaults, and 302-redirects
+  to the result.
 - Unknown mode, city or facet segment → 404. Lookups use `Object.hasOwn`, so built-in object names such
   as `constructor` or `toString` (`/constructor/mumbai`, `/buy/mumbai/constructor`) are a 404, not a 500.
   The same applies to `/localities/{city}/{theme}`, the company pages `/{page}` (e.g. `/constructor`),
