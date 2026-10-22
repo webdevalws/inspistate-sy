@@ -17,6 +17,10 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `1-bhk`…`5-bhk` are accepted; `6-bhk`…`9-bhk` **301-redirect** to the same URL with `5-bhk` in their
   place, keeping the other segments and the query string (e.g. `/buy/mumbai/powai/7-bhk/apartment?sort=newest`
   → `/buy/mumbai/powai/5-bhk/apartment?sort=newest`). Any other `n-bhk` (e.g. `0-bhk`) is a 404.
+- **Clean URLs from the filter panel:** when filters change, `facetPath` (`src/lib/search.ts`) puts a
+  single locality, BHK or type in the path and the rest in the query string, e.g. Powai + 2 BHK +
+  Apartment → `/buy/mumbai/powai/2-bhk/apartment`; two localities → `?locality=a,b`. Query values the
+  panel doesn't own (e.g. `managed=1`) are kept; `page` resets.
 - **Free-text search (`?q=`):** when nothing in the search box's autocomplete matches, it submits
   `/{tab}/{city}?q=…`. The search page (and `/new-projects/{city}`) reads `q` with the Ask AI parser
   (`parseQuery` in `src/lib/nlsearch.ts`) — using the page's city, mode and path facets as defaults — and
@@ -31,8 +35,15 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   location, picks the nearest locality in any city and opens it for the current tab (Buy/Rent/Commercial
   → `/{tab}/{city}/{locality}`, Plots → `/buy/{city}/{locality}/plot`, New projects →
   `/new-projects/{city}?locality=…`). More than 60 km from every locality → "We don't have listings near
-  you yet". Permission refused → "Location permission was denied."; timeout or position unavailable →
+  you yet" (no city found at all) or, normally, the **not-covered note**: "We don't cover your area yet.
+  Nearest city: {City} (~{N} km). View homes in {City} →" plus links to all our cities, for the current
+  tab. Permission refused → "Location permission was denied."; timeout or position unavailable →
   "Couldn't get your location. Try again or pick a city." Needs `localhost` or https.
+- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/lucknow`, `/rent/…`,
+  `/commercial/…`, `/new-projects/…`, `/city/…`, `/property-rates/…`, `/heatmap/…`, `/managed-rentals/…`,
+  `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
+  Lucknow yet" with links to the same section for our cities (city hub for the locality pages). Any
+  other 404 looks as before.
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

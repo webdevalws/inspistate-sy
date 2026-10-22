@@ -39,9 +39,10 @@ export async function deleteSavedSearch(userId: number, id: number) {
 
 export async function myListings(userId: number) {
   const { results } = await db()
-    .prepare('SELECT id, purpose, type, bhk, area_sqft, price, city_slug, locality_slug, status, edit_token, posted_at FROM listings WHERE user_id = ? ORDER BY id DESC')
+    // Deleted listings disappear from the owner's list; sold / rented ones stay with their own chip.
+    .prepare("SELECT id, purpose, type, bhk, area_sqft, price, city_slug, locality_slug, status, closed, edit_token, posted_at FROM listings WHERE user_id = ? AND (closed IS NULL OR closed != 'deleted') ORDER BY id DESC")
     .bind(userId)
-    .all<{ id: number; purpose: string; type: string; bhk: number; area_sqft: number; price: number; city_slug: string; locality_slug: string; status: string; edit_token: string; posted_at: string }>();
+    .all<{ id: number; purpose: string; type: string; bhk: number; area_sqft: number; price: number; city_slug: string; locality_slug: string; status: string; closed: 'sold' | 'rented' | null; edit_token: string; posted_at: string }>();
   return results;
 }
 
@@ -80,7 +81,8 @@ export type Allowance = { used: number; limit: number | null; canPost: boolean; 
 export async function listingAllowance(user: User | null): Promise<Allowance> {
   if (!user) return { used: 0, limit: 0, canPost: false, hasPlan: false, reason: 'login' };
   if (!user.role) return { used: 0, limit: 0, canPost: false, hasPlan: false, reason: 'register' };
-  const used = (await db().prepare("SELECT count(*) AS n FROM listings WHERE user_id = ? AND status IN ('active', 'pending')").bind(user.id).first<number>('n')) ?? 0;
+  // Sold, rented and deleted listings free their slot.
+  const used = (await db().prepare("SELECT count(*) AS n FROM listings WHERE user_id = ? AND status IN ('active', 'pending') AND closed IS NULL").bind(user.id).first<number>('n')) ?? 0;
   // A paid plan belongs to the account, not the current role: it survives switching agent → seller.
   const hasPlan = !!(await subscriptionState(user.id)).active;
   const limit = hasPlan ? null : FREE_LISTINGS[user.role];

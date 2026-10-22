@@ -1,11 +1,34 @@
 ---
 import Base from '../layouts/Base.astro';
+import { getRefs } from '../lib/repo';
+
+// City-scoped sections. A URL like /buy/lucknow (a city we don't cover) still answers 404, but says so
+// in plain words and links to the same section for the cities we do cover.
+const SECTIONS = ['buy', 'rent', 'commercial', 'new-projects', 'city', 'property-rates', 'heatmap', 'managed-rentals', 'localities', 'locality'];
+const NEEDS_MORE = ['localities', 'locality']; // these need more than a city, so link to the city hub instead
+
+const { cities } = await getRefs();
+const [, section = '', slug = ''] = Astro.url.pathname.split('/');
+const unknownCity = SECTIONS.includes(section) && /^[a-z][a-z-]{1,39}$/.test(slug) && !cities.some((c) => c.slug === slug)
+  ? slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ')
+  : null;
+const cityHref = (c: string) => (NEEDS_MORE.includes(section) ? `/city/${c}` : `/${section}/${c}`);
 ---
-<Base title="Page not found">
+<Base title={unknownCity ? `We're not in ${unknownCity} yet` : 'Page not found'} noindex>
   <div class="container-x py-24 text-center">
     <p class="text-6xl font-extrabold text-brand-600">404</p>
-    <h1 class="mt-4 text-2xl font-bold">This address doesn't exist</h1>
-    <p class="mt-2 text-slate-500">The listing may have been sold, rented or removed.</p>
+    {unknownCity ? (
+      <>
+        <h1 class="mt-4 text-2xl font-bold">We're not in {unknownCity} yet</h1>
+        <p class="mt-2 text-slate-500">InspiState covers these {cities.length} cities for now:</p>
+        <div class="mt-6 flex flex-wrap justify-center gap-2">{cities.map((c) => <a href={cityHref(c.slug)} class="pill">{c.name}</a>)}</div>
+      </>
+    ) : (
+      <>
+        <h1 class="mt-4 text-2xl font-bold">This address doesn't exist</h1>
+        <p class="mt-2 text-slate-500">The listing may have been sold, rented or removed.</p>
+      </>
+    )}
     <a href="/" class="btn-primary mt-6">Back to home</a>
   </div>
 </Base>

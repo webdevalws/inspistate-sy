@@ -44,6 +44,27 @@ const TYPE_SLUGS: Record<string, PropertyType> = {
   apartment: 'Apartment', 'builder-floor': 'Builder Floor', villa: 'Villa', plot: 'Plot', office: 'Office', shop: 'Shop',
 };
 
+/** Path slug for a property type ("Builder Floor" → "builder-floor"), the reverse of TYPE_SLUGS. */
+export const typeSlug = (type: string) => Object.keys(TYPE_SLUGS).find((s) => TYPE_SLUGS[s] === type);
+
+/** Query keys the filter panel owns; any others on the page (e.g. managed=1) are kept when filters change. */
+export const FILTER_KEYS = ['locality', 'bhk', 'type', 'furnishing', 'postedBy', 'possession', 'amenities', 'priceMin', 'priceMax', 'areaMin', 'areaMax', 'for', 'verified', 'sort', 'page', 'q'];
+
+/**
+ * The URL for a set of filters: a single locality, BHK or type goes in the path (crawlable facet URLs such as
+ * /buy/mumbai/powai/2-bhk/apartment, read back by parseFacets); several values, and everything else, go in
+ * the query string.
+ */
+export function facetPath(basePath: string, f: { locality: string[]; bhk: number[]; type: string[] }, q: URLSearchParams) {
+  const segs: string[] = [];
+  if (f.locality.length === 1) segs.push(f.locality[0]); else if (f.locality.length) q.set('locality', f.locality.join(','));
+  if (f.bhk.length === 1) segs.push(`${f.bhk[0]}-bhk`); else if (f.bhk.length) q.set('bhk', f.bhk.join(','));
+  const ts = f.type.length === 1 ? typeSlug(f.type[0]) : undefined;
+  if (ts) segs.push(ts); else if (f.type.length) q.set('type', f.type.join(','));
+  const qs = q.toString();
+  return `${[basePath, ...segs].join('/')}${qs ? `?${qs}` : ''}`;
+}
+
 const OVER_5_BHK = /^[6-9]-bhk$/;
 
 /**

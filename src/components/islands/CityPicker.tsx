@@ -26,11 +26,15 @@ export default function CityPicker({ cities, current }: Props) {
   }, [open]);
 
   const shown = cities.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
-  const go = (slug: string) => (window.location.href = targetFor(slug, cities.map((c) => c.slug)));
+  const go = (slug: string) => {
+    // Remember the choice so pages without a city in the URL (home, tools…) follow it too (src/lib/city.ts).
+    document.cookie = `is_city=${slug}; path=/; max-age=31536000; samesite=lax`;
+    window.location.href = targetFor(slug, cities.map((c) => c.slug));
+  };
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-1.5 rounded-full bg-neutral-700 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-neutral-600" aria-haspopup="dialog">
+      <button type="button" onClick={() => setOpen(true)} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 transition hover:text-sand-50" aria-haspopup="dialog" title="Change city">
         <svg className="h-4 w-4 text-accent-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 18s6-5.2 6-10A6 6 0 0 0 4 8c0 4.8 6 10 6 10Zm0-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clipRule="evenodd" /></svg>
         {name}
         <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2 4l4 4 4-4z" /></svg>

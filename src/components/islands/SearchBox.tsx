@@ -42,6 +42,8 @@ export default function SearchBox({ cities, localities, projects, builders, init
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<'' | 'voice' | 'geo'>('');
   const [note, setNote] = useState('');
+  // "Near me" found no locality within 60 km: the nearest city we cover, to offer instead.
+  const [far, setFar] = useState<{ slug: string; name: string; km: number } | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -86,6 +88,7 @@ export default function SearchBox({ cities, localities, projects, builders, init
   }
 
   function nearMe() {
+    setFar(null);
     if (!navigator.geolocation) return setNote('Location is not available in this browser.');
     setBusy('geo');
     navigator.geolocation.getCurrentPosition(
@@ -95,7 +98,13 @@ export default function SearchBox({ cities, localities, projects, builders, init
         const nearest = withPos.sort((a, b) => distKm(me, a) - distKm(me, b))[0];
         if (!nearest || distKm(me, nearest) > 60) {
           setBusy('');
-          return setNote('We don’t have listings near you yet. Pick a city instead.');
+          setNote('');
+          // Outside our cities: offer the nearest city we cover (and all of them, below).
+          const placed = cities.filter((c) => c.lat !== undefined) as (Option & { lat: number; lng: number })[];
+          const city = placed.sort((a, b) => distKm(me, a) - distKm(me, b))[0];
+          if (!city) return setNote('We don’t have listings near you yet. Pick a city instead.');
+          const km = distKm(me, city);
+          return setFar({ slug: city.slug, name: city.name, km: km >= 100 ? Math.round(km / 10) * 10 : Math.round(km) });
         }
         window.location.href = target(tab, nearest.citySlug, nearest.slug);
       },
@@ -215,6 +224,15 @@ export default function SearchBox({ cities, localities, projects, builders, init
         <div className={`mt-2.5 inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
           <span>ℹ</span>
           <span>{note}</span>
+        </div>
+      )}
+      {far && (
+        <div className={`mt-2.5 rounded-xl px-3.5 py-2 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
+          <p>
+            <span>ℹ </span>We don’t cover your area yet. Nearest city: {far.name} (~{far.km.toLocaleString('en-IN')} km).{' '}
+            <a href={target(tab, far.slug)} className="font-semibold underline">View homes in {far.name} →</a>
+          </p>
+          <p className="mt-1">Our cities: {cities.map((c, i) => <span key={c.slug}>{i > 0 && ' · '}<a href={target(tab, c.slug)} className="underline">{c.name}</a></span>)}</p>
         </div>
       )}
     </div>

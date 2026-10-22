@@ -62,7 +62,7 @@ export async function localityMarket(citySlug: string) {
         avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS sale_rate,
         avg(CASE WHEN purpose = 'rent' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rent_rate,
         min(CASE WHEN purpose = 'buy' THEN price END) AS min_price
-      FROM listings WHERE status = 'active' AND city_slug = ? GROUP BY locality_slug`)
+      FROM listings WHERE status = 'active' AND closed IS NULL AND city_slug = ? GROUP BY locality_slug`)
     .bind(citySlug)
     .all<{ locality_slug: string; n: number; sale: number; rent: number; sale_rate: number | null; rent_rate: number | null; min_price: number | null }>();
   return new Map(results.map((r) => [r.locality_slug, r]));
@@ -80,7 +80,7 @@ export type GuideTheme = keyof typeof GUIDE_THEMES;
 /** Everything the home page "insights" and "reviews" panels need, in one round trip. */
 export async function homeInsights() {
   const [rates, tx, latest, overall] = await db().batch([
-    db().prepare("SELECT city_slug, 1.0 * price / area_sqft AS rate FROM listings WHERE status = 'active' AND purpose = 'buy' AND segment = 'residential'"),
+    db().prepare("SELECT city_slug, 1.0 * price / area_sqft AS rate FROM listings WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' AND segment = 'residential'"),
     db().prepare(`SELECT p.city_slug, count(*) AS n, sum(t.price) AS value, 1.0 * sum(t.price) / sum(t.area_sqft) AS rate, min(t.registered_on) AS first, max(t.registered_on) AS last
       FROM transactions t JOIN projects p ON p.id = t.project_id GROUP BY p.city_slug`),
     db().prepare(`SELECT r.author, r.rating, r.body, r.created_at, r.resident_type, p.name AS project, p.slug, p.city_slug
@@ -116,7 +116,7 @@ export async function agentsDirectory(citySlug?: string) {
   const { results } = await db()
     .prepare(`SELECT contact_name AS name, city_slug, count(*) AS listings, sum(verified) AS verified,
         sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent, group_concat(DISTINCT locality_slug) AS localities
-      FROM listings WHERE status = 'active' AND posted_by = 'Agent' ${citySlug ? 'AND city_slug = ?' : ''}
+      FROM listings WHERE status = 'active' AND closed IS NULL AND posted_by = 'Agent' ${citySlug ? 'AND city_slug = ?' : ''}
       GROUP BY contact_name, city_slug ORDER BY listings DESC, name LIMIT 60`)
     .bind(...(citySlug ? [citySlug] : []))
     .all<{ name: string; city_slug: string; listings: number; verified: number; sale: number; rent: number; localities: string }>();
@@ -127,9 +127,9 @@ export async function agentsDirectory(citySlug?: string) {
 export async function homeMarket() {
   const [cats, locs, tx] = await db().batch([
     db().prepare(`SELECT city_slug, segment, type, bhk, min(price) AS mn, count(*) AS n FROM listings
-      WHERE status = 'active' AND purpose = 'buy' GROUP BY city_slug, segment, type, bhk`),
+      WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' GROUP BY city_slug, segment, type, bhk`),
     db().prepare(`SELECT city_slug, locality_slug, min(price) AS mn, max(price) AS mx, count(*) AS n FROM listings
-      WHERE status = 'active' AND purpose = 'buy' AND segment = 'residential' GROUP BY city_slug, locality_slug`),
+      WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' AND segment = 'residential' GROUP BY city_slug, locality_slug`),
     db().prepare(`SELECT p.city_slug, substr(t.registered_on, 1, 4) || '-Q' || ((cast(substr(t.registered_on, 6, 2) AS integer) + 2) / 3) AS q, count(*) AS n
       FROM transactions t JOIN projects p ON p.id = t.project_id GROUP BY p.city_slug, q ORDER BY q`),
   ]);
@@ -151,7 +151,7 @@ export async function homeMarket() {
 export async function livingData(citySlug: string) {
   const { results } = await db()
     .prepare(`SELECT locality_slug, purpose, min(bhk, 4) AS bhk, avg(price) AS avg, avg(1.0 * price / area_sqft) AS per_sqft, count(*) AS n
-      FROM listings WHERE status = 'active' AND segment = 'residential' AND city_slug = ? AND bhk > 0 GROUP BY locality_slug, purpose, min(bhk, 4)`)
+      FROM listings WHERE status = 'active' AND closed IS NULL AND segment = 'residential' AND city_slug = ? AND bhk > 0 GROUP BY locality_slug, purpose, min(bhk, 4)`)
     .bind(citySlug)
     .all<{ locality_slug: string; purpose: 'buy' | 'rent'; bhk: number; avg: number; per_sqft: number; n: number }>();
   return results;
@@ -161,7 +161,7 @@ export async function livingData(citySlug: string) {
 export async function sampleRentals(citySlug: string, localitySlug: string, bhk: number, limit = 4) {
   const { results } = await db()
     .prepare(`SELECT id, bhk, type, area_sqft, price, furnishing, locality_slug FROM listings
-      WHERE status = 'active' AND purpose = 'rent' AND segment = 'residential' AND city_slug = ? AND locality_slug = ? AND min(bhk, 4) = ?
+      WHERE status = 'active' AND closed IS NULL AND purpose = 'rent' AND segment = 'residential' AND city_slug = ? AND locality_slug = ? AND min(bhk, 4) = ?
       ORDER BY posted_at DESC LIMIT ?`)
     .bind(citySlug, localitySlug, Math.min(bhk, 4), limit)
     .all<{ id: number; bhk: number; type: string; area_sqft: number; price: number; furnishing: string; locality_slug: string }>();

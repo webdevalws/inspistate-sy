@@ -83,8 +83,14 @@ const out = [
   insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'],
     projects.flatMap((p) => p.units.map((u) => [p.id, u.bhk, u.label, u.carpetSqft, u.price]))),
   insert('listings',
-    ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at'],
-    listings.map((l) => [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo)])),
+    ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at', 'managed', 'deposit_months', 'available_from'],
+    listings.map((l) => {
+      // Managed rentals (same rule as migration 0008): every third residential rental, one-month
+      // deposit, available a week after posting. Kept here because a reset re-inserts all listings.
+      const managed = l.purpose === 'rent' && l.segment === 'residential' && l.id % 3 === 0;
+      return [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo),
+        managed ? 1 : 0, managed ? 1 : 2, managed ? iso(l.postedDaysAgo - 7).slice(0, 10) : null];
+    })),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], transactions),
   insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], reviews),
   insert('forum_questions', ['id', 'author', 'city_slug', 'title', 'body', 'created_at'], forum.map(([a, c, t, b], i) => [i + 1, a, c, t, b, iso(40 - i * 7)])),

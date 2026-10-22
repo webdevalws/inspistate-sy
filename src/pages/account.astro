@@ -17,7 +17,10 @@ const [refs, listings, enquiries, searches, allowance, leads, subs] = await Prom
 ]);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const saved = Astro.url.searchParams.get('saved');
-const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700' };
+const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
+const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
+// Result of an owner action (/api/account/listings/[id] redirects back with ?listing=…).
+const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
 // Buyer numbers on Agent-posted listings need a paid plan, whatever the current role (switching
 // agent → seller must not unmask them). Leads on the owner's own (Owner-posted) listings are always shown.
 const isMasked = (d: { posted_by: string }) => d.posted_by === 'Agent' && !allowance.hasPlan;
@@ -92,17 +95,29 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
         {lister && (
           <section id="listings" class="scroll-mt-28">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class={h2}>My Listings</h2><a href="/post-property" class="ed-link">+ List property</a></div>
+            {listingDone && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{listingDone}</p>}
             {listings.length ? (
               <ul class="border-t-[0.5px] border-[#1C1A17]/15">
-                {listings.map((l) => (
+                {listings.map((l) => {
+                  const title = `#${l.id} · ${l.bhk ? `${l.bhk} BHK ` : ''}${l.type} in ${refs.locality(l.city_slug, l.locality_slug)?.name}, ${refs.city(l.city_slug)?.name}`;
+                  return (
                   <li class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4">
                     <div class="min-w-0">
-                      <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">#{l.id} · {l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</a>
+                      {l.closed ? <span class="font-semibold">{title}</span> : <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">{title}</a>}
                       <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
+                      <!-- Owner actions; edits go back to review. Plain form posts, so they work without JavaScript. -->
+                      {!l.closed && (
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <a href={`/post-property?edit=${l.id}`} class="ed-link">Edit</a>
+                          <form method="post" action={`/api/account/listings/${l.id}`}><button name="action" value={l.purpose === 'buy' ? 'sold' : 'rented'} class="ed-link cursor-pointer">Mark {l.purpose === 'buy' ? 'sold' : 'rented'}</button></form>
+                          <form method="post" action={`/api/account/listings/${l.id}`} onsubmit="return confirm('Delete this listing? It will be removed from search and can’t be restored.')"><button name="action" value="delete" class="ed-link cursor-pointer">Delete</button></form>
+                        </div>
+                      )}
                     </div>
-                    <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.status]]}>{l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected'}</span>
+                    <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.closed ?? l.status]]}>{chipLabel(l)}</span>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t listed a property yet. <a href="/post-property" class="font-semibold underline">List your first one</a>.</p>}
           </section>

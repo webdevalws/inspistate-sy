@@ -18,7 +18,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
 <Base title="Admin">
   <div class="container-x py-8">
     <h1 class="text-2xl font-extrabold">Admin dashboard</h1>
-    {done && !done.startsWith('sub-') && <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Listing {done === 'approve' ? 'approved and now live' : 'rejected'}.</p>}
+    {done && !done.startsWith('sub-') && <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Listing {({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.</p>}
 
     <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
       {[['Leads (total)', counts.leads], ['Leads (24 h)', counts.leads24], ['Pending listings', counts.pending], ['Live listings', counts.active]].map(([k, v]) => (

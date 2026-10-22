@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
+import ChatWidget from '../../components/islands/ChatWidget';
 import { cityStats, getProjects, getRefs } from '../../lib/repo';
 import { formatNumber, formatRate } from '../../lib/format';
 import { searchUrl } from '../../lib/urls';
@@ -60,4 +61,5 @@ const links = [
     <h2 class="section-title mb-4 mt-12">Projects in {city.name}</h2>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.map((p) => <ProjectCard project={p} />)}</div>
   </div>
+  <ChatWidget client:idle city={city.slug} />
 </Base>

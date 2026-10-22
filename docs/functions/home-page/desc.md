@@ -58,6 +58,13 @@ search form puts city + Search on one row under the query field.
 - **Header:** every page uses the INSPISTATE wordmark, mono uppercase nav with a hairline underline
   (`.nav-line`) and hairline buttons; on `/` it floats transparent over the hero, elsewhere it is a
   sticky espresso bar.
+- **City picker** (`islands/CityPicker.tsx`, next to the wordmark on every page and screen size): the
+  trigger shows the current city in the header's mono nav-link style and opens the existing dialog
+  (search box + the 10 cities with live listing counts; native `<dialog>`, so Tab/Enter work and Esc or
+  a backdrop click closes it). Choosing a city stores it in the `is_city` cookie (1 year) and goes to the
+  same page for that city on city pages (`/buy/{city}…` etc.), else to `/city/{city}`. The current city is
+  `currentCity()` (`src/lib/city.ts`): city in the URL, else the cookie, else the first city — used by
+  the header menus, the footer's "Popular searches" links and the home search box's default city.
 - **Site-wide theme:** `global.css` overrides the Tailwind palettes so every page follows the hero:
   `brand` = espresso, `accent`/`amber` = bronze-sand, `slate`/`neutral`/`gray` = warm stone,
   `violet`/`purple` = clay, `blue`/`sky`/`indigo` = olive-taupe; `canvas` = #F7F4EE. Emerald/rose are

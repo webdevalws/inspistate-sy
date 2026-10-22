@@ -1,12 +1,16 @@
 ---
 import ShortlistCount from './islands/ShortlistCount';
 import AuthDialog from './islands/AuthDialog';
+import CityPicker from './islands/CityPicker';
 import { roleLabel } from '../data/plans';
-import { getRefs } from '../lib/repo';
+import { cityListingCounts, getRefs } from '../lib/repo';
 import { headerMenus } from '../lib/catalog';
+import { currentCity } from '../lib/city';
 
 const { cities } = await getRefs();
-const current = cities.find((c) => Astro.url.pathname.split('/').includes(c.slug)) ?? cities[0];
+const current = currentCity(Astro.url, Astro.cookies, cities);
+const counts = await cityListingCounts();
+const pickerCities = cities.map((c) => ({ slug: c.slug, name: c.name, count: counts[c.slug] ?? 0 }));
 const menus = headerMenus(current.slug, current.name);
 const user = Astro.locals.user;
 const authCities = cities.map((c) => ({ slug: c.slug, name: c.name }));
@@ -21,8 +25,11 @@ const overlay = Astro.url.pathname === '/';
 ---
 <header class:list={['print:hidden top-0 z-40 w-full transition-all duration-300', overlay ? 'absolute bg-gradient-to-b from-[#1C1A17]/55 to-transparent' : 'sticky bg-brand-950 border-b-[0.5px] border-white/15']}>
   <div class="container-x flex h-[76px] items-center justify-between gap-6">
-    <a href="/" class="font-display text-[19px] font-extrabold uppercase tracking-[0.02em] text-sand-50 [font-stretch:115%]" aria-label="InspiState home">InspiState</a>
-    
+    <div class="flex min-w-0 items-center gap-4 sm:gap-6">
+      <a href="/" class="font-display text-[19px] font-extrabold uppercase tracking-[0.02em] text-sand-50 [font-stretch:115%]" aria-label="InspiState home">InspiState</a>
+      <CityPicker client:idle cities={pickerCities} current={current.slug} />
+    </div>
+
     <nav class="hidden items-center gap-4 lg:flex xl:gap-7" aria-label="Main">
       {menus.map((m, idx) => (
         <div class="group relative">

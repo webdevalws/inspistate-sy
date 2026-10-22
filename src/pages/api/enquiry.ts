@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { createLead, LEAD_KINDS, listingContact, type LeadKind } from '../../lib/repo';
 import { guard, overDailyLimit, tooManyToday } from '../../lib/limits';
 import { safeNext } from '../../lib/redirect';
+import { rememberBrochureLead } from '../../lib/brochure';
 
 /** Owner numbers a logged-in account can reveal per day ("View number"). */
 const VIEW_NUMBER_PER_USER_PER_DAY = 20;
@@ -39,9 +40,12 @@ export const POST: APIRoute = async (ctx) => {
     if (!listingId) return Response.json({ error: 'Choose a listing.' }, { status: 422 });
     if (await overDailyLimit('view-number', `user:${locals.user.id}`, VIEW_NUMBER_PER_USER_PER_DAY)) return tooManyToday();
   }
+  const projectId = optId(body.projectId);
   const id = await createLead({
-    name, phone, email: email || null, subject, page, listingId, projectId: optId(body.projectId), kind, userId: locals.user?.id ?? null,
+    name, phone, email: email || null, subject, page, listingId, projectId, kind, userId: locals.user?.id ?? null,
   });
+  // Unlocks /projects/{city}/{slug}/brochure for this visitor (see src/lib/brochure.ts).
+  if (kind === 'brochure' && projectId) await rememberBrochureLead(ctx.cookies, id, phone, ctx.url.protocol === 'https:');
 
   if (kind === 'view-number' && listingId) {
     const c = await listingContact(listingId);

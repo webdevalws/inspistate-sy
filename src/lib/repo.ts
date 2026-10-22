@@ -130,7 +130,7 @@ const toListing = (r: Row): Listing => ({
 
 /** WHERE clause for the active inventory of a search mode in a city (before user filters). */
 function scope(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
-  const where = ["l.status = 'active'", 'l.city_slug = ?'];
+  const where = ["l.status = 'active' AND l.closed IS NULL", 'l.city_slug = ?'];
   const args: unknown[] = [citySlug];
   if (mode === 'commercial') {
     where.push("l.segment = 'commercial'");
@@ -214,23 +214,23 @@ export async function marketStats(mode: Mode, citySlug: string, commercialPurpos
   };
 }
 
-/** Active listing by id; a pending listing is returned only with its owner's edit token. */
+/** Active listing by id; a pending listing is returned only with its owner's edit token. Sold, rented or deleted listings are gone. */
 export async function getListing(id: number, editToken?: string | null): Promise<Listing | undefined> {
   const r = await db().prepare(`${LISTING_SELECT} WHERE l.id = ?`).bind(id).first<Row>();
-  if (!r) return undefined;
+  if (!r || r.closed) return undefined;
   if (r.status !== 'active' && (!editToken || editToken !== r.edit_token)) return undefined;
   return toListing(r);
 }
 
 export async function getListingsByIds(ids: number[]): Promise<Listing[]> {
   if (!ids.length) return [];
-  const { results } = await db().prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
+  const { results } = await db().prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.closed IS NULL AND l.id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
   return results.map(toListing);
 }
 
 export async function getSimilarListings(l: Listing, limit = 3): Promise<Listing[]> {
   const { results } = await db()
-    .prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.id != ? AND l.city_slug = ? AND l.purpose = ? AND l.segment = ? AND abs(l.bhk - ?) <= 1
+    .prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.closed IS NULL AND l.id != ? AND l.city_slug = ? AND l.purpose = ? AND l.segment = ? AND abs(l.bhk - ?) <= 1
       ORDER BY abs(l.price - ?) LIMIT ?`)
     .bind(l.id, l.citySlug, l.purpose, l.segment, l.bhk, l.price, limit)
     .all<Row>();
@@ -238,7 +238,7 @@ export async function getSimilarListings(l: Listing, limit = 3): Promise<Listing
 }
 
 export async function getProjectListings(projectId: number, limit = 3): Promise<Listing[]> {
-  const { results } = await db().prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.project_id = ? ORDER BY l.posted_at DESC LIMIT ?`).bind(projectId, limit).all<Row>();
+  const { results } = await db().prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.closed IS NULL AND l.project_id = ? ORDER BY l.posted_at DESC LIMIT ?`).bind(projectId, limit).all<Row>();
   return results.map(toListing);
 }
 
@@ -248,7 +248,7 @@ export async function cityStats() {
   const [l, p] = await db().batch([
     db().prepare(`SELECT city_slug, count(*) AS total, sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
       avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rate
-      FROM listings WHERE status = 'active' GROUP BY city_slug`),
+      FROM listings WHERE status = 'active' AND closed IS NULL GROUP BY city_slug`),
     db().prepare('SELECT city_slug, count(*) AS n FROM projects GROUP BY city_slug'),
   ]);
   const projects = new Map((p.results as Row[]).map((r) => [r.city_slug as string, r.n as number]));
@@ -267,7 +267,7 @@ let cityCountCache: { at: number; value: Promise<Record<string, number>> } | nul
 export function cityListingCounts(): Promise<Record<string, number>> {
   if (cityCountCache && Date.now() - cityCountCache.at < REFS_TTL_MS) return cityCountCache.value;
   const value = db()
-    .prepare("SELECT city_slug, count(*) AS n FROM listings WHERE status = 'active' GROUP BY city_slug")
+    .prepare("SELECT city_slug, count(*) AS n FROM listings WHERE status = 'active' AND closed IS NULL GROUP BY city_slug")
     .all<{ city_slug: string; n: number }>()
     .then(({ results }) => Object.fromEntries(results.map((r) => [r.city_slug, r.n])));
   cityCountCache = { at: Date.now(), value };
@@ -277,7 +277,7 @@ export function cityListingCounts(): Promise<Record<string, number>> {
 
 export async function platformTotals() {
   const r = await db()
-    .prepare(`SELECT (SELECT count(*) FROM listings WHERE status = 'active') AS listings, (SELECT count(*) FROM projects) AS projects,
+    .prepare(`SELECT (SELECT count(*) FROM listings WHERE status = 'active' AND closed IS NULL) AS listings, (SELECT count(*) FROM projects) AS projects,
       (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities) AS localities`)
     .first<Record<string, number>>();
   return r!;
@@ -303,7 +303,7 @@ export async function createLead(lead: Omit<Lead, 'id' | 'createdAt'> & { kind: 
 
 /** Contact details revealed after a "View Number" lead. Seeded demo listings have no real phone. */
 export async function listingContact(id: number) {
-  return db().prepare("SELECT contact_name, contact_phone, posted_by FROM listings WHERE id = ? AND status = 'active'").bind(id).first<{ contact_name: string; contact_phone: string | null; posted_by: string }>();
+  return db().prepare("SELECT contact_name, contact_phone, posted_by FROM listings WHERE id = ? AND status = 'active' AND closed IS NULL").bind(id).first<{ contact_name: string; contact_phone: string | null; posted_by: string }>();
 }
 
 export interface NewListing {
@@ -340,6 +340,40 @@ export async function addListingPhotos(listingId: number, keys: string[]) {
   await db().batch(keys.map((k, i) => db().prepare('INSERT INTO listing_photos (listing_id, r2_key, position) VALUES (?, ?, ?)').bind(listingId, k, i)));
 }
 
+// ---------- owner listing management ----------
+
+export type ClosedAs = 'sold' | 'rented' | 'deleted';
+
+/** A listing's editable fields plus ownership and lifecycle, for the owner's edit / close actions. */
+export async function getOwnedListing(id: number) {
+  return db()
+    .prepare(`SELECT id, user_id, purpose, segment, type, bhk, area_sqft, price, city_slug, locality_slug, furnishing, description,
+        contact_name, contact_phone, status, closed, edit_token FROM listings WHERE id = ?`)
+    .bind(id)
+    .first<{ id: number; user_id: number | null; purpose: 'buy' | 'rent'; segment: 'residential' | 'commercial'; type: string; bhk: number; area_sqft: number; price: number;
+      city_slug: string; locality_slug: string; furnishing: string; description: string | null; contact_name: string; contact_phone: string | null;
+      status: ListingStatus; closed: ClosedAs | null; edit_token: string | null }>();
+}
+
+/** Saves an owner's edit. Any edit goes back to review (pending, not verified), even for a live listing. */
+export async function updateListing(id: number, f: Omit<NewListing, 'userId' | 'postedBy'>) {
+  await db()
+    .prepare(`UPDATE listings SET purpose = ?, segment = ?, type = ?, bhk = ?, area_sqft = ?, price = ?, city_slug = ?, locality_slug = ?,
+        furnishing = ?, description = ?, contact_name = ?, contact_phone = ?, status = 'pending', verified = 0
+      WHERE id = ? AND closed IS NULL`)
+    .bind(f.purpose, f.segment, f.type, f.bhk, f.areaSqft, f.price, f.citySlug, f.localitySlug, f.furnishing, f.description, f.contactName, f.contactPhone, id)
+    .run();
+}
+
+/** Marks a listing sold, rented or deleted (soft: leads and photos keep pointing at it). False if it was already closed. */
+export async function closeListing(id: number, as: ClosedAs): Promise<boolean> {
+  const r = await db()
+    .prepare("UPDATE listings SET closed = ?, closed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ? AND closed IS NULL")
+    .bind(as, id)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
+}
+
 // ---------- admin ----------
 
 export async function recentLeads(limit = 100): Promise<(Lead & { listingTitle: string | null; projectName: string | null; kind: string })[]> {
@@ -362,7 +396,7 @@ export async function recentLeads(limit = 100): Promise<(Lead & { listingTitle: 
 export async function listingsByStatus(status: ListingStatus, limit = 100): Promise<(Listing & { contactPhone: string | null; editToken: string | null })[]> {
   // Agents on an active plan get priority review: their listings sort first.
   const { results } = await db()
-    .prepare(`${LISTING_SELECT} WHERE l.status = ?
+    .prepare(`${LISTING_SELECT} WHERE l.status = ? AND l.closed IS NULL
       ORDER BY EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = l.user_id AND s.status = 'active' AND s.ends_at > strftime('%Y-%m-%dT%H:%M:%SZ', 'now')) DESC, l.id DESC LIMIT ?`)
     .bind(status, limit).all<Row>();
   return results.map((r) => ({ ...toListing(r), contactPhone: (r.contact_phone as string) ?? null, editToken: (r.edit_token as string) ?? null }));
@@ -375,7 +409,7 @@ export async function setListingStatus(id: number, status: ListingStatus) {
 export async function adminCounts() {
   const r = await db()
     .prepare(`SELECT (SELECT count(*) FROM leads) AS leads, (SELECT count(*) FROM leads WHERE created_at >= datetime('now', '-1 day')) AS leads24,
-      (SELECT count(*) FROM listings WHERE status = 'pending') AS pending, (SELECT count(*) FROM listings WHERE status = 'active') AS active`)
+      (SELECT count(*) FROM listings WHERE status = 'pending' AND closed IS NULL) AS pending, (SELECT count(*) FROM listings WHERE status = 'active' AND closed IS NULL) AS active`)
     .first<Row>();
   return { leads: r!.leads as number, leads24: r!.leads24 as number, pending: r!.pending as number, active: r!.active as number };
 }
@@ -383,7 +417,7 @@ export async function adminCounts() {
 export const sitemapData = async () => {
   const [p, l] = await db().batch([
     db().prepare('SELECT city_slug, slug FROM projects'),
-    db().prepare("SELECT id, posted_at FROM listings WHERE status = 'active' ORDER BY id"),
+    db().prepare("SELECT id, posted_at FROM listings WHERE status = 'active' AND closed IS NULL ORDER BY id"),
   ]);
   return { projects: p.results as Row[], listings: l.results as Row[] };
 };
