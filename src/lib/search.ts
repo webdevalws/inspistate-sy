@@ -62,7 +62,7 @@ export function parseFacets(segments: string[], localities: Locality[]) {
   for (const s of segments) {
     const bhk = s.match(/^([1-5])-bhk$/);
     if (bhk) out.bhk.push(Number(bhk[1]));
-    else if (TYPE_SLUGS[s]) out.type.push(TYPE_SLUGS[s]);
+    else if (Object.hasOwn(TYPE_SLUGS, s)) out.type.push(TYPE_SLUGS[s]); // hasOwn: "constructor" is not a type
     else if (localities.some((l) => l.slug === s)) out.locality.push(s);
     else return null;
   }

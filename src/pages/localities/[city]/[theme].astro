@@ -9,7 +9,8 @@ import { searchUrl } from '../../../lib/urls';
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
 const theme = Astro.params.theme as GuideTheme;
-if (!city || !(theme in GUIDE_THEMES)) return new Response(null, { status: 404 });
+// Object.hasOwn, not `in`: built-in names such as "constructor" must not count as a theme.
+if (!city || !Object.hasOwn(GUIDE_THEMES, theme)) return new Response(null, { status: 404 });
 const t = GUIDE_THEMES[theme];
 const ranked = [...refs.localitiesOf(city.slug)].sort((a, b) => t.score(b) - t.score(a));
 ---

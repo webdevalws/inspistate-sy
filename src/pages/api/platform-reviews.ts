@@ -15,7 +15,7 @@ export const POST: APIRoute = async (ctx) => {
   const rating = Number(b.rating);
   const title = String(b.title ?? '').trim().slice(0, 100) || null;
   const city = String(b.city ?? '').trim().slice(0, 40) || null;
-  if (!(service in REVIEW_SERVICES)) return Response.json({ error: 'Choose what your review is about' }, { status: 422 });
+  if (!Object.hasOwn(REVIEW_SERVICES, service)) return Response.json({ error: 'Choose what your review is about' }, { status: 422 });
   if (!author) return Response.json({ error: 'Name is required' }, { status: 422 });
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) return Response.json({ error: 'Choose a rating from 1 to 5 stars' }, { status: 422 });
   if (body.length < 30 || body.length > 2000) return Response.json({ error: 'Review must be 30–2,000 characters' }, { status: 422 });

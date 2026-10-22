@@ -127,7 +127,8 @@ const PAGES: Record<string, Page> = {
 };
 
 const key = Astro.params.page as string;
-const page = PAGES[key];
+// Object.hasOwn, not PAGES[key] alone: "/constructor" or "/toString" must be a 404, not a crash.
+const page = Object.hasOwn(PAGES, key) ? PAGES[key] : undefined;
 if (!page) return new Response(null, { status: 404 });
 const faq = [
   { q: 'Is posting a property free?', a: 'Yes. Owners can list properties for free. Listings are reviewed within 24 hours before they go live.' },

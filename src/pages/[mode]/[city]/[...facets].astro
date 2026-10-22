@@ -16,7 +16,8 @@ import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../..
 import { builderUrl, searchUrl } from '../../../lib/urls';
 
 const { mode, city: citySlug, facets } = Astro.params;
-if (!mode || !(mode in MODES)) return new Response(null, { status: 404 });
+// Object.hasOwn, not `in`: built-in names such as "constructor" must not count as a mode.
+if (!mode || !Object.hasOwn(MODES, mode)) return new Response(null, { status: 404 });
 const refs = await getRefs();
 const city = refs.city(citySlug!);
 if (!city) return new Response(null, { status: 404 });

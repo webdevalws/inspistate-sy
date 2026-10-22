@@ -10,7 +10,7 @@ export interface ShownReview { author: string; rating: number; title: string | n
 /** Union of platform reviews and project reviews, filtered by source ('projects' or a service) and city. */
 export async function listReviews(opts: { source?: string; city?: string; page: number }) {
   const parts: string[] = [], args: (string | number)[] = [];
-  const wantPlatform = !opts.source || opts.source in REVIEW_SERVICES;
+  const wantPlatform = !opts.source || Object.hasOwn(REVIEW_SERVICES, opts.source);
   const wantProjects = !opts.source || opts.source === 'projects';
   if (wantPlatform) {
     let w = "status = 'published'";
