@@ -27,6 +27,12 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   as `constructor` or `toString` (`/constructor/mumbai`, `/buy/mumbai/constructor`) are a 404, not a 500.
   The same applies to `/localities/{city}/{theme}`, the company pages `/{page}` (e.g. `/constructor`),
   and the review `service` / `source` values on `/reviews` and `POST /api/platform-reviews`.
+- **Near me** (target icon in the search box, `nearMe` in `SearchBox.tsx`): asks the browser for the
+  location, picks the nearest locality in any city and opens it for the current tab (Buy/Rent/Commercial
+  → `/{tab}/{city}/{locality}`, Plots → `/buy/{city}/{locality}/plot`, New projects →
+  `/new-projects/{city}?locality=…`). More than 60 km from every locality → "We don't have listings near
+  you yet". Permission refused → "Location permission was denied."; timeout or position unavailable →
+  "Couldn't get your location. Try again or pick a city." Needs `localhost` or https.
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

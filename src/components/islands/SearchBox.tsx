@@ -99,7 +99,11 @@ export default function SearchBox({ cities, localities, projects, builders, init
         }
         window.location.href = target(tab, nearest.citySlug, nearest.slug);
       },
-      () => { setBusy(''); setNote('Location permission was denied.'); },
+      (err) => {
+        setBusy('');
+        // Only code 1 is a refusal; a timeout or "position unavailable" deserves a different message.
+        setNote(err.code === err.PERMISSION_DENIED ? 'Location permission was denied.' : 'Couldn’t get your location. Try again or pick a city.');
+      },
       { timeout: 10000 },
     );
   }
