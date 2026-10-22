@@ -35,8 +35,15 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   location, picks the nearest locality in any city and opens it for the current tab (Buy/Rent/Commercial
   → `/{tab}/{city}/{locality}`, Plots → `/buy/{city}/{locality}/plot`, New projects →
   `/new-projects/{city}?locality=…`). More than 60 km from every locality → "We don't have listings near
-  you yet". Permission refused → "Location permission was denied."; timeout or position unavailable →
+  you yet" (no city found at all) or, normally, the **not-covered note**: "We don't cover your area yet.
+  Nearest city: {City} (~{N} km). View homes in {City} →" plus links to all our cities, for the current
+  tab. Permission refused → "Location permission was denied."; timeout or position unavailable →
   "Couldn't get your location. Try again or pick a city." Needs `localhost` or https.
+- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/lucknow`, `/rent/…`,
+  `/commercial/…`, `/new-projects/…`, `/city/…`, `/property-rates/…`, `/heatmap/…`, `/managed-rentals/…`,
+  `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
+  Lucknow yet" with links to the same section for our cities (city hub for the locality pages). Any
+  other 404 looks as before.
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
