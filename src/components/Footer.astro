@@ -1,9 +1,11 @@
 ---
 import Newsletter from './islands/Newsletter';
 import { getRefs } from '../lib/repo';
+import { currentCity } from '../lib/city';
 
 const { cities } = await getRefs();
-const c0 = cities[0].slug;
+// "Popular searches" links follow the current city (URL, else the header city picker's choice).
+const c0 = currentCity(Astro.url, Astro.cookies, cities).slug;
 // The homepage ends on a dark band, so the footer sits flush there; other pages get breathing room.
 const flush = Astro.url.pathname === '/';
 const cols: [string, [string, string][]][] = [
