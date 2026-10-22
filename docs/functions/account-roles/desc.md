@@ -20,6 +20,9 @@ accounts that already have a role). Agents must give an agency / firm name when 
 ## Outputs
 - Account dashboard with role-based sidebar: Overview, My Listings, List Property, Leads Received,
   Subscription Plans (agents), Shortlist, Saved Searches, My Enquiries, Profile, Logout.
+- Shortlist (`/shortlist` and the account section): saved on the device for everyone; when logged in it is
+  also saved to the account (`/api/account/shortlist`) and the device's items are merged in at login, so
+  it stays in sync across devices.
 - `subscriptions` rows: `requested` → `active` (starts now, ends after the plan's months) or `cancelled`.
 
 ## How it works
