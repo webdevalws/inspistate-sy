@@ -3,9 +3,14 @@
 import '../../../../styles/global.css';
 import { getProject, getRefs } from '../../../../lib/repo';
 import { formatNumber, formatPrice, formatRate } from '../../../../lib/format';
+import { canOpenBrochure } from '../../../../lib/brochure';
+import { projectUrl } from '../../../../lib/urls';
 
 const p = await getProject(Astro.params.city!, Astro.params.slug!);
 if (!p) return new Response(null, { status: 404 });
+// Lead-gated on the server: without a brochure enquiry for this project, go to the project page,
+// where "Download Brochure" asks for the details and then opens this page.
+if (!(await canOpenBrochure(Astro.cookies, Astro.locals.user, p.id))) return Astro.redirect(projectUrl(p), 302);
 const refs = await getRefs();
 const loc = refs.locality(p.citySlug, p.localitySlug)!;
 const city = refs.city(p.citySlug)!;
