@@ -1,9 +1,16 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createLead, LEAD_KINDS, listingContact, type LeadKind } from '../../lib/repo';
+import { guard, overDailyLimit, tooManyToday } from '../../lib/limits';
+import { safeNext } from '../../lib/redirect';
 
-export const POST: APIRoute = async ({ request, locals, url }) => {
-  if (request.headers.get('origin') !== url.origin) return new Response('Forbidden', { status: 403 });
+/** Owner numbers a logged-in account can reveal per day ("View number"). */
+const VIEW_NUMBER_PER_USER_PER_DAY = 20;
+
+export const POST: APIRoute = async (ctx) => {
+  const blocked = await guard(ctx, 'enquiry', 30);
+  if (blocked) return blocked;
+  const { request, locals } = ctx;
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -14,7 +21,8 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const phone = String(body.phone ?? '').replace(/\D/g, '').slice(-10);
   const email = String(body.email ?? '').trim();
   const subject = String(body.subject ?? '').trim().slice(0, 200);
-  const page = String(body.page ?? '').slice(0, 300) || null;
+  // The page the enquiry came from: only same-site paths are kept (shown as a link in admin and /account).
+  const page = safeNext(String(body.page ?? '').slice(0, 300));
   const kind: LeadKind = LEAD_KINDS.includes(body.kind as LeadKind) ? (body.kind as LeadKind) : 'enquiry';
   const optId = (v: unknown) => (Number.isInteger(Number(v)) && Number(v) > 0 ? Number(v) : null);
 
@@ -24,6 +32,13 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   if (!subject) return Response.json({ error: 'Subject is required' }, { status: 422 });
 
   const listingId = optId(body.listingId);
+  // Owner phone numbers are only revealed to logged-in accounts, within a daily cap. Refused requests
+  // return before createLead, so they leave no lead behind.
+  if (kind === 'view-number') {
+    if (!locals.user) return Response.json({ error: 'Log in or register to see the owner’s number.' }, { status: 401 });
+    if (!listingId) return Response.json({ error: 'Choose a listing.' }, { status: 422 });
+    if (await overDailyLimit('view-number', `user:${locals.user.id}`, VIEW_NUMBER_PER_USER_PER_DAY)) return tooManyToday();
+  }
   const id = await createLead({
     name, phone, email: email || null, subject, page, listingId, projectId: optId(body.projectId), kind, userId: locals.user?.id ?? null,
   });

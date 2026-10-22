@@ -13,6 +13,7 @@ Turns a sentence into a search URL.
 
 ## How it works
 - Rule-based parser: city/alias, locality, mode, BHK, type, budget phrases, possession, furnishing, owner, sort.
+- `GET /api/ask` is same-site only (`Sec-Fetch-Site`) and limited to 60 queries per IP per day (`guard()` in `src/lib/limits.ts`).
 
 ## Files
 - `src/lib/nlsearch.ts`

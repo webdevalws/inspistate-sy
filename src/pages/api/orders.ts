@@ -1,12 +1,15 @@
 import type { APIRoute } from 'astro';
-import { AGREEMENT_PLANS, LITIGATION_SEARCH_PRICE, TITLE_SEARCH_PLANS, VALUATION_PLANS, applyCoupon, createOrder, type OrderKind } from '../../lib/orders';
+import { AGREEMENT_PLANS, LITIGATION_SEARCH_PRICE, TITLE_SEARCH_PLANS, VALUATION_PLANS, applyCoupon, couponUsed, createOrder, type OrderKind } from '../../lib/orders';
+import { guard } from '../../lib/limits';
 
 const KINDS: OrderKind[] = ['title-search', 'rent-agreement', 'rent-receipt', 'valuation-report', 'litigation-search', 'escrow'];
 const str = (v: unknown, max = 200) => String(v ?? '').trim().slice(0, max);
 
 // Creates a service order. Paid kinds are stored as "awaiting_payment" until a payment gateway confirms.
-export const POST: APIRoute = async ({ request, locals, url }) => {
-  if (request.headers.get('origin') !== url.origin) return new Response('Forbidden', { status: 403 });
+export const POST: APIRoute = async (ctx) => {
+  const blocked = await guard(ctx, 'orders', 10);
+  if (blocked) return blocked;
+  const { request, locals } = ctx;
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b) return Response.json({ error: 'Invalid request' }, { status: 400 });
   const kind = b.kind as OrderKind;
@@ -61,6 +64,10 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
 
   const priced = applyCoupon(amount, amount ? str(b.coupon, 30) : null);
   if ('error' in priced) return Response.json({ error: priced.error }, { status: 422 });
+  // Each coupon once per person: same phone number, or same account when logged in.
+  if (priced.coupon && (await couponUsed(priced.coupon, phone, locals.user?.id ?? null))) {
+    return Response.json({ error: 'You’ve already used this coupon.' }, { status: 422 });
+  }
   const id = await createOrder({
     kind, userId: locals.user?.id ?? null, name, phone, email: email || null, details,
     amount: priced.amount, coupon: priced.coupon, status: priced.amount > 0 ? 'awaiting_payment' : 'submitted',

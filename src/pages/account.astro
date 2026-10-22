@@ -5,6 +5,7 @@ import ShortlistView from '../components/islands/ShortlistView';
 import SavedSearchList from '../components/islands/SavedSearchList';
 import { leadsReceived, listingAllowance, myEnquiries, myListings, savedSearches, subscriptionState } from '../lib/accounts';
 import { getRefs } from '../lib/repo';
+import { safeNext } from '../lib/redirect';
 import { formatPrice, formatRent } from '../lib/format';
 import { ROLES, planByKey, roleLabel } from '../data/plans';
 
@@ -138,7 +139,7 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
           <h2 class={`${h2} mb-4`}>My Enquiries</h2>
           {enquiries.length ? (
             <ul class="border-t-[0.5px] border-[#1C1A17]/15">
-              {enquiries.map((e) => <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3 text-sm"><span>{e.page ? <a href={e.page} class="font-medium underline">{e.subject}</a> : e.subject} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{e.kind.replace('-', ' ')}</span></span><span class="text-[#1C1A17]/55">{fmtDate(e.created_at)}</span></li>)}
+              {enquiries.map((e) => <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3 text-sm"><span>{safeNext(e.page) ? <a href={safeNext(e.page)!} class="font-medium underline">{e.subject}</a> : e.subject} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{e.kind.replace('-', ' ')}</span></span><span class="text-[#1C1A17]/55">{fmtDate(e.created_at)}</span></li>)}
             </ul>
           ) : <p class="text-sm text-[#1C1A17]/60">Enquiries you send while logged in appear here.</p>}
         </section>

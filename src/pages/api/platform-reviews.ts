@@ -1,9 +1,12 @@
 import type { APIRoute } from 'astro';
 import { createPlatformReview, REVIEW_SERVICES, type ReviewService } from '../../lib/platform-reviews';
+import { guard } from '../../lib/limits';
 
 // Submit a review of InspiState. Stored as pending until moderated in the admin panel.
-export const POST: APIRoute = async ({ request, url, locals }) => {
-  if (request.headers.get('origin') !== url.origin) return new Response('Forbidden', { status: 403 });
+export const POST: APIRoute = async (ctx) => {
+  const { request, locals } = ctx;
+  const blocked = await guard(ctx, 'platform-reviews', 5);
+  if (blocked) return blocked;
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b) return Response.json({ error: 'Invalid request' }, { status: 400 });
   const service = String(b.service ?? '') as ReviewService;

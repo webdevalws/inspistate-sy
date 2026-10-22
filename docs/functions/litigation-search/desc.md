@@ -18,6 +18,8 @@ Paid report of court and tribunal cases involving a seller, company or property.
 - Fixed price ₹1,799 (`LITIGATION_SEARCH_PRICE`); coupons via `/api/coupon`, discount capped at the price.
 - Live per-field validation (PAN `AAAAA9999A`, 6-digit PIN); Place Order disabled until valid.
 - `POST /api/orders` kind `litigation-search` re-validates server-side, uppercases PAN, same-origin only.
+- Orders: at most 10 per IP per day. Each coupon works once per person (same phone or account, non-cancelled
+  orders); `/api/coupon` is same-site only and limited to 30 checks per IP per day. See `docs/functions/leads/desc.md`.
 
 ## Files
 - `src/components/islands/LegalOrders.tsx (LitigationOrder)`
