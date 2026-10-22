@@ -13,6 +13,10 @@ Turns a sentence into a search URL.
 
 ## How it works
 - Rule-based parser: city/alias, locality, mode, BHK, type, budget phrases, possession, furnishing, owner, sort.
+- `parseQuery(text, cities, localities, fallbackCity, defaultMode = 'buy')`: the mode comes from words in
+  the text (buy/sale → buy, rent/lease → rent, office/shop → commercial, new launch → new projects),
+  otherwise `defaultMode`. The search pages also use it for the search box's free text (`?q=`), passing the
+  current tab as `defaultMode` (see `docs/functions/property-search/desc.md`).
 - `GET /api/ask` is same-site only (`Sec-Fetch-Site`) and limited to 60 queries per IP per day (`guard()` in `src/lib/limits.ts`).
 
 ## Files

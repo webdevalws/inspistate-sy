@@ -4,10 +4,14 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import { getProjects, getRefs } from '../../lib/repo';
 import type { ProjectStatus } from '../../data/types';
+import { parseQuery } from '../../lib/nlsearch';
 
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
 if (!city) return new Response(null, { status: 404 });
+// Free text from the search box's New Projects tab (?q=): parse it like the listing search pages do.
+const q = Astro.url.searchParams.get('q')?.trim();
+if (q) return Astro.redirect(parseQuery(q.slice(0, 300), refs.cities, refs.localities, city, 'new-projects').url, 302);
 
 const statuses: ProjectStatus[] = ['New Launch', 'Under Construction', 'Ready to Move'];
 const status = statuses.find((s) => s === Astro.url.searchParams.get('status'));

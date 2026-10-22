@@ -17,6 +17,12 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `1-bhk`…`5-bhk` are accepted; `6-bhk`…`9-bhk` **301-redirect** to the same URL with `5-bhk` in their
   place, keeping the other segments and the query string (e.g. `/buy/mumbai/powai/7-bhk/apartment?sort=newest`
   → `/buy/mumbai/powai/5-bhk/apartment?sort=newest`). Any other `n-bhk` (e.g. `0-bhk`) is a 404.
+- **Free-text search (`?q=`):** when nothing in the search box's autocomplete matches, it submits
+  `/{tab}/{city}?q=…`. The search page (and `/new-projects/{city}`) reads `q` with the Ask AI parser
+  (`parseQuery` in `src/lib/nlsearch.ts`) — using the page's city, mode and path facets as defaults — and
+  302-redirects to the resulting filtered URL, e.g. `/buy/mumbai?q=3 bhk ready to move under 2 cr` →
+  `/buy/mumbai?bhk=3&priceMax=20000000&possession=Ready+to+Move`. Text the parser can't read leads to the
+  plain city (or city + facet) page.
 - Unknown mode, city or facet segment → 404. Lookups use `Object.hasOwn`, so built-in object names such
   as `constructor` or `toString` (`/constructor/mumbai`, `/buy/mumbai/constructor`) are a 404, not a 500.
   The same applies to `/localities/{city}/{theme}`, the company pages `/{page}` (e.g. `/constructor`),

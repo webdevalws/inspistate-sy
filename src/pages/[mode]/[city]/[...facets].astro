@@ -14,6 +14,7 @@ import { searchBoxProps } from '../../../lib/searchProps';
 import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
 import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
+import { parseQuery } from '../../../lib/nlsearch';
 
 const { mode, city: citySlug, facets } = Astro.params;
 // Object.hasOwn, not `in`: built-in names such as "constructor" must not count as a mode.
@@ -25,6 +26,10 @@ const m = mode as Mode;
 
 const localities = refs.localitiesOf(city.slug);
 const segments = facets ? facets.split('/') : [];
+// Free text from the search box (?q=, sent when nothing in the autocomplete matched): read it with the
+// Ask AI parser, using this page's city, mode and path facets as defaults, and redirect to the result.
+const q = Astro.url.searchParams.get('q')?.trim();
+if (q) return Astro.redirect(parseQuery(`${q.slice(0, 300)} ${segments.join(' ')}`, refs.cities, refs.localities, city, m).url, 302);
 // 6–9 BHK URLs have no option of their own: send them (301) to the "5+ BHK" URL, keeping everything else.
 const folded = foldBhkSegments(segments);
 if (folded) return Astro.redirect(`${searchUrl(m, city.slug, ...folded)}${Astro.url.search}`, 301);

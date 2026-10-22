@@ -21,7 +21,8 @@ const amount = (num: string, unit: string | undefined) => {
 };
 const AMT = String.raw`(\d+(?:\.\d+)?)\s*(cr|crores?|l|lacs?|lakhs?|k|thousand)?\b`;
 
-export function parseQuery(raw: string, cities: City[], localities: Locality[], fallbackCity: City): ParsedQuery {
+/** `defaultMode` is used when the text doesn't say (e.g. the search box's current tab). */
+export function parseQuery(raw: string, cities: City[], localities: Locality[], fallbackCity: City, defaultMode: ParsedQuery['mode'] = 'buy'): ParsedQuery {
   const q = ` ${raw.toLowerCase().replace(/[^a-z0-9.\s]/g, ' ').replace(/\s+/g, ' ')} `;
   const summary: string[] = [];
   const params = new URLSearchParams();
@@ -35,7 +36,8 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
   city ??= fallbackCity;
   summary.push(loc ? `${loc.name}, ${city.name}` : city.name);
 
-  let mode: ParsedQuery['mode'] = 'buy';
+  let mode: ParsedQuery['mode'] = defaultMode;
+  if (/\b(buy|buying|sale|purchase|resale)\b/.test(q)) mode = 'buy';
   if (/\b(rent|rental|lease|pg|tenant)\b/.test(q)) mode = 'rent';
   if (/\b(office|shop|showroom|commercial|retail|coworking)\b/.test(q)) mode = 'commercial';
   if (/\b(new project|new launch|upcoming|pre ?launch|builder project)s?\b/.test(q)) mode = 'new-projects';
