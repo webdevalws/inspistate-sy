@@ -9,6 +9,7 @@ import Tabs from '../../../components/Tabs.astro';
 import FilterPanel from '../../../components/islands/FilterPanel';
 import SearchBox from '../../../components/islands/SearchBox';
 import SaveSearch from '../../../components/islands/SaveSearch';
+import ChatWidget from '../../../components/islands/ChatWidget';
 import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
 import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
@@ -231,4 +232,5 @@ const faq = [
 
     <div class="mt-14"><Faq items={faq} title="Frequently asked questions" /></div>
   </div>
+  <ChatWidget client:idle city={city.slug} />
 </Base>

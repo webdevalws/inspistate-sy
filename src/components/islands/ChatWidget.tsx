@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 type Msg = { from: 'bot' | 'me'; text: string; link?: { href: string; label: string } };
 const QUICK = ['2 BHK for sale in Powai under 2 Cr', 'Furnished flat for rent in Whitefield', 'Ready to move villas in Gurugram', 'Talk to an advisor'];
 
-export default function ChatWidget({ whatsapp }: { whatsapp?: string }) {
+// A rule-based helper (src/lib/nlsearch.ts via /api/ask), not a language model — the copy says so.
+export default function ChatWidget({ whatsapp, city }: { whatsapp?: string; city?: string }) {
   const [open, setOpen] = useState(false);
   const [hint, setHint] = useState(true);
-  const [msgs, setMsgs] = useState<Msg[]>([{ from: 'bot', text: 'Hi! I can find, compare and price homes for you. Describe what you want — city, area, BHK, budget.' }]);
+  const [msgs, setMsgs] = useState<Msg[]>([{ from: 'bot', text: 'Hi! Describe the home you want — city, area, BHK, budget — and I’ll turn it into a search. I’m a simple rule-based helper, not an AI.' }]);
   const [text, setText] = useState('');
   const [mode, setMode] = useState<'ask' | 'callback' | 'done'>('ask');
   const [busy, setBusy] = useState(false);
@@ -33,7 +34,7 @@ export default function ChatWidget({ whatsapp }: { whatsapp?: string }) {
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}${city ? `&city=${encodeURIComponent(city)}` : ''}`);
       const body = (await res.json()) as { url?: string; summary?: string[] };
       if (!body.url) throw new Error();
       add({ from: 'bot', text: `Here’s what I found for: ${body.summary?.join(' · ')}`, link: { href: body.url, label: 'See matching properties →' } });
@@ -67,7 +68,7 @@ export default function ChatWidget({ whatsapp }: { whatsapp?: string }) {
       {open && (
         <div className="flex h-[520px] max-h-[calc(100vh-7rem)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl" role="dialog" aria-label="Property assistant">
           <div className="flex items-center justify-between bg-neutral-900 px-4 py-3 text-white">
-            <div className="flex items-center gap-2"><span className="text-accent-400">✦</span><div><p className="font-semibold">Property assistant</p><p className="text-xs text-white/60">Finds homes from your description</p></div></div>
+            <div className="flex items-center gap-2"><span className="text-accent-400">✦</span><div><p className="font-semibold">Property assistant</p><p className="text-xs text-white/60">Rule-based search helper (not an AI model)</p></div></div>
             <button onClick={() => setOpen(false)} aria-label="Minimize" className="rounded-md px-2 py-1 hover:bg-white/10">—</button>
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto bg-neutral-50 p-3" aria-live="polite">
@@ -80,7 +81,7 @@ export default function ChatWidget({ whatsapp }: { whatsapp?: string }) {
             {msgs.length === 1 && (
               <div className="flex flex-wrap gap-2 pt-1">{QUICK.map((q) => <button key={q} onClick={() => ask(q)} className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:border-neutral-900">{q}</button>)}</div>
             )}
-            {busy && <p className="text-xs text-neutral-400">Thinking…</p>}
+            {busy && <p className="text-xs text-neutral-400">Searching…</p>}
             <div ref={end} />
           </div>
           {mode === 'callback' ? (
@@ -101,7 +102,7 @@ export default function ChatWidget({ whatsapp }: { whatsapp?: string }) {
       <div className="flex items-center gap-3">
         {hint && !open && (
           <div className="relative rounded-xl bg-white py-3 pl-4 pr-8 text-[15px] font-medium leading-snug text-neutral-900 shadow-xl">
-            Find, compare &amp; value<br />homes — just ask me
+            Describe a home —<br />I’ll turn it into a search
             <button onClick={closeHint} aria-label="Dismiss" className="absolute right-2 top-1.5 text-neutral-400 hover:text-neutral-900">×</button>
           </div>
         )}
