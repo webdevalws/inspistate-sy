@@ -17,6 +17,10 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `1-bhk`…`5-bhk` are accepted; `6-bhk`…`9-bhk` **301-redirect** to the same URL with `5-bhk` in their
   place, keeping the other segments and the query string (e.g. `/buy/mumbai/powai/7-bhk/apartment?sort=newest`
   → `/buy/mumbai/powai/5-bhk/apartment?sort=newest`). Any other `n-bhk` (e.g. `0-bhk`) is a 404.
+- **Clean URLs from the filter panel:** when filters change, `facetPath` (`src/lib/search.ts`) puts a
+  single locality, BHK or type in the path and the rest in the query string, e.g. Powai + 2 BHK +
+  Apartment → `/buy/mumbai/powai/2-bhk/apartment`; two localities → `?locality=a,b`. Query values the
+  panel doesn't own (e.g. `managed=1`) are kept; `page` resets.
 - **Free-text search (`?q=`):** when nothing in the search box's autocomplete matches, it submits
   `/{tab}/{city}?q=…`. The search page (and `/new-projects/{city}`) reads `q` with the Ask AI parser
   (`parseQuery` in `src/lib/nlsearch.ts`) — using the page's city, mode and path facets as defaults — and

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FILTER_KEYS, facetPath } from '../../lib/search';
 
 export interface FilterState {
   locality: string[];
@@ -35,11 +36,10 @@ export default function FilterPanel({ basePath, initial, isCommercial, localitie
 
   function apply(next: FilterState) {
     setF(next);
-    const q = new URLSearchParams();
+    // Keep query values this panel doesn't own (e.g. managed=1); locality, BHK and type go in the path
+    // when a single value is chosen (facetPath), so filtered pages keep clean, crawlable URLs.
+    const q = new URLSearchParams([...new URLSearchParams(window.location.search)].filter(([k]) => !FILTER_KEYS.includes(k)));
     const setList = (k: string, v: (string | number)[]) => v.length && q.set(k, v.join(','));
-    setList('locality', next.locality);
-    setList('bhk', next.bhk);
-    setList('type', next.type);
     setList('furnishing', next.furnishing);
     setList('postedBy', next.postedBy);
     setList('possession', next.possession);
@@ -51,8 +51,7 @@ export default function FilterPanel({ basePath, initial, isCommercial, localitie
     if (next.commercialPurpose) q.set('for', next.commercialPurpose);
     if (next.verified) q.set('verified', '1');
     if (next.sort && next.sort !== 'relevance') q.set('sort', next.sort);
-    const qs = q.toString();
-    window.location.href = basePath + (qs ? `?${qs}` : '');
+    window.location.href = facetPath(basePath, next, q);
   }
 
   const toggle = <K extends 'locality' | 'bhk' | 'type' | 'furnishing' | 'postedBy' | 'possession' | 'amenities'>(key: K, v: FilterState[K][number]) => {
