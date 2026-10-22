@@ -15,6 +15,7 @@ Landing page of benefits for women buyers: stamp duty concessions, loan rates, P
 
 ## How it works
 - `WOMEN_CONCESSIONS` is derived from `STAMP_DUTY`, so the page always matches the calculator.
+- The "Income tax deductions" card links to the Home Loan Tax Benefit tool (`/tools/tax-benefit`).
 
 ## Files
 - `src/pages/women-homebuyers.astro`

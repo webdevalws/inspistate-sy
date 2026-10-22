@@ -22,6 +22,9 @@ Analyses an uploaded floor plan: works out which compass direction each room sit
 - Rating points: Best 3, Good 2, Poor 1, Danger 0. Score = Σ points / (3 × scored rooms) × 100.
 - Detection: client downscales the image to ≤1600 px JPEG and POSTs base64 to `/api/tools/vastu-detect`, which calls Claude (`claude-opus-5-5`, server-side fallback enabled) with a JSON-schema output of `{is_floor_plan, north_arrow_degrees, rooms[{type, x, y, label_on_plan}]}`. North is snapped to 22.5°. Rejects non-plans and refusals; same-origin only; 10 calls per hashed IP per day (`ai_usage` table). Without `ANTHROPIC_API_KEY` it returns 503 and the user marks rooms manually.
 - Detection runs in the background while the user sets orientation and centre.
+- The daily count goes up before the Claude call. **Failures on our side give it back** (API or rate-limit
+  errors, a reply cut off at `max_tokens` → 502 "Detection was cut short…", or a reply that can't be
+  read). Refusals and "not a floor plan" answers still count, because those calls were made and billed.
 
 ## Files
 - `src/components/islands/VastuAnalyzer.tsx` — 5-step UI

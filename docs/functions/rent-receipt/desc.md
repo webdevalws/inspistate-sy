@@ -13,6 +13,8 @@ Printable monthly rent receipts for HRA claims.
 
 ## How it works
 - Iterates months between from/to; print CSS hides site chrome.
+- Landlord PAN is required when annual rent is above ₹1 lakh and must look like `ABCDE1234F`
+  (5 letters, 4 digits, 1 letter; case-insensitive), checked in the browser before the receipt is made.
 
 ## Files
 - `src/components/islands/MoreTools.tsx (RentReceipt)`

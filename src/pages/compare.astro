@@ -8,7 +8,8 @@ import { ratingsFor } from '../lib/community';
 import { formatNumber, formatPrice, formatRate } from '../lib/format';
 import { projectUrl } from '../lib/urls';
 
-const ids = (Astro.url.searchParams.get('ids') ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 3);
+// Unique ids only (ids=1,1,1 is one project), at most 3.
+const ids = [...new Set((Astro.url.searchParams.get('ids') ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 3);
 const refs = await getRefs();
 const found = await getProjectsByIds(ids);
 const projects = ids.map((id) => found.find((p) => p.id === id)).filter((p) => !!p);

@@ -12,7 +12,7 @@ const refs = await getRefs();
 const q = Astro.url.searchParams;
 const source = q.get('source') ?? '';
 const city = refs.cities.some((c) => c.slug === q.get('city')) ? q.get('city')! : '';
-const validSource = source === 'projects' || source in REVIEW_SERVICES ? source : '';
+const validSource = source === 'projects' || Object.hasOwn(REVIEW_SERVICES, source) ? source : '';
 const res = await listReviews({ source: validSource || undefined, city: city || undefined, page: Number(q.get('page')) || 1 });
 const counts = await reviewSourceCounts();
 const allCount = Object.values(counts).reduce((s, n) => s + n, 0);

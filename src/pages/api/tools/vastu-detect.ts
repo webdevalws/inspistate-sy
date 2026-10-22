@@ -58,6 +58,12 @@ export const POST: APIRoute = async ({ request, url, clientAddress }) => {
   const used = await env.DB.prepare(`INSERT INTO ai_usage (client, feature, day, count) VALUES (?, 'vastu', ?, 1)
     ON CONFLICT(client, feature, day) DO UPDATE SET count = count + 1 RETURNING count`).bind(client, day).first<number>('count');
   if ((used ?? 0) > DAILY_LIMIT) return Response.json({ error: 'Daily limit for automatic detection reached. Mark rooms manually or try tomorrow.' }, { status: 429 });
+  // Failures on our side (API errors, a cut-off or unreadable reply) give the use back. Refusals and
+  // "not a floor plan" still count: the call was made and paid for.
+  const failed = async (error: string, status: number) => {
+    await env.DB.prepare("UPDATE ai_usage SET count = count - 1 WHERE client = ? AND feature = 'vastu' AND day = ? AND count > 0").bind(client, day).run();
+    return Response.json({ error }, { status });
+  };
 
   const anthropic = new Anthropic({ apiKey });
   try {
@@ -77,6 +83,8 @@ export const POST: APIRoute = async ({ request, url, clientAddress }) => {
       }],
     });
     if (response.stop_reason === 'refusal') return Response.json({ error: 'This image could not be analysed. Mark rooms manually.' }, { status: 422 });
+    // A reply cut off at max_tokens is incomplete JSON; say so instead of a generic parse error.
+    if (response.stop_reason === 'max_tokens') return await failed('Detection was cut short on this plan. Try again or mark rooms manually.', 502);
     const text = response.content.find((b) => b.type === 'text');
     if (!text || text.type !== 'text') throw new Error('No output');
     const parsed = JSON.parse(text.text) as { is_floor_plan: boolean; north_arrow_degrees: number | null; rooms: { type: string; x: number; y: number; label_on_plan: string }[] };
@@ -87,8 +95,8 @@ export const POST: APIRoute = async ({ request, url, clientAddress }) => {
       rooms: parsed.rooms.filter((r) => (ROOM_TYPES as string[]).includes(r.type)).map((r) => ({ type: r.type, x: clamp(r.x), y: clamp(r.y), labelOnPlan: r.label_on_plan })),
     });
   } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) return Response.json({ error: 'Detection is busy right now. Try again in a minute or mark rooms manually.' }, { status: 503 });
-    if (err instanceof Anthropic.APIError) return Response.json({ error: 'Detection failed. Mark rooms manually.' }, { status: 502 });
-    return Response.json({ error: 'Could not read the detection result. Mark rooms manually.' }, { status: 502 });
+    if (err instanceof Anthropic.RateLimitError) return await failed('Detection is busy right now. Try again in a minute or mark rooms manually.', 503);
+    if (err instanceof Anthropic.APIError) return await failed('Detection failed. Mark rooms manually.', 502);
+    return await failed('Could not read the detection result. Mark rooms manually.', 502);
   }
 };

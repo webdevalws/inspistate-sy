@@ -159,7 +159,7 @@ export function RentReceipt() {
   async function generate() {
     setErr('');
     if (!ready) return setErr('Fill in tenant, landlord, address and rent.');
-    if (f.rent * 12 > 100000 && !/^[A-Z]{5}d{4}[A-Z]$/i.test(f.pan)) return setErr('Annual rent is above ₹1 lakh — enter the landlord PAN for HRA claims.');
+    if (f.rent * 12 > 100000 && !/^[A-Z]{5}\d{4}[A-Z]$/i.test(f.pan)) return setErr('Annual rent is above ₹1 lakh — enter the landlord PAN for HRA claims.');
     try {
       await submitOrder({ kind: 'rent-receipt', name: f.tenant, phone: f.mobile, email: f.email, consent, details: { receipt: { landlord: f.landlord, address: f.address, rent: f.rent, from: f.from, to: f.to, months: months.length } } });
       setGenerated(true);

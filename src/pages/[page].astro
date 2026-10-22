@@ -11,7 +11,7 @@ const PAGES: Record<string, Page> = {
     intro: 'InspiState helps people across India find, compare and move into the right home — with honest prices, verified listings and RERA details up front.',
     sections: [
       ['What we do', 'We bring together resale and rental listings, new projects from developers, locality price data and the services you need after you find a home — loans, interiors, legal checks and moving.'],
-      ['How we keep listings honest', 'Owner listings are reviewed before they go live. Listings marked “Verified” have had ownership documents and photos checked. Every project page shows its RERA number so you can confirm it with the state authority.'],
+      ['How we keep listings honest', 'Owner listings are reviewed before they go live. Listings marked “Verified” have been reviewed and approved by our team before going live. Every project page shows its RERA number so you can confirm it with the state authority.'],
       ['Our data', 'Property rates, heatmaps and locality guides are calculated from active listings on InspiState and refreshed continuously.'],
     ],
   },
@@ -127,11 +127,12 @@ const PAGES: Record<string, Page> = {
 };
 
 const key = Astro.params.page as string;
-const page = PAGES[key];
+// Object.hasOwn, not PAGES[key] alone: "/constructor" or "/toString" must be a 404, not a crash.
+const page = Object.hasOwn(PAGES, key) ? PAGES[key] : undefined;
 if (!page) return new Response(null, { status: 404 });
 const faq = [
   { q: 'Is posting a property free?', a: 'Yes. Owners can list properties for free. Listings are reviewed within 24 hours before they go live.' },
-  { q: 'What does “Verified” mean?', a: 'Our team has checked ownership documents and photos for that listing.' },
+  { q: 'What does “Verified” mean?', a: 'The listing has been reviewed and approved by our team before going live.' },
   { q: 'How do I log in?', a: 'Enter your mobile number and the one-time code we send. No password needed.' },
   { q: 'Are the price estimates accurate?', a: 'Rates and valuations are averages of asking prices on InspiState and are meant as a guide. Final prices depend on the specific property.' },
   { q: 'How do I save a search?', a: 'Log in, run a search and tap “Save search”. You’ll find it under My account.' },
