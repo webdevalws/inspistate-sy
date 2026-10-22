@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseQuery } from '../../lib/nlsearch';
 import { uncoveredCityIn } from '../../data/indian-cities';
 import type { City, Locality } from '../../data/types';
@@ -48,6 +48,16 @@ export default function SearchBox({ cities, localities, projects, builders, init
   // A place we don't cover: "near me" found no locality within 60 km (the nearest city we cover is offered
   // instead), or the typed text named a city we're not in yet. Shown with links to all our cities.
   const [cover, setCover] = useState<{ kind: 'far'; slug: string; name: string; km: number } | { kind: 'city'; name: string } | null>(null);
+  // Results of a search or "near me" that don't navigate must be seen: bring them into view (below the
+  // sticky header) and move focus to the "not covered" box so keyboard and screen-reader users land on it.
+  const coverBox = useRef<HTMLDivElement>(null);
+  const noteBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = cover ? coverBox.current : note ? noteBox.current : null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (cover) el.focus({ preventScroll: true });
+  }, [cover, note]);
   const input = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -241,13 +251,13 @@ export default function SearchBox({ cities, localities, projects, builders, init
         </button>
       </form>
       {note && (
-        <div className={`mt-2.5 inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
+        <div ref={noteBox} className={`mt-2.5 inline-flex scroll-mt-28 items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
           <span>ℹ</span>
           <span>{note}</span>
         </div>
       )}
       {cover && (
-        <div className={`mt-2.5 rounded-xl px-3.5 py-2 text-xs font-medium ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'bg-slate-100 text-slate-600'}`} role="status">
+        <div ref={coverBox} tabIndex={-1} className={`mt-2.5 scroll-mt-28 rounded-xl px-3.5 py-2 text-xs font-medium outline-none ${hero ? 'bg-brand-950/70 text-amber-200 backdrop-blur-md border border-white/10' : 'border border-amber-300 bg-amber-50 text-amber-900'}`} role="status">
           {cover.kind === 'far' ? (
             <p>
               <span>ℹ </span>We don’t cover your area yet. Nearest city: {cover.name} (~{cover.km.toLocaleString('en-IN')} km).{' '}

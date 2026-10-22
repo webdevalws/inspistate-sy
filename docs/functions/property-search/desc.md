@@ -48,6 +48,11 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   Nearest city: {City} (~{N} km). View homes in {City} →" plus links to all our cities, for the current
   tab. Permission refused → "Location permission was denied."; timeout or position unavailable →
   "Couldn't get your location. Try again or pick a city." Needs `localhost` or https.
+- **Notes under the search box** behave the same on the home hero and the search-page bar: they appear
+  right under the search bar, are scrolled into view (clear of the sticky header), and the "not covered"
+  box (near me outside our cities, or a typed city we don't cover) also takes keyboard focus. On the bar it
+  uses the site's amber callout style (`border-amber-300 bg-amber-50 text-amber-900`) so it stands out
+  on the light page; on the hero it keeps the dark amber style.
 - **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/lucknow`, `/rent/…`,
   `/commercial/…`, `/new-projects/…`, `/city/…`, `/property-rates/…`, `/heatmap/…`, `/managed-rentals/…`,
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
