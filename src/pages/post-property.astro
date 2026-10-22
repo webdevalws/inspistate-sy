@@ -2,20 +2,42 @@
 import Base from '../layouts/Base.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import PostPropertyForm from '../components/islands/PostPropertyForm';
-import { getRefs } from '../lib/repo';
+import { getOwnedListing, getRefs } from '../lib/repo';
 import { listingAllowance } from '../lib/accounts';
 
 const refs = await getRefs();
 const user = Astro.locals.user;
 const allowance = await listingAllowance(user);
 const cities = refs.cities.map((c) => ({ slug: c.slug, name: c.name, localities: refs.localitiesOf(c.slug).map((l) => ({ slug: l.slug, name: l.name })) }));
+
+// Edit mode (?edit=<id>): the owner edits text, price and details of their own open listing; photos stay as they are.
+const editParam = Astro.url.searchParams.get('edit');
+let edit: { id: number; values: Record<string, string> } | null = null;
+if (editParam !== null) {
+  if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(`/post-property?edit=${editParam}`)}`);
+  const l = await getOwnedListing(Number(editParam));
+  if (!l || l.user_id !== user.id || l.closed) return new Response(null, { status: 404 });
+  edit = {
+    id: l.id,
+    values: {
+      purpose: l.purpose === 'buy' ? 'Sell' : 'Rent out', segment: l.segment === 'commercial' ? 'Commercial' : 'Residential', type: l.type,
+      city: l.city_slug, locality: l.locality_slug, bhk: String(l.bhk || 2), area: String(l.area_sqft), price: String(l.price),
+      furnishing: l.furnishing, description: l.description ?? '', name: l.contact_name, phone: l.contact_phone ?? '',
+    },
+  };
+}
 ---
-<Base title="Post Your Property Free" description="List your property for sale or rent for free and reach verified buyers and tenants.">
+<Base title={edit ? `Edit listing #${edit.id}` : 'Post Your Property Free'} description="List your property for sale or rent for free and reach verified buyers and tenants." noindex={!!edit}>
   <div class="container-x grid max-w-5xl gap-8 py-6 lg:grid-cols-[1fr_300px]">
     <div>
-      <Breadcrumbs items={[{ label: 'Post Property' }]} />
-      <h1 class="mb-6 mt-3 text-2xl font-extrabold sm:text-3xl">Post your property — free</h1>
-      {allowance.canPost ? (
+      <Breadcrumbs items={edit ? [{ label: 'My account', href: '/account#listings' }, { label: `Edit listing #${edit.id}` }] : [{ label: 'Post Property' }]} />
+      <h1 class="mb-6 mt-3 text-2xl font-extrabold sm:text-3xl">{edit ? `Edit listing #${edit.id}` : 'Post your property — free'}</h1>
+      {edit ? (
+        <>
+          <p class="mb-5 border-[0.5px] border-[#1C1A17]/15 bg-sand-100 px-4 py-3 text-sm">Saving your changes sends the listing back for review before it shows in search again. Photos can’t be changed here yet.</p>
+          <PostPropertyForm client:load cities={cities} edit={edit} />
+        </>
+      ) : allowance.canPost ? (
         <>
           {allowance.limit !== null && <p class="mb-5 border-[0.5px] border-[#1C1A17]/15 bg-sand-100 px-4 py-3 text-sm">You have <b>{allowance.limit - allowance.used} of {allowance.limit}</b> free listings left on your {user?.role === 'agent' ? 'Agent' : 'Seller'} account.{user?.role === 'agent' && <> <a href="/account/plans" class="font-semibold underline">Go unlimited</a></>}</p>}
           <PostPropertyForm client:load cities={cities} />

@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react';
 
-interface Props { cities: { slug: string; name: string; localities: { slug: string; name: string }[] }[] }
+interface Props {
+  cities: { slug: string; name: string; localities: { slug: string; name: string }[] }[];
+  /** Edit an existing listing: prefilled values, no photo step, saved to /api/account/listings/[id]. */
+  edit?: { id: number; values: Record<string, string> };
+}
 
-const STEPS = ['Basics', 'Location', 'Details', 'Photos', 'Contact'];
+const ALL_STEPS = ['Basics', 'Location', 'Details', 'Photos', 'Contact'];
 const MAX_PHOTOS = 8;
 const MAX_BYTES = 5 * 1024 * 1024;
+const BLANK = { purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: '', locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '' };
 
-export default function PostPropertyForm({ cities }: Props) {
+export default function PostPropertyForm({ cities, edit }: Props) {
+  const STEPS = edit ? ALL_STEPS.filter((s) => s !== 'Photos') : ALL_STEPS;
   const [step, setStep] = useState(0);
+  const at = STEPS[step];
   const [status, setStatus] = useState<'editing' | 'sending' | 'done'>('editing');
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ id: number; previewUrl: string } | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [data, setData] = useState({ purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: cities[0].slug, locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '' });
+  const [data, setData] = useState({ ...BLANK, city: cities[0].slug, ...(edit?.values ?? {}) });
   const set = (k: keyof typeof data) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setData({ ...data, [k]: e.target.value });
   const localities = cities.find((c) => c.slug === data.city)?.localities ?? [];
 
@@ -40,9 +47,10 @@ export default function PostPropertyForm({ cities }: Props) {
     fd.set('purpose', data.purpose === 'Sell' ? 'buy' : 'rent');
     fd.set('segment', data.segment.toLowerCase());
     for (const k of ['type', 'city', 'locality', 'bhk', 'area', 'price', 'furnishing', 'description', 'name', 'phone'] as const) fd.set(k, data[k]);
-    photos.forEach((p) => fd.append('photos', p));
+    if (edit) fd.set('action', 'edit');
+    else photos.forEach((p) => fd.append('photos', p));
     try {
-      const res = await fetch('/api/listings', { method: 'POST', body: fd });
+      const res = await fetch(edit ? `/api/account/listings/${edit.id}` : '/api/listings', { method: 'POST', body: fd });
       const body = (await res.json()) as { id: number; previewUrl: string; error?: string };
       if (!res.ok) throw new Error(body.error ?? 'Something went wrong');
       setResult(body);
@@ -57,9 +65,10 @@ export default function PostPropertyForm({ cities }: Props) {
     return (
       <div className="card p-10 text-center">
         <p className="text-4xl">🎉</p>
-        <p className="mt-2 text-lg font-bold">Listing #{result.id} submitted for review</p>
-        <p className="mt-1 text-sm text-slate-500">Our team verifies new listings within 24 hours. Save this link to see your listing while it's under review:</p>
+        <p className="mt-2 text-lg font-bold">Listing #{result.id} {edit ? 'updated and sent for review' : 'submitted for review'}</p>
+        <p className="mt-1 text-sm text-slate-500">Our team verifies {edit ? 'changed' : 'new'} listings within 24 hours. Save this link to see your listing while it's under review:</p>
         <a href={result.previewUrl} className="btn-primary mt-4">View my listing</a>
+        {edit && <a href="/account#listings" className="btn-ghost mt-4 ml-2">Back to my listings</a>}
       </div>
     );
 
@@ -90,20 +99,20 @@ export default function PostPropertyForm({ cities }: Props) {
       </ol>
 
       <div className="space-y-5">
-        {step === 0 && (
+        {at === 'Basics' && (
           <>
             <div><p className="mb-2 text-sm font-medium">I want to</p><Choice field="purpose" options={['Sell', 'Rent out']} /></div>
             <div><p className="mb-2 text-sm font-medium">Property category</p><Choice field="segment" options={['Residential', 'Commercial']} /></div>
             <div><p className="mb-2 text-sm font-medium">Property type</p><Choice field="type" options={data.segment === 'Residential' ? ['Apartment', 'Builder Floor', 'Villa', 'Plot'] : ['Office', 'Shop']} /></div>
           </>
         )}
-        {step === 1 && (
+        {at === 'Location' && (
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium">City<select className="input mt-1" value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, locality: '' })}>{cities.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></label>
             <label className="text-sm font-medium">Locality<select required className="input mt-1" value={data.locality} onChange={set('locality')}><option value="">Select</option>{localities.map((l) => <option key={l.slug} value={l.slug}>{l.name}</option>)}</select></label>
           </div>
         )}
-        {step === 2 && (
+        {at === 'Details' && (
           <div className="grid gap-4 sm:grid-cols-2">
             {data.segment === 'Residential' && data.type !== 'Plot' && (
               <label className="text-sm font-medium">BHK<select className="input mt-1" value={data.bhk} onChange={set('bhk')}>{['1', '2', '3', '4', '5'].map((b) => <option key={b}>{b}</option>)}</select></label>
@@ -116,7 +125,7 @@ export default function PostPropertyForm({ cities }: Props) {
             <label className="text-sm font-medium sm:col-span-2">Description (optional)<textarea maxLength={2000} rows={4} className="input mt-1" value={data.description} onChange={set('description')} placeholder="What makes your property special? Nearby schools, view, parking…" /></label>
           </div>
         )}
-        {step === 3 && (
+        {at === 'Photos' && (
           <div>
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 hover:border-brand-400 hover:bg-brand-50/40">
               <span className="text-2xl">📷</span>
@@ -138,7 +147,7 @@ export default function PostPropertyForm({ cities }: Props) {
             <p className="mt-3 text-xs text-slate-500">Listings with photos get far more enquiries. You can skip this step.</p>
           </div>
         )}
-        {step === 4 && (
+        {at === 'Contact' && (
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium">Your name<input required maxLength={100} className="input mt-1" value={data.name} onChange={set('name')} /></label>
             <label className="text-sm font-medium">Mobile number<input required pattern="[6-9][0-9]{9}" title="10-digit Indian mobile number" className="input mt-1" value={data.phone} onChange={set('phone')} inputMode="tel" /></label>
@@ -151,7 +160,7 @@ export default function PostPropertyForm({ cities }: Props) {
       <div className="mt-8 flex justify-between">
         <button type="button" onClick={() => setStep(step - 1)} disabled={step === 0} className="btn-ghost disabled:invisible">Back</button>
         <button className="btn-primary" disabled={status === 'sending'}>
-          {step === STEPS.length - 1 ? (status === 'sending' ? 'Submitting…' : 'Submit listing') : 'Continue'}
+          {step === STEPS.length - 1 ? (status === 'sending' ? (edit ? 'Saving…' : 'Submitting…') : edit ? 'Save changes' : 'Submit listing') : 'Continue'}
         </button>
       </div>
     </form>

@@ -26,7 +26,8 @@ accounts that already have a role). Agents must give an agency / firm name when 
 - `subscriptions` rows: `requested` → `active` (starts now, ends after the plan's months) or `cancelled`.
 
 ## How it works
-- `listingAllowance(user)` (`src/lib/accounts.ts`) counts `active` + `pending` listings against
+- `listingAllowance(user)` (`src/lib/accounts.ts`) counts open (`closed IS NULL`) `active` + `pending`
+  listings — sold, rented and deleted ones free their slot (see `docs/functions/post-property/desc.md`) — against
   `FREE_LISTINGS[role]`; an active, unexpired plan makes the limit unlimited.
   `/api/listings` enforces it server-side (login required) and records `posted_by` = Agent / Owner.
 - **The plan belongs to the account, not the current role:** `hasPlan` is true whenever the account has
