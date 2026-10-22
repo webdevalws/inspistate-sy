@@ -13,6 +13,10 @@ Filtered, sorted, paginated listings with SEO facet URLs.
 
 ## How it works
 - SQL WHERE built from filters (amenities via json_each); 12 per page.
+- **BHK:** options are 1–4 BHK and **5+ BHK** (`5-bhk` / `bhk=5` means `bhk >= 5`). Path segments
+  `1-bhk`…`5-bhk` are accepted; `6-bhk`…`9-bhk` **301-redirect** to the same URL with `5-bhk` in their
+  place, keeping the other segments and the query string (e.g. `/buy/mumbai/powai/7-bhk/apartment?sort=newest`
+  → `/buy/mumbai/powai/5-bhk/apartment?sort=newest`). Any other `n-bhk` (e.g. `0-bhk`) is a 404.
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

@@ -11,7 +11,7 @@ import SearchBox from '../../../components/islands/SearchBox';
 import SaveSearch from '../../../components/islands/SaveSearch';
 import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
-import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, parseFacets, parseFilters, type Mode } from '../../../lib/search';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
 import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
 
@@ -23,7 +23,11 @@ if (!city) return new Response(null, { status: 404 });
 const m = mode as Mode;
 
 const localities = refs.localitiesOf(city.slug);
-const facetFilters = parseFacets(facets ? facets.split('/') : [], localities);
+const segments = facets ? facets.split('/') : [];
+// 6–9 BHK URLs have no option of their own: send them (301) to the "5+ BHK" URL, keeping everything else.
+const folded = foldBhkSegments(segments);
+if (folded) return Astro.redirect(`${searchUrl(m, city.slug, ...folded)}${Astro.url.search}`, 301);
+const facetFilters = parseFacets(segments, localities);
 if (!facetFilters) return new Response(null, { status: 404 });
 const filters = parseFilters(Astro.url, facetFilters);
 

@@ -44,11 +44,23 @@ const TYPE_SLUGS: Record<string, PropertyType> = {
   apartment: 'Apartment', 'builder-floor': 'Builder Floor', villa: 'Villa', plot: 'Plot', office: 'Office', shop: 'Shop',
 };
 
-/** Facet path segments give crawlable URLs: /buy/mumbai/powai/2-bhk/apartment */
+const OVER_5_BHK = /^[6-9]-bhk$/;
+
+/**
+ * "5-bhk" is the top BHK option and means 5 BHK and above, so 6–9 BHK path segments are folded into it.
+ * Returns the corrected segments (for a 301), or null when nothing needs changing.
+ */
+export function foldBhkSegments(segments: string[]): string[] | null {
+  if (!segments.some((s) => OVER_5_BHK.test(s))) return null;
+  const out = segments.map((s) => (OVER_5_BHK.test(s) ? '5-bhk' : s));
+  return out.filter((s, i) => s !== '5-bhk' || out.indexOf(s) === i);
+}
+
+/** Facet path segments give crawlable URLs: /buy/mumbai/powai/2-bhk/apartment ("5-bhk" = 5 and above). */
 export function parseFacets(segments: string[], localities: Locality[]) {
   const out: Pick<Filters, 'locality' | 'bhk' | 'type'> = { locality: [], bhk: [], type: [] };
   for (const s of segments) {
-    const bhk = s.match(/^(\d)-bhk$/);
+    const bhk = s.match(/^([1-5])-bhk$/);
     if (bhk) out.bhk.push(Number(bhk[1]));
     else if (TYPE_SLUGS[s]) out.type.push(TYPE_SLUGS[s]);
     else if (localities.some((l) => l.slug === s)) out.locality.push(s);
