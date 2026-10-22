@@ -80,7 +80,7 @@ const faq = [
   { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${t.key} (${t.count})`).join(', ') + '.' },
   { q: `Which are the top localities in ${city.name}?`, a: `${[...localities].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 4).map((l) => l.name).join(', ')} have seen the strongest price growth on InspiState.` },
   { q: `Which developers have projects in ${city.name}?`, a: developers.length ? `${developers.map((d) => d.name).join(', ')}.` : 'No developer projects are listed yet.' },
-  { q: 'Are the listings verified?', a: 'Listings marked “Verified” have had ownership documents and photos checked by our team. Use the “Verified listings only” filter to see just those.' },
+  { q: 'Are the listings verified?', a: 'Listings marked “Verified” have been reviewed and approved by our team before going live. Use the “Verified listings only” filter to see just those.' },
 ];
 ---
 <Base title={`${heading} — ${formatNumber(total)} listings`} description={`Browse ${plural(total, 'listing')} — ${heading.toLowerCase()}. Filter by budget, BHK, locality, furnishing, amenities and possession. Verified photos and prices on InspiState.`}>

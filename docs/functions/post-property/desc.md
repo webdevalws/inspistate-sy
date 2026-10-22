@@ -14,6 +14,10 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
 ## How it works
 - Server validates fields and image magic bytes; photos stored in R2; status pending until admin approves.
 - `listingAllowance` gates both the page (login / register / switch-role / limit-reached panels) and `/api/listings`; `posted_by` is Agent for agents, Owner otherwise.
+- **"Verified" means reviewed and approved by our team before going live.** Approving a listing in
+  `/admin` sets `verified = 1` (`setListingStatus` in `src/lib/repo.ts`); no separate document check exists
+  yet. The search FAQ, the company FAQ and the About page say exactly this. (A separate document
+  verification step is planned later.)
 
 ## Files
 - `src/components/islands/PostPropertyForm.tsx`
