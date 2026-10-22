@@ -6,16 +6,13 @@ import { parseListingFields } from '../../../../lib/listing-form';
 // (plain form posts from /account, answered with a redirect). Only the listing's owner may act; admins
 // moderate through /api/admin/listings/[id]. Cross-origin POSTs are rejected by middleware.
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
+  // Read the body before any early return: the local dev runtime fails the next request when a
+  // response is sent with the request body still unread.
+  const form = await request.formData().catch(() => null);
   if (!locals.user) return Response.json({ error: 'Log in to manage your listings.' }, { status: 401 });
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) return Response.json({ error: 'Unknown listing' }, { status: 404 });
-
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return Response.json({ error: 'Expected form data' }, { status: 400 });
-  }
+  if (!form) return Response.json({ error: 'Expected form data' }, { status: 400 });
   const action = String(form.get('action') ?? '');
 
   const listing = await getOwnedListing(id);
