@@ -1,10 +1,10 @@
-// Major Indian cities InspiState does not cover yet. Used to answer a typed city name ("lucknow") with
-// "We're not in Lucknow yet" instead of quietly searching another city. Our own cities live in the
-// `cities` table; don't list them here.
+// Major Indian cities InspiState does not cover yet. Used to answer a typed city name ("jaipur") with
+// "We're not in Jaipur yet" instead of quietly searching another city. Our own cities live in the
+// `cities` table; don't list them here (when a city is added to the site, remove it from this list).
 export const UNCOVERED_CITIES = [
   'Ahmedabad', 'Agra', 'Allahabad', 'Amritsar', 'Aurangabad', 'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Coimbatore',
   'Dehradun', 'Faridabad', 'Ghaziabad', 'Goa', 'Guwahati', 'Gwalior', 'Indore', 'Jabalpur', 'Jaipur', 'Jalandhar',
-  'Jammu', 'Jodhpur', 'Kanpur', 'Kochi', 'Kota', 'Kozhikode', 'Lucknow', 'Ludhiana', 'Madurai', 'Mangaluru',
+  'Jammu', 'Jodhpur', 'Kanpur', 'Kochi', 'Kota', 'Kozhikode', 'Ludhiana', 'Madurai', 'Mangaluru',
   'Meerut', 'Mohali', 'Mysuru', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Panchkula', 'Patna', 'Prayagraj', 'Puducherry',
   'Raipur', 'Rajkot', 'Ranchi', 'Shimla', 'Srinagar', 'Surat', 'Thiruvananthapuram', 'Tiruchirappalli', 'Udaipur',
   'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',

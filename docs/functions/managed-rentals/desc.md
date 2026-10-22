@@ -18,7 +18,8 @@ Owner-managed rental homes with zero brokerage and a one-month deposit; filters 
 - Listings gain `managed`, `deposit_months`, `available_from` (migration 0008).
 - **Demo data:** `db/build-seed.ts` writes these columns into `db/seed.sql` — every residential rental
   whose id is divisible by 3 gets `managed = 1`, `deposit_months = 1` and `available_from` = posting date
-  + 7 days (86 of the 800 demo listings); all others `managed = 0`, `deposit_months = 2`. Migration 0008
+  + 7 days (86 of the 804 demo listings; Lucknow's two sample rentals are not managed); all others
+  `managed = 0`, `deposit_months = 2`. Migration 0008
   applies the same rule only to rows that exist when it runs; on a fresh `npm run db:reset:local` the
   migrations run before any listings exist, so the seed is what fills `/managed-rentals/{city}`.
   (0008's comment "also re-applied by db/seed.sql" was only true from this change on.)

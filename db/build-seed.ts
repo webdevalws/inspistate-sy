@@ -1,7 +1,7 @@
 // Generates db/seed.sql from the deterministic demo data.
 // Run: node db/build-seed.ts   (Node 22.18+/24 strips TypeScript types natively)
 import { writeFileSync } from 'node:fs';
-import { builders, cities, listings, localities, projects } from './seed-data.ts';
+import { builders, cities, extraListings, listings, localities, projects } from './seed-data.ts';
 
 const q = (v: unknown): string => {
   if (v === null || v === undefined) return 'NULL';
@@ -23,6 +23,15 @@ const insert = (table: string, cols: string[], rows: unknown[][]) => {
 
 const now = Date.now();
 const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+const LISTING_COLS = ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at', 'managed', 'deposit_months', 'available_from'];
+const listingRow = (l: (typeof listings)[number]) => {
+  // Managed rentals (same rule as migration 0008): every third residential rental, one-month
+  // deposit, available a week after posting. Kept here because a reset re-inserts all listings.
+  const managed = l.purpose === 'rent' && l.segment === 'residential' && l.id % 3 === 0;
+  return [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo),
+    managed ? 1 : 0, managed ? 1 : 2, managed ? iso(l.postedDaysAgo - 7).slice(0, 10) : null];
+};
 
 // Separate deterministic stream for the extra demo tables.
 let s = 977;
@@ -82,15 +91,9 @@ const out = [
     })),
   insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'],
     projects.flatMap((p) => p.units.map((u) => [p.id, u.bhk, u.label, u.carpetSqft, u.price]))),
-  insert('listings',
-    ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at', 'managed', 'deposit_months', 'available_from'],
-    listings.map((l) => {
-      // Managed rentals (same rule as migration 0008): every third residential rental, one-month
-      // deposit, available a week after posting. Kept here because a reset re-inserts all listings.
-      const managed = l.purpose === 'rent' && l.segment === 'residential' && l.id % 3 === 0;
-      return [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo),
-        managed ? 1 : 0, managed ? 1 : 2, managed ? iso(l.postedDaysAgo - 7).slice(0, 10) : null];
-    })),
+  insert('listings', LISTING_COLS, listings.map(listingRow)),
+  // Hand-written sample listings (Lucknow), with a description; a separate insert keeps the generated rows above unchanged.
+  insert('listings', [...LISTING_COLS, 'description'], extraListings.map((l) => [...listingRow(l), l.description])),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], transactions),
   insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], reviews),
   insert('forum_questions', ['id', 'author', 'city_slug', 'title', 'body', 'created_at'], forum.map(([a, c, t, b], i) => [i + 1, a, c, t, b, iso(40 - i * 7)])),
@@ -98,4 +101,4 @@ const out = [
 ].join('\n');
 
 writeFileSync(new URL('./seed.sql', import.meta.url), out);
-console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length} projects, ${listings.length} listings`);
+console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length} projects, ${listings.length + extraListings.length} listings`);

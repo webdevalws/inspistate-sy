@@ -24,8 +24,8 @@ Filtered, sorted, paginated listings with SEO facet URLs.
 - **Search box (home hero and the search-page bar, `SearchBox.tsx`) — what pressing Search does:**
   1. Empty box → the chosen tab and city (`/buy/mumbai`).
   2. An autocomplete match (locality, project, builder) → its page, e.g. "powai" → `/buy/mumbai/powai`.
-  3. A major Indian city we don't cover (`src/data/indian-cities.ts`, e.g. Lucknow, Jaipur, "mysore") →
-     **no navigation**; the note under the box says "We're not in Lucknow yet. Pick one of our cities:" with
+  3. A major Indian city we don't cover (`src/data/indian-cities.ts`, e.g. Jaipur, Kanpur, "mysore") →
+     **no navigation**; the note under the box says "We're not in Jaipur yet. Pick one of our cities:" with
      links to all our cities (same box as the near-me note). It never quietly shows another city.
   4. Otherwise the text is read with the Ask AI parser (`parseQuery`, using the chosen city and tab as
      defaults). If it understood something (`matched`: one of our cities or localities, buy/rent/office/new
@@ -53,11 +53,16 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   box (near me outside our cities, or a typed city we don't cover) also takes keyboard focus. On the bar it
   uses the site's amber callout style (`border-amber-300 bg-amber-50 text-amber-900`) so it stands out
   on the light page; on the hero it keeps the dark amber style.
-- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/lucknow`, `/rent/…`,
+- **Cities we don't cover:** an unknown city in a city-scoped URL (`/buy/jaipur`, `/rent/…`,
   `/commercial/…`, `/new-projects/…`, `/city/…`, `/property-rates/…`, `/heatmap/…`, `/managed-rentals/…`,
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
-  Lucknow yet" with links to the same section for our cities (city hub for the locality pages). Any
+  Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
+- **Cities:** 11 — the ten original demo cities plus **Lucknow** (sample data: 5 localities, 4 listings, no
+  projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer, home city strip and
+  "Popular cities", search box city menu, "Our cities" links, the 404 page, near me) reads the `cities`
+  table, so a new city appears everywhere automatically. The home page's market-insight and locality tabs
+  show the first 8 cities only.
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

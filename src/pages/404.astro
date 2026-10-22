@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { getRefs } from '../lib/repo';
 
-// City-scoped sections. A URL like /buy/lucknow (a city we don't cover) still answers 404, but says so
+// City-scoped sections. A URL like /buy/jaipur (a city we don't cover) still answers 404, but says so
 // in plain words and links to the same section for the cities we do cover.
 const SECTIONS = ['buy', 'rent', 'commercial', 'new-projects', 'city', 'property-rates', 'heatmap', 'managed-rentals', 'localities', 'locality'];
 const NEEDS_MORE = ['localities', 'locality']; // these need more than a city, so link to the city hub instead
