@@ -10,7 +10,7 @@ One page per city that links into everything we have for it: search, localities,
 
 ## Outputs
 - Hero with Buy / Rent / New Projects / Commercial tiles
-- Trending searches, localities table, top projects (6, with "View all N projects →")
+- Trending searches, localities table, top projects (6, with "View all N projects →"), top builders
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
@@ -27,6 +27,9 @@ One page per city that links into everything we have for it: search, localities,
   in `src/lib/urls.ts`); the Buy and Rent links show only when that locality has listings for sale / rent.
 - **Top projects:** the first 6 of the city's projects as `ProjectCard`s; when there are more than 6, a
   "View all N projects →" link goes to `/new-projects/{city}`. Hidden when the city has no projects.
+- **Top builders:** up to 4 developers with projects in the city (most projects first, then most delivered),
+  counted from the projects the page already loads, shown with the `/builders` card markup and linking to
+  `/builders/{slug}`. Hidden when the city has no projects.
 
 ## Files
 - `src/pages/city/[city].astro`

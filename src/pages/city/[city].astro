@@ -5,7 +5,7 @@ import ProjectCard from '../../components/ProjectCard.astro';
 import ChatWidget from '../../components/islands/ChatWidget';
 import { cityFacets, cityStats, getProjects, getRefs } from '../../lib/repo';
 import { formatNumber, formatRate } from '../../lib/format';
-import { localityUrl, searchUrl } from '../../lib/urls';
+import { builderUrl, localityUrl, searchUrl } from '../../lib/urls';
 
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
@@ -25,6 +25,12 @@ const trending = [
   { label: 'Homes under ₹50 L', n: facets.count({ ...homes, purpose: 'buy', band: 0 }), href: `${searchUrl('buy', city.slug)}?priceMax=5000000` },
   { label: 'Flats for rent', n: facets.count({ ...homes, purpose: 'rent', type: 'Apartment' }), href: searchUrl('rent', city.slug, 'apartment') },
 ].filter((t) => t.n > 0);
+// Top builders: developers with projects in this city, most projects first (from the projects already loaded).
+const perBuilder = new Map<string, number>();
+for (const p of projects) perBuilder.set(p.builderSlug, (perBuilder.get(p.builderSlug) ?? 0) + 1);
+const builders = [...perBuilder]
+  .map(([slug, n]) => ({ b: refs.builder(slug), n }))
+  .filter((x) => !!x.b).sort((a, b) => b.n - a.n || b.b!.delivered - a.b!.delivered).slice(0, 4);
 const links = [
   { label: 'Buy', sub: `${formatNumber(stats.forSale)} homes for sale`, href: searchUrl('buy', city.slug) },
   { label: 'Rent', sub: `${formatNumber(stats.forRent)} homes for rent`, href: searchUrl('rent', city.slug) },
@@ -91,6 +97,29 @@ const links = [
           {projects.length > 6 && <a href={`/new-projects/${city.slug}`} class="text-sm font-semibold text-brand-700 hover:underline">View all {projects.length} projects →</a>}
         </div>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.slice(0, 6).map((p) => <ProjectCard project={p} />)}</div>
+      </section>
+    )}
+
+    {builders.length > 0 && (
+      <section class="mt-12">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <h2 class="section-title">Top builders in {city.name}</h2>
+          <a href="/builders" class="text-sm font-semibold text-brand-700 hover:underline">All builders →</a>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {builders.map(({ b, n }) => (
+            <a href={builderUrl(b!.slug)} class="card p-5 transition hover:border-brand-300 hover:shadow-md">
+              <div class="grid h-14 w-14 place-items-center rounded-2xl text-lg font-extrabold text-white" style={`background:hsl(${b!.hue} 40% 42%)`}>{b!.name.split(' ').map((w) => w[0]).join('')}</div>
+              <p class="mt-4 text-lg font-bold">{b!.name}</p>
+              <p class="text-sm text-slate-500">Est. {b!.founded} · {b!.hq}</p>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{b!.delivered}</b>Delivered</div>
+                <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{b!.ongoing}</b>Ongoing</div>
+                <div class="rounded-lg bg-slate-50 p-2"><b class="block text-base text-slate-900">{n}</b>In {city.name}</div>
+              </div>
+            </a>
+          ))}
+        </div>
       </section>
     )}
   </div>
