@@ -7,7 +7,8 @@ import Tabs from '../../components/Tabs.astro';
 import { SERVICES, TOOLS } from '../../lib/catalog';
 import { GUIDES } from '../../data/guides';
 import { cityFacets, cityStats, getProjects, getRefs } from '../../lib/repo';
-import { formatNumber, formatRate } from '../../lib/format';
+import { formatNumber, formatPrice, formatRate, formatRent } from '../../lib/format';
+import { BUDGET_BANDS, typeSlug } from '../../lib/search';
 import { builderUrl, localityUrl, searchUrl } from '../../lib/urls';
 
 const refs = await getRefs();
@@ -34,6 +35,22 @@ for (const p of projects) perBuilder.set(p.builderSlug, (perBuilder.get(p.builde
 const builders = [...perBuilder]
   .map(([slug, n]) => ({ b: refs.builder(slug), n }))
   .filter((x) => !!x.b).sort((a, b) => b.n - a.n || b.b!.delivered - a.b!.delivered).slice(0, 4);
+// Buy / Rent quick links by budget, type and BHK; a link shows only when it has listings, a group only when it has links.
+const TYPE_LABEL: Record<string, string> = { Apartment: 'Flats', 'Builder Floor': 'Builder floors', Villa: 'Villas', Plot: 'Plots' };
+const quick = (['buy', 'rent'] as const).map((purpose) => {
+  const f = { ...homes, purpose };
+  const fmt = purpose === 'rent' ? formatRent : formatPrice;
+  const groups = [
+    { title: 'By budget', links: BUDGET_BANDS[purpose].map(([lo, hi], band) => ({
+      label: lo === 0 ? `Under ${fmt(hi)}` : hi === 0 ? `Above ${fmt(lo)}` : `${fmt(lo)} – ${fmt(hi)}`,
+      n: facets.count({ ...f, band }),
+      href: `${searchUrl(purpose, city.slug)}?${lo ? `priceMin=${lo}` : ''}${lo && hi ? '&' : ''}${hi ? `priceMax=${hi}` : ''}`,
+    })) },
+    { title: 'By type', links: Object.keys(TYPE_LABEL).map((t) => ({ label: TYPE_LABEL[t], n: facets.count({ ...f, type: t }), href: searchUrl(purpose, city.slug, typeSlug(t)!) })) },
+    { title: 'By BHK', links: [1, 2, 3, 4, 5].map((b) => ({ label: b === 5 ? '5+ BHK' : `${b} BHK`, n: facets.count({ ...f, bhk: b }), href: searchUrl(purpose, city.slug, `${b}-bhk`) })) },
+  ].map((g) => ({ ...g, links: g.links.filter((l) => l.n > 0) })).filter((g) => g.links.length > 0);
+  return { title: purpose === 'buy' ? `Buy property in ${city.name}` : `Rent property in ${city.name}`, groups };
+}).filter((q) => q.groups.length > 0);
 // Services by audience. Built from SERVICES / TOOLS / GUIDES so every link points at a page that exists.
 type Card = { icon: string; title: string; sub: string; href: string };
 const svc = (slug: string): Card[] => SERVICES.filter((x) => x.slug === slug).map((x) => ({ icon: x.icon, title: x.title, sub: x.sub, href: `/services/${x.slug}` }));
@@ -78,6 +95,22 @@ const links = [
         <div class="flex flex-wrap gap-2">
           {trending.map((t) => <a href={t.href} class="pill border border-slate-200 bg-white">{t.label}<span class="ml-1.5 text-xs text-slate-400">{formatNumber(t.n)}</span></a>)}
         </div>
+      </section>
+    )}
+
+    {quick.length > 0 && (
+      <section class="mb-12 grid gap-6 lg:grid-cols-2">
+        {quick.map((q) => (
+          <div class="card p-6">
+            <h2 class="text-lg font-bold">{q.title}</h2>
+            {q.groups.map((g) => (
+              <div class="mt-4">
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{g.title}</p>
+                <div class="flex flex-wrap gap-2">{g.links.map((l) => <a href={l.href} class="rounded-full bg-white px-4 py-2 text-sm font-medium ring-1 ring-slate-200 hover:text-brand-700 hover:ring-brand-400">{l.label} <span class="text-slate-400">{formatNumber(l.n)}</span></a>)}</div>
+              </div>
+            ))}
+          </div>
+        ))}
       </section>
     )}
 

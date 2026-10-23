@@ -10,7 +10,7 @@ One page per city that links into everything we have for it: search, localities,
 
 ## Outputs
 - Hero with Buy / Rent / New Projects / Commercial tiles
-- Trending searches, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
+- Trending searches, Buy / Rent quick links, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
@@ -23,6 +23,10 @@ One page per city that links into everything we have for it: search, localities,
   section with no links is not rendered.
 - **Trending searches:** the 3 busiest localities for sale, 2 BHK for sale, ready to move, homes under
   ₹50 L and flats for rent, each with its listing count.
+- **Buy / Rent quick links:** two cards (buy, rent; residential) with groups By budget (`BUDGET_BANDS`, same
+  labels and `priceMin`/`priceMax` URLs as the search page), By type (flats, builder floors, villas, plots →
+  `/buy/{city}/{type}`) and By BHK (1–5+ → `/buy/{city}/{n}-bhk`), each with its count. Links with no
+  listings, groups with no links and a card with no groups are hidden.
 - **Localities table:** each name links to its locality page (`/locality/{city}/{slug}`, via `localityUrl`
   in `src/lib/urls.ts`); the Buy and Rent links show only when that locality has listings for sale / rent.
 - **Top projects:** the first 6 of the city's projects as `ProjectCard`s; when there are more than 6, a
