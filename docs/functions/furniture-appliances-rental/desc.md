@@ -24,7 +24,7 @@ TV) on 3, 6 or 12-month plans, with an estimate of the monthly rent and a callba
 - Monthly rent = (package + add-ons, 12-month price) × tenure factor (3 mo 1.3, 6 mo 1.15, 12 mo 1, from
   `RENTAL_TENURES`), in `rentPackageEstimate()`.
 - Listed in `SERVICES` (services index, "Other services", sitemap), the header's Rent → For tenants and
-  Services → Home & move menus.
+  Services → Home & move menus, and the city hub's "For tenants" tab.
 - No new tables: leads use the existing `leads` table.
 
 ## Files

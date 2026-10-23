@@ -10,7 +10,7 @@ One page per city that links into everything we have for it: search, localities,
 
 ## Outputs
 - Hero with Buy / Rent / New Projects / Commercial tiles
-- Trending searches, localities table, top projects (6, with "View all N projects →"), top builders
+- Trending searches, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
@@ -30,9 +30,13 @@ One page per city that links into everything we have for it: search, localities,
 - **Top builders:** up to 4 developers with projects in the city (most projects first, then most delivered),
   counted from the projects the page already loads, shown with the `/builders` card markup and linking to
   `/builders/{slug}`. Hidden when the city has no projects.
+- **Services by audience:** `Tabs` (pill) with For buyers / For tenants / For owners, using the
+  `/services` card markup. Cards are built from `SERVICES`, `TOOLS` and `GUIDES` by slug, so a card only
+  appears if its page exists; plus "Post your property" for owners. Tenants get Furniture & appliances on
+  rent, packers & movers, rent agreement, rent receipts, buy vs rent and the tenant guide.
 
 ## Files
-- `src/pages/city/[city].astro`
+- `src/pages/city/[city].astro`, `src/components/Tabs.astro`, `src/lib/catalog.ts`, `src/data/guides.ts`
 - `src/lib/repo.ts` (`cityFacets`), `src/lib/search.ts` (`BUDGET_BANDS`)
 
 ## Reference behaviour (Square Yards)
