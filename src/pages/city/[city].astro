@@ -5,7 +5,7 @@ import ProjectCard from '../../components/ProjectCard.astro';
 import ChatWidget from '../../components/islands/ChatWidget';
 import { cityFacets, cityStats, getProjects, getRefs } from '../../lib/repo';
 import { formatNumber, formatRate } from '../../lib/format';
-import { searchUrl } from '../../lib/urls';
+import { localityUrl, searchUrl } from '../../lib/urls';
 
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
@@ -68,11 +68,16 @@ const links = [
         <tbody class="divide-y divide-slate-100">
           {localities.map((l) => (
             <tr>
-              <td class="px-4 py-3 font-semibold">{l.name}</td>
+              <td class="px-4 py-3 font-semibold"><a href={localityUrl(city.slug, l.slug)} class="hover:text-brand-700 hover:underline">{l.name}</a></td>
               <td class="px-4 py-3">{formatRate(l.ratePerSqft)}</td>
               <td class="px-4 py-3">₹{l.rentPerSqft}/sq.ft/mo</td>
               <td class="px-4 py-3 font-semibold text-brand-700">▲ {l.yoyGrowthPct}%</td>
-              <td class="px-4 py-3 text-right"><a href={searchUrl('buy', city.slug, l.slug)} class="font-semibold text-brand-700 hover:underline">Buy</a> · <a href={searchUrl('rent', city.slug, l.slug)} class="font-semibold text-brand-700 hover:underline">Rent</a></td>
+              <td class="px-4 py-3 text-right">
+                {[
+                  facets.count({ ...homes, purpose: 'buy', locality: l.slug }) > 0 && <a href={searchUrl('buy', city.slug, l.slug)} class="font-semibold text-brand-700 hover:underline">Buy</a>,
+                  facets.count({ ...homes, purpose: 'rent', locality: l.slug }) > 0 && <a href={searchUrl('rent', city.slug, l.slug)} class="font-semibold text-brand-700 hover:underline">Rent</a>,
+                ].filter(Boolean).flatMap((a, i) => (i ? [' · ', a] : [a]))}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -8,3 +8,4 @@ export const projectUrl = (p: Pick<Project, 'citySlug' | 'slug'>) => `/projects/
 export const listingUrl = (l: Pick<Listing, 'id'>) => `/property/${l.id}`;
 export const builderUrl = (slug: string) => `/builders/${slug}`;
 export const cityUrl = (slug: string) => `/city/${slug}`;
+export const localityUrl = (citySlug: string, slug: string) => `/locality/${citySlug}/${slug}`;

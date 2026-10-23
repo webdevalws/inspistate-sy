@@ -23,6 +23,8 @@ One page per city that links into everything we have for it: search, localities,
   section with no links is not rendered.
 - **Trending searches:** the 3 busiest localities for sale, 2 BHK for sale, ready to move, homes under
   ₹50 L and flats for rent, each with its listing count.
+- **Localities table:** each name links to its locality page (`/locality/{city}/{slug}`, via `localityUrl`
+  in `src/lib/urls.ts`); the Buy and Rent links show only when that locality has listings for sale / rent.
 - **Top projects:** the first 6 of the city's projects as `ProjectCard`s; when there are more than 6, a
   "View all N projects →" link goes to `/new-projects/{city}`. Hidden when the city has no projects.
 
