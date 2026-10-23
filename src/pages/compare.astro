@@ -5,7 +5,7 @@ import Cover from '../components/Cover.astro';
 import Stars from '../components/Stars.astro';
 import { getProjects, getProjectsByIds, getRefs } from '../lib/repo';
 import { ratingsFor } from '../lib/community';
-import { formatNumber, formatPrice, formatRate } from '../lib/format';
+import { formatNumber, formatRange, formatRate } from '../lib/format';
 import { projectUrl } from '../lib/urls';
 
 // Unique ids only (ids=1,1,1 is one project), at most 3.
@@ -19,7 +19,7 @@ const best = (vals: number[], lower = true) => (lower ? Math.min(...vals) : Math
 const rows: { label: string; value: (p: (typeof projects)[number]) => string; num?: (p: (typeof projects)[number]) => number; lowerIsBetter?: boolean }[] = [
   { label: 'Locality', value: (p) => `${refs.locality(p.citySlug, p.localitySlug)?.name}, ${refs.city(p.citySlug)?.name}` },
   { label: 'Developer', value: (p) => refs.builder(p.builderSlug)?.name ?? '' },
-  { label: 'Price range', value: (p) => `${formatPrice(p.priceMin)} – ${formatPrice(p.priceMax)}`, num: (p) => p.priceMin, lowerIsBetter: true },
+  { label: 'Price range', value: (p) => formatRange(p.priceMin, p.priceMax), num: (p) => p.priceMin, lowerIsBetter: true },
   { label: 'Avg. rate', value: (p) => formatRate(p.ratePerSqft), num: (p) => p.ratePerSqft, lowerIsBetter: true },
   { label: 'Configuration', value: (p) => p.bhkLabel },
   { label: 'Status', value: (p) => p.status },

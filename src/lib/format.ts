@@ -7,6 +7,12 @@ export function formatPrice(n: number): string {
   return `₹${inr.format(n)}`;
 }
 
+/** "₹61 L – ₹1.01 Cr", or a single value when both ends are the same ("₹98 L", not "₹98 L – ₹98 L"). */
+export function formatRange(min: number, max: number, fmt: (n: number) => string = formatPrice): string {
+  const lo = fmt(min), hi = fmt(max);
+  return lo === hi ? lo : `${lo} – ${hi}`;
+}
+
 export function formatRent(n: number): string {
   return `₹${inr.format(n)}/month`;
 }

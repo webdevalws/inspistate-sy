@@ -2,7 +2,7 @@
 // Printable project fact sheet ("brochure"), opened after a brochure lead.
 import '../../../../styles/global.css';
 import { getProject, getRefs } from '../../../../lib/repo';
-import { formatNumber, formatPrice, formatRate } from '../../../../lib/format';
+import { formatNumber, formatPrice, formatRange, formatRate } from '../../../../lib/format';
 import { canOpenBrochure } from '../../../../lib/brochure';
 import { projectUrl } from '../../../../lib/urls';
 
@@ -37,7 +37,7 @@ const builder = refs.builder(p.builderSlug)!;
           <p class="text-slate-600">{loc.name}, {city.name}</p>
         </div>
         <div class="text-right">
-          <p class="text-xl font-extrabold">{formatPrice(p.priceMin)} – {formatPrice(p.priceMax)}</p>
+          <p class="text-xl font-extrabold">{formatRange(p.priceMin, p.priceMax)}</p>
           <p class="text-sm text-slate-500">{formatRate(p.ratePerSqft)}</p>
         </div>
       </header>
