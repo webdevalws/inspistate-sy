@@ -10,7 +10,7 @@ One page per city that links into everything we have for it: search, localities,
 
 ## Outputs
 - Hero with Buy / Rent / New Projects / Commercial tiles
-- Trending searches, Buy / Rent quick links, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
+- Trending searches, Buy / Rent quick links, price insights, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
@@ -27,8 +27,12 @@ One page per city that links into everything we have for it: search, localities,
   labels and `priceMin`/`priceMax` URLs as the search page), By type (flats, builder floors, villas, plots →
   `/buy/{city}/{type}`) and By BHK (1–5+ → `/buy/{city}/{n}-bhk`), each with its count. Links with no
   listings, groups with no links and a card with no groups are hidden.
+- **Price insights:** tiles for average sale rate (`cityStats`), average rent per sq ft and ready-to-move
+  share (`cityFacets`), average YoY growth and the priciest / most affordable locality (locality reference
+  data, linking to locality pages), plus links to `/property-rates/{city}` and `/heatmap/{city}`. Each tile
+  shows only when it has data; the whole section and the rate/heatmap links hide when there is nothing.
 - **Localities table:** each name links to its locality page (`/locality/{city}/{slug}`, via `localityUrl`
-  in `src/lib/urls.ts`); the Buy and Rent links show only when that locality has listings for sale / rent.
+  in `src/lib/urls.ts`); hidden when the city has no localities. The Buy and Rent links show only when that locality has listings for sale / rent.
 - **Top projects:** the first 6 of the city's projects as `ProjectCard`s; when there are more than 6, a
   "View all N projects →" link goes to `/new-projects/{city}`. Hidden when the city has no projects.
 - **Top builders:** up to 4 developers with projects in the city (most projects first, then most delivered),
