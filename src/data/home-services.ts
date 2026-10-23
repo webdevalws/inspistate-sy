@@ -168,28 +168,22 @@ export const SERVICE_CONTENT: Record<string, ServiceContent> = {
     features: [['Subsidy handled', 'We file the central subsidy application for eligible homes.'], ['Net metering', 'Export surplus power to the grid and cut your bill further.'], ['25-year panels', 'Tier-1 panels with long performance warranties.'], ['EMI options', 'Pay for the system from what you save each month.']],
     faq: [{ q: 'How much roof do I need?', a: 'About 100 sq ft of shadow-free roof per kW.' }, { q: 'How much does 1 kW generate?', a: 'Around 4 units a day on average in India, more in sunny regions.' }, { q: 'Which documents are needed?', a: 'Recent electricity bills, proof of ownership (or owner NOC), ID proof and, for societies, a resolution.' }],
   },
-  'furniture-rental': {
-    partnerNote: true,
-    steps: ['Pick items and tenure', 'Complete quick KYC', 'Free delivery and installation', 'Free maintenance; return or extend anytime'],
-    features: [['Free delivery', 'Delivered and assembled at no extra cost.'], ['Flexible tenure', '3 to 24 months — longer tenures cost less per month.'], ['Free maintenance', 'Repairs and replacements included.'], ['Free relocation', 'Move homes after 6 months and we move your rentals free.']],
-    faq: [{ q: 'When does billing start?', a: 'From the delivery date. Rent is auto-debited monthly.' }, { q: 'Can I return some items early?', a: 'Yes, with a week’s notice; early-closure charges may apply before the minimum tenure.' }, { q: 'Is there a deposit?', a: 'A refundable deposit, usually one to two months’ rent, is collected at delivery.' }],
-  },
-  'appliance-rental': {
-    partnerNote: true,
-    steps: ['Pick appliances and tenure', 'Complete quick KYC', 'Free delivery and installation', 'Free servicing; upgrade or return anytime'],
-    features: [['Branded appliances', 'Well-maintained, sanitised products from top brands.'], ['Seasonal renting', 'Rent an AC or cooler just for summer.'], ['Free servicing', 'Breakdowns fixed or replaced at no cost.'], ['Upgrade anytime', 'Swap to a bigger or newer model when you need.']],
-    faq: [{ q: 'Is installation free?', a: 'Yes, including AC installation with standard piping.' }, { q: 'What if an appliance breaks down?', a: 'Raise a request and it is repaired or replaced, usually within 48–72 hours.' }, { q: 'Can I buy the appliance later?', a: 'Many partners let you buy it at a depreciated price after the tenure.' }],
-  },
+  // Also covers the retired /services/furniture-rental and /services/appliance-rental (301 to this page).
   'furniture-appliances-rental': {
     partnerNote: true,
     steps: ['Choose a package or single items', 'Schedule delivery', 'Free maintenance while you rent', 'Return or upgrade at the end of your plan'],
-    features: [['Ready-to-live packages', '1, 2 and 3 BHK furniture sets, plus appliances, in one order.'], ['3, 6 or 12 months', 'Pick a plan; longer plans cost less per month.'], ['Free delivery & setup', 'Delivered, assembled and installed at no extra cost.'], ['Free maintenance', 'Repairs and replacements included for the whole plan.']],
+    features: [['Ready-to-live packages', '1, 2 and 3 BHK furniture sets, plus appliances, in one order.'], ['3, 6 or 12 months', 'Pick a plan; longer plans cost less per month.'], ['Free delivery & setup', 'Delivered, assembled and installed at no extra cost.'], ['Free maintenance', 'Repairs and replacements included for the whole plan.'], ['Branded appliances', 'Well-maintained, sanitised products from top brands.'], ['Seasonal renting', 'Rent an AC or cooler just for summer.'], ['Upgrade anytime', 'Swap to a bigger package or a newer model when you need.'], ['Free relocation', 'Move homes after 6 months and we move your rentals free.']],
     faq: [
       { q: 'Are the prices on this page final?', a: 'No. They are demo prices to show how plans compare. Our partner confirms the exact rent for your city and items when they call you.' },
       { q: 'How soon can items be delivered?', a: 'Usually within 3–5 days of confirming your order and completing KYC, depending on stock in your city.' },
       { q: 'Is there a deposit?', a: 'A refundable deposit, typically up to two months’ rent, is collected at delivery and returned when the items are picked up in good condition.' },
       { q: 'What happens at the end of my plan?', a: 'Return the items for free pickup, extend the plan, or upgrade to a bigger package or newer appliances.' },
-      { q: 'Can I add or remove items mid-plan?', a: 'Yes. Add items anytime at the current rate; returning items before the plan ends may carry an early-closure charge.' },
+      { q: 'Can I add or remove items mid-plan?', a: 'Yes. Add items anytime at the current rate. Return items with a week’s notice; early-closure charges may apply before the minimum tenure.' },
+      { q: 'When does billing start?', a: 'From the delivery date. Rent is auto-debited monthly.' },
+      { q: 'Can I rent for longer than 12 months?', a: 'Yes. A 24-month plan costs about 10% less per month than 12 months; choose it in the item catalogue or ask our partner.' },
+      { q: 'Is installation free?', a: 'Yes, including AC installation with standard piping.' },
+      { q: 'What if an appliance or item breaks down?', a: 'Raise a request and it is repaired or replaced, usually within 48–72 hours.' },
+      { q: 'Can I buy the appliance later?', a: 'Many partners let you buy it at a depreciated price after the tenure.' },
     ],
   },
   'property-management': {

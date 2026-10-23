@@ -137,8 +137,9 @@ export function SolarEstimator() {
 }
 
 // ---------- Furniture & appliance rental ----------
-export function RentalCatalogue({ kind }: { kind: 'furniture' | 'appliances' }) {
-  const data = kind === 'furniture' ? FURNITURE : APPLIANCES;
+/** Single-item cart for furniture and appliances (rooms, then appliance categories). */
+export function RentalCatalogue() {
+  const data = { ...FURNITURE, ...APPLIANCES };
   const tabs = Object.keys(data);
   const [tab, setTab] = useState(tabs[0]);
   const [tenure, setTenure] = useState(12);
@@ -170,7 +171,7 @@ export function RentalCatalogue({ kind }: { kind: 'furniture' | 'appliances' }) 
         {items.length === 0 ? <p className="text-sm text-neutral-500">Add items to see your monthly rent, or just tell us what you need.</p> : (
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm text-neutral-600">{items.map(([n, q]) => `${q} × ${n}`).join(', ')}</p><p className="text-2xl font-extrabold text-brand-900">{inr(monthly)}<span className="text-sm font-normal text-neutral-500">/month · {tenure} months</span></p></div>
         )}
-        <ServiceLead service={kind === 'furniture' ? 'Furniture rental' : 'Appliance rental'} summary={items.length ? `${items.map(([n, q]) => `${q}×${n}`).join(', ')}; ${tenure} mo; ${inr(monthly)}/mo` : `catalogue enquiry, ${tenure} mo`} cta="Show interest" />
+        <ServiceLead service="Furniture & appliances on rent" summary={items.length ? `${items.map(([n, q]) => `${q}×${n}`).join(', ')}; ${tenure} mo; ${inr(monthly)}/mo` : `catalogue enquiry, ${tenure} mo`} cta="Show interest" />
       </div>
     </div>
   );

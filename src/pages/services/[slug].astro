@@ -4,19 +4,23 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Faq from '../../components/Faq.astro';
 import EnquiryForm from '../../components/islands/EnquiryForm';
 import { InspectionBooking, PackersEstimator, PaintingEstimator, PropertyManagementForm, RentalCatalogue, RentPackageEstimator, SolarEstimator } from '../../components/islands/HomeServices';
-import { APPLIANCES, FURNITURE, INSPECTION_CHECKS, PARTNER_DISCLAIMER, PM_COMPARE, PAINT_TIPS, RENT_ADDONS, RENT_PACKAGES, RENT_PLANS, SERVICE_CONTENT, rentPackageEstimate } from '../../data/home-services';
+import { INSPECTION_CHECKS, PARTNER_DISCLAIMER, PM_COMPARE, PAINT_TIPS, RENT_ADDONS, RENT_PACKAGES, RENT_PLANS, SERVICE_CONTENT, rentPackageEstimate } from '../../data/home-services';
 import { SERVICES } from '../../lib/catalog';
 import { InteriorEstimator } from '../../components/islands/Interiors';
 import { RateTable } from '../../components/islands/LoanTools';
+
+// The separate furniture and appliance rental pages were merged into one page (item 48).
+const MERGED: Record<string, string> = { 'furniture-rental': 'furniture-appliances-rental', 'appliance-rental': 'furniture-appliances-rental' };
+if (Object.hasOwn(MERGED, Astro.params.slug!)) return Astro.redirect(`/services/${MERGED[Astro.params.slug!]}`, 301);
 
 // Generic service page; services with a SERVICE_CONTENT entry get their own estimator, steps, features and FAQ.
 const s = SERVICES.find((x) => x.slug === Astro.params.slug);
 if (!s) return new Response(null, { status: 404 });
 const c = SERVICE_CONTENT[s.slug];
 const steps = c?.steps ?? ['Share your requirement', 'Get matched with a verified partner', 'Compare quotes — no obligation', 'Track the work with our support team'];
-const TOOLS: Record<string, string> = { 'packers-movers': 'Estimate your move', 'home-painting': 'Estimate painting cost', 'solar-rooftop': 'Solar savings calculator', 'furniture-rental': 'Pick furniture', 'appliance-rental': 'Pick appliances', 'property-management': 'Get started', 'property-inspection': 'Book an inspection', 'home-interiors': 'Estimate your interiors', 'furniture-appliances-rental': 'Estimate your monthly rent' };
+const TOOLS: Record<string, string> = { 'packers-movers': 'Estimate your move', 'home-painting': 'Estimate painting cost', 'solar-rooftop': 'Solar savings calculator', 'property-management': 'Get started', 'property-inspection': 'Book an inspection', 'home-interiors': 'Estimate your interiors', 'furniture-appliances-rental': 'Estimate your monthly rent' };
 const tool = TOOLS[s.slug] as string | undefined;
-const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s.slug === 'home-interiors';
+const wide = s.slug === 'home-interiors';
 ---
 <Base title={s.title} description={s.sub}>
   <section class="bg-brand-800 text-white">
@@ -53,9 +57,7 @@ const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s
     {wide && (
       <section class="mb-12">
         <h2 class="section-title mb-5">{tool}</h2>
-        {s.slug === 'home-interiors' ? (
-          <div class="panel"><InteriorEstimator client:load /><p class="mt-6 text-sm text-neutral-600">Only need a kitchen? Try the <a class="font-semibold text-brand-700 underline" href="/tools/modular-kitchen">modular kitchen calculator</a>. Looking for inspiration? Browse <a class="font-semibold text-brand-700 underline" href="/design-ideas">design ideas</a>.</p></div>
-        ) : <RentalCatalogue client:load kind={s.slug === 'furniture-rental' ? 'furniture' : 'appliances'} />}
+        <div class="panel"><InteriorEstimator client:load /><p class="mt-6 text-sm text-neutral-600">Only need a kitchen? Try the <a class="font-semibold text-brand-700 underline" href="/tools/modular-kitchen">modular kitchen calculator</a>. Looking for inspiration? Browse <a class="font-semibold text-brand-700 underline" href="/design-ideas">design ideas</a>.</p></div>
       </section>
     )}
     {s.slug === 'furniture-appliances-rental' && (
@@ -75,13 +77,9 @@ const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {RENT_ADDONS.map((a) => <div class="panel"><p class="text-2xl" aria-hidden="true">{a.icon}</p><p class="mt-1 font-bold text-brand-900">{a.name}</p><p class="text-sm text-neutral-600">{a.item} · from ₹{a.monthly.toLocaleString('en-IN')}/month (demo)</p></div>)}
         </div>
-        <h2 class="section-title mb-5 mt-12">Individual items</h2>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Object.entries({ ...FURNITURE, ...APPLIANCES }).map(([room, items]) => (
-            <div class="panel"><p class="font-bold text-brand-900">{room}</p><ul class="mt-2 space-y-1 text-sm text-neutral-600">{items.map((i) => <li class="flex justify-between gap-2"><span>{i.name}</span><span class="shrink-0 font-semibold text-neutral-800">₹{i.from.toLocaleString('en-IN')}</span></li>)}</ul></div>
-          ))}
-        </div>
-        <p class="mt-3 text-sm text-neutral-600">Demo monthly prices on a 12-month plan. Want single items only? Build a cart on <a class="font-semibold text-brand-700 underline" href="/services/furniture-rental">furniture rental</a> or <a class="font-semibold text-brand-700 underline" href="/services/appliance-rental">appliance rental</a>.</p>
+        <h2 class="section-title mb-2 mt-12">Individual items</h2>
+        <p class="mb-5 text-sm text-neutral-600">Only need a few things? Add single pieces of furniture or appliances to a cart and pick a tenure (3 to 24 months). Demo prices.</p>
+        <RentalCatalogue client:visible />
         <h2 class="section-title mb-5 mt-12">Plans by tenure</h2>
         <div class="mb-12 overflow-x-auto rounded-xl border border-neutral-200 bg-white"><table class="w-full min-w-[560px] text-sm">
           <thead class="bg-neutral-50 text-left text-xs uppercase text-neutral-500"><tr><th class="px-4 py-2">Package (with fridge + washing machine)</th>{RENT_PLANS.map((t) => <th class="px-4 py-2">{t.months} months</th>)}</tr></thead>
