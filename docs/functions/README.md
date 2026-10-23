@@ -43,6 +43,7 @@ the files that implement it, and what REA observed on the reference site. Update
 | [Solar Rooftop](solar-rooftop/desc.md) | Home services | `/services/solar-rooftop` |
 | [Furniture Rental](furniture-rental/desc.md) | Home services | `/services/furniture-rental` |
 | [Appliance Rental](appliance-rental/desc.md) | Home services | `/services/appliance-rental` |
+| [Furniture & Appliances on Rent](furniture-appliances-rental/desc.md) | Home services | `/services/furniture-appliances-rental` |
 | [Property Management](property-management/desc.md) | Home services | `/services/property-management` |
 | [Home Inspection](property-inspection/desc.md) | Home services | `/services/property-inspection` |
 | [Title Search](title-search/desc.md) | Services | `/services/title-search` |

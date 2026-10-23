@@ -3,8 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Faq from '../../components/Faq.astro';
 import EnquiryForm from '../../components/islands/EnquiryForm';
-import { InspectionBooking, PackersEstimator, PaintingEstimator, PropertyManagementForm, RentalCatalogue, SolarEstimator } from '../../components/islands/HomeServices';
-import { INSPECTION_CHECKS, PARTNER_DISCLAIMER, PM_COMPARE, PAINT_TIPS, SERVICE_CONTENT } from '../../data/home-services';
+import { InspectionBooking, PackersEstimator, PaintingEstimator, PropertyManagementForm, RentalCatalogue, RentPackageEstimator, SolarEstimator } from '../../components/islands/HomeServices';
+import { APPLIANCES, FURNITURE, INSPECTION_CHECKS, PARTNER_DISCLAIMER, PM_COMPARE, PAINT_TIPS, RENT_ADDONS, RENT_PACKAGES, RENT_PLANS, SERVICE_CONTENT, rentPackageEstimate } from '../../data/home-services';
 import { SERVICES } from '../../lib/catalog';
 import { InteriorEstimator } from '../../components/islands/Interiors';
 import { RateTable } from '../../components/islands/LoanTools';
@@ -14,7 +14,7 @@ const s = SERVICES.find((x) => x.slug === Astro.params.slug);
 if (!s) return new Response(null, { status: 404 });
 const c = SERVICE_CONTENT[s.slug];
 const steps = c?.steps ?? ['Share your requirement', 'Get matched with a verified partner', 'Compare quotes — no obligation', 'Track the work with our support team'];
-const TOOLS: Record<string, string> = { 'packers-movers': 'Estimate your move', 'home-painting': 'Estimate painting cost', 'solar-rooftop': 'Solar savings calculator', 'furniture-rental': 'Pick furniture', 'appliance-rental': 'Pick appliances', 'property-management': 'Get started', 'property-inspection': 'Book an inspection', 'home-interiors': 'Estimate your interiors' };
+const TOOLS: Record<string, string> = { 'packers-movers': 'Estimate your move', 'home-painting': 'Estimate painting cost', 'solar-rooftop': 'Solar savings calculator', 'furniture-rental': 'Pick furniture', 'appliance-rental': 'Pick appliances', 'property-management': 'Get started', 'property-inspection': 'Book an inspection', 'home-interiors': 'Estimate your interiors', 'furniture-appliances-rental': 'Estimate your monthly rent' };
 const tool = TOOLS[s.slug] as string | undefined;
 const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s.slug === 'home-interiors';
 ---
@@ -34,6 +34,7 @@ const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s
           {s.slug === 'packers-movers' && <PackersEstimator client:load />}
           {s.slug === 'home-painting' && <PaintingEstimator client:load />}
           {s.slug === 'solar-rooftop' && <SolarEstimator client:load />}
+          {s.slug === 'furniture-appliances-rental' && <RentPackageEstimator client:load />}
           {s.slug === 'property-management' && <PropertyManagementForm client:load />}
           {s.slug === 'property-inspection' && <InspectionBooking client:load />}
           {!tool && <EnquiryForm client:visible subject={`Service: ${s.title}`} kind="service" contactName="Our service advisor" compact />}
@@ -56,6 +57,37 @@ const wide = s.slug === 'furniture-rental' || s.slug === 'appliance-rental' || s
           <div class="panel"><InteriorEstimator client:load /><p class="mt-6 text-sm text-neutral-600">Only need a kitchen? Try the <a class="font-semibold text-brand-700 underline" href="/tools/modular-kitchen">modular kitchen calculator</a>. Looking for inspiration? Browse <a class="font-semibold text-brand-700 underline" href="/design-ideas">design ideas</a>.</p></div>
         ) : <RentalCatalogue client:load kind={s.slug === 'furniture-rental' ? 'furniture' : 'appliances'} />}
       </section>
+    )}
+    {s.slug === 'furniture-appliances-rental' && (
+      <>
+        <p class="mb-8 rounded-xl border border-amber-400/50 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span class="chip-gold mr-2">Demo prices</span>All prices on this page are illustrative 12-month rents. Our partner confirms the final rent for your city.</p>
+        <h2 class="section-title mb-5">Furniture packages</h2>
+        <div class="grid gap-4 sm:grid-cols-3">
+          {RENT_PACKAGES.map((p) => (
+            <div class="panel">
+              <p class="text-lg font-bold text-brand-900">{p.name} package</p>
+              <p class="mt-1 text-2xl font-extrabold">₹{p.monthly.toLocaleString('en-IN')}<span class="text-sm font-normal text-neutral-500">/month · demo</span></p>
+              <ul class="mt-3 space-y-1 text-sm text-neutral-600">{p.items.map((i) => <li class="flex gap-2"><span class="text-accent-600">✓</span>{i}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+        <h2 class="section-title mb-5 mt-12">Appliances</h2>
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {RENT_ADDONS.map((a) => <div class="panel"><p class="text-2xl" aria-hidden="true">{a.icon}</p><p class="mt-1 font-bold text-brand-900">{a.name}</p><p class="text-sm text-neutral-600">{a.item} · from ₹{a.monthly.toLocaleString('en-IN')}/month (demo)</p></div>)}
+        </div>
+        <h2 class="section-title mb-5 mt-12">Individual items</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Object.entries({ ...FURNITURE, ...APPLIANCES }).map(([room, items]) => (
+            <div class="panel"><p class="font-bold text-brand-900">{room}</p><ul class="mt-2 space-y-1 text-sm text-neutral-600">{items.map((i) => <li class="flex justify-between gap-2"><span>{i.name}</span><span class="shrink-0 font-semibold text-neutral-800">₹{i.from.toLocaleString('en-IN')}</span></li>)}</ul></div>
+          ))}
+        </div>
+        <p class="mt-3 text-sm text-neutral-600">Demo monthly prices on a 12-month plan. Want single items only? Build a cart on <a class="font-semibold text-brand-700 underline" href="/services/furniture-rental">furniture rental</a> or <a class="font-semibold text-brand-700 underline" href="/services/appliance-rental">appliance rental</a>.</p>
+        <h2 class="section-title mb-5 mt-12">Plans by tenure</h2>
+        <div class="mb-12 overflow-x-auto rounded-xl border border-neutral-200 bg-white"><table class="w-full min-w-[560px] text-sm">
+          <thead class="bg-neutral-50 text-left text-xs uppercase text-neutral-500"><tr><th class="px-4 py-2">Package (with fridge + washing machine)</th>{RENT_PLANS.map((t) => <th class="px-4 py-2">{t.months} months</th>)}</tr></thead>
+          <tbody class="divide-y divide-neutral-100">{RENT_PACKAGES.map((p) => <tr><td class="px-4 py-2 font-medium">{p.name}</td>{RENT_PLANS.map((t) => <td class="px-4 py-2">₹{rentPackageEstimate(p.name, ['Fridge', 'Washing machine'], t.months).monthly.toLocaleString('en-IN')}/mo</td>)}</tr>)}</tbody>
+        </table><p class="px-4 py-2 text-xs text-neutral-500">Demo prices. Shorter plans cost more per month: 3 months +30%, 6 months +15% versus 12 months.</p></div>
+      </>
     )}
     <h2 class="section-title mb-5">How it works</h2>
     <ol class:list={['grid gap-4 sm:grid-cols-2', steps.length > 4 ? 'lg:grid-cols-3' : 'lg:grid-cols-4']}>

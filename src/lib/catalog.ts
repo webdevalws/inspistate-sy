@@ -37,6 +37,7 @@ export const SERVICES = [
   { slug: 'escrow', title: 'Escrow Services', sub: 'Hold the payment safely until the deal and documents are complete.', icon: '🔒', points: ['Bank-held escrow account', 'Release on agreed milestones', 'Protects buyer and seller'] },
   { slug: 'solar-rooftop', title: 'Solar Rooftop', sub: 'Rooftop solar installation with subsidy assistance.', icon: '☀', points: ['Savings and subsidy calculator', 'Free roof survey', 'Subsidy and net-metering paperwork'] },
   { slug: 'appliance-rental', title: 'Appliance Rental', sub: 'Rent fridges, washing machines and ACs monthly.', icon: '🧊', points: ['Free delivery', 'Free maintenance', 'Upgrade anytime'] },
+  { slug: 'furniture-appliances-rental', title: 'Furniture & Appliances on Rent', sub: 'Furnish a 1, 2 or 3 BHK with furniture packages and appliances on 3, 6 or 12-month plans.', icon: '🛋', points: ['1, 2 and 3 BHK packages', 'Fridge, washing machine, AC and TV', 'Free delivery and maintenance'] },
   { slug: 'nri-services', title: 'NRI Services', sub: 'Buy, sell and manage property in India from abroad.', icon: '✈', points: ['Power of attorney support', 'Virtual site visits', 'Repatriation guidance'] },
 ] as const;
 export type ServiceSlug = (typeof SERVICES)[number]['slug'];
@@ -59,7 +60,7 @@ export function headerMenus(city: string, cityName: string) {
       groups: [
         { title: `Rent in ${cityName}`, links: [['All rentals', `/rent/${city}`], ['Furnished homes', `/rent/${city}?furnishing=Furnished`], ['Owner properties', `/rent/${city}?postedBy=Owner`], ['1 BHK', `/rent/${city}/1-bhk`], ['2 BHK', `/rent/${city}/2-bhk`], ['3 BHK', `/rent/${city}/3-bhk`]] },
         { title: 'Managed homes', links: [['Zero-brokerage homes', `/managed-rentals/${city}`], ['Get your home managed', '/services/property-management']] },
-        { title: 'For tenants', links: [['Rent agreement', '/tools/rent-agreement'], ['Rent receipts', '/tools/rent-receipt'], ['Packers & movers', '/services/packers-movers'], ['Furniture rental', '/services/furniture-rental'], ['Tenant guide', '/guides/tenant-guide']] },
+        { title: 'For tenants', links: [['Rent agreement', '/tools/rent-agreement'], ['Rent receipts', '/tools/rent-receipt'], ['Packers & movers', '/services/packers-movers'], ['Furniture rental', '/services/furniture-rental'], ['Furniture & appliances on rent', '/services/furniture-appliances-rental'], ['Tenant guide', '/guides/tenant-guide']] },
       ],
     },
     {
@@ -75,7 +76,7 @@ export function headerMenus(city: string, cityName: string) {
         { title: 'Finance & legal', links: [['Home loans', '/services/home-loans'], ['Title search', '/services/title-search'], ['Litigation search', '/services/litigation-search'], ['Legal services', '/services/legal-services'], ['Escrow', '/services/escrow']] },
         { title: 'Loans & cards', links: [['Home loan rates', '/home-loan-interest-rates'], ['Personal loan', '/loans/personal-loan'], ['Business loan', '/loans/business-loan'], ['Loan against property', '/loans/loan-against-property'], ['Credit cards', '/credit-cards'], ['Free credit score', '/tools/credit-score']] },
         { title: 'Interiors', links: [['Design ideas', '/design-ideas'], ['Full home cost', '/tools/interior-cost'], ['Modular kitchen cost', '/tools/modular-kitchen'], ['Home interiors', '/services/home-interiors']] },
-        { title: 'Home & move', links: [['Home interiors', '/services/home-interiors'], ['Property management', '/services/property-management'], ['Packers & movers', '/services/packers-movers'], ['Home painting', '/services/home-painting'], ['Furniture rental', '/services/furniture-rental'], ['All services', '/services']] },
+        { title: 'Home & move', links: [['Home interiors', '/services/home-interiors'], ['Property management', '/services/property-management'], ['Packers & movers', '/services/packers-movers'], ['Home painting', '/services/home-painting'], ['Furniture rental', '/services/furniture-rental'], ['Furniture & appliances on rent', '/services/furniture-appliances-rental'], ['All services', '/services']] },
       ],
     },
     {
