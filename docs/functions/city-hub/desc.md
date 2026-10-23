@@ -10,7 +10,7 @@ One page per city that links into everything we have for it: search, localities,
 
 ## Outputs
 - Hero with Buy / Rent / New Projects / Commercial tiles
-- Trending searches, Buy / Rent quick links, price insights, localities table, top projects (6, with "View all N projects →"), top builders, services by audience
+- Trending searches, Buy / Rent quick links, price insights, localities table, top projects (6, with "View all N projects →"), top builders, services by audience, other cities
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
@@ -42,6 +42,9 @@ One page per city that links into everything we have for it: search, localities,
   `/services` card markup. Cards are built from `SERVICES`, `TOOLS` and `GUIDES` by slug, so a card only
   appears if its page exists; plus "Post your property" for owners. Tenants get Furniture & appliances on
   rent, packers & movers, rent agreement, rent receipts, buy vs rent and the tenant guide.
+- **Other cities:** a card per other city (name, state, listing count, average rate) linking to
+  `/city/{slug}`, from the `cityStats()` result the page already loads; cities without listings show
+  "New on InspiState".
 
 ## Files
 - `src/pages/city/[city].astro`, `src/components/Tabs.astro`, `src/lib/catalog.ts`, `src/data/guides.ts`

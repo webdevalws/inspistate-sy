@@ -9,7 +9,7 @@ import { GUIDES } from '../../data/guides';
 import { cityFacets, cityStats, getProjects, getRefs } from '../../lib/repo';
 import { formatNumber, formatPrice, formatRate, formatRent } from '../../lib/format';
 import { BUDGET_BANDS, typeSlug } from '../../lib/search';
-import { builderUrl, localityUrl, searchUrl } from '../../lib/urls';
+import { builderUrl, cityUrl, localityUrl, searchUrl } from '../../lib/urls';
 
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
@@ -63,6 +63,8 @@ const insights = [
   byRate.length > 1 && { k: 'Priciest locality', v: `${byRate[0].name} · ${formatRate(byRate[0].ratePerSqft)}`, href: localityUrl(city.slug, byRate[0].slug) },
   byRate.length > 1 && { k: 'Most affordable', v: `${byRate.at(-1)!.name} · ${formatRate(byRate.at(-1)!.ratePerSqft)}`, href: localityUrl(city.slug, byRate.at(-1)!.slug) },
 ].filter((x): x is { k: string; v: string; href?: string } => !!x);
+// Other cities, with numbers from the cityStats() result already loaded for this page.
+const others = refs.cities.filter((c) => c.slug !== city.slug).map((c) => ({ c, s: statsFor(c.slug) }));
 // Services by audience. Built from SERVICES / TOOLS / GUIDES so every link points at a page that exists.
 type Card = { icon: string; title: string; sub: string; href: string };
 const svc = (slug: string): Card[] => SERVICES.filter((x) => x.slug === slug).map((x) => ({ icon: x.icon, title: x.title, sub: x.sub, href: `/services/${x.slug}` }));
@@ -229,6 +231,21 @@ const links = [
         ))}
       </Tabs>
     </section>
+
+    {others.length > 0 && (
+      <section class="mt-12">
+        <h2 class="section-title mb-4">Explore other cities</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {others.map(({ c, s }) => (
+            <a href={cityUrl(c.slug)} class="card p-4 hover:border-brand-300">
+              <p class="font-semibold">{c.name}</p>
+              <p class="text-xs text-slate-500">{c.state}</p>
+              <p class="mt-2 text-sm text-slate-600">{s.total > 0 ? `${formatNumber(s.total)} listings` : 'New on InspiState'}{s.avgRate > 0 && <span class="block text-xs text-slate-500">{formatRate(s.avgRate)}</span>}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
   </div>
   <ChatWidget client:idle city={city.slug} />
 </Base>
