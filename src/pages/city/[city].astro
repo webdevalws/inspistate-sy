@@ -79,8 +79,15 @@ const links = [
       </table>
     </div>
 
-    <h2 class="section-title mb-4 mt-12">Projects in {city.name}</h2>
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.map((p) => <ProjectCard project={p} />)}</div>
+    {projects.length > 0 && (
+      <section class="mt-12">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <h2 class="section-title">Top projects in {city.name}</h2>
+          {projects.length > 6 && <a href={`/new-projects/${city.slug}`} class="text-sm font-semibold text-brand-700 hover:underline">View all {projects.length} projects →</a>}
+        </div>
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{projects.slice(0, 6).map((p) => <ProjectCard project={p} />)}</div>
+      </section>
+    )}
   </div>
   <ChatWidget client:idle city={city.slug} />
 </Base>
