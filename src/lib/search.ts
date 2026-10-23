@@ -116,3 +116,9 @@ export function parseFilters(url: URL, facets: Partial<Filters>): Filters {
 
 export const BUY_BUDGETS = [500000, 1000000, 2000000, 3000000, 5000000, 7500000, 10000000, 15000000, 20000000, 30000000, 50000000, 100000000];
 export const RENT_BUDGETS = [5000, 10000, 15000, 20000, 30000, 50000, 75000, 100000, 150000, 250000, 500000];
+
+/** Budget link bands as [min, max] (0 = open end), shared by the search page and the city hub. */
+export const BUDGET_BANDS = {
+  buy: [[0, 5000000], [5000000, 10000000], [10000000, 20000000], [20000000, 50000000], [50000000, 0]],
+  rent: [[0, 15000], [15000, 30000], [30000, 50000], [50000, 100000], [100000, 0]],
+} as const satisfies Record<'buy' | 'rent', readonly (readonly [number, number])[]>;

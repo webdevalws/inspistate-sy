@@ -3,16 +3,28 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import ChatWidget from '../../components/islands/ChatWidget';
-import { cityStats, getProjects, getRefs } from '../../lib/repo';
+import { cityFacets, cityStats, getProjects, getRefs } from '../../lib/repo';
 import { formatNumber, formatRate } from '../../lib/format';
 import { searchUrl } from '../../lib/urls';
 
 const refs = await getRefs();
 const city = refs.city(Astro.params.city!);
 if (!city) return new Response(null, { status: 404 });
-const [statsFor, projects] = await Promise.all([cityStats(), getProjects({ citySlug: city.slug })]);
+const [statsFor, projects, facets] = await Promise.all([cityStats(), getProjects({ citySlug: city.slug }), cityFacets(city.slug)]);
 const stats = statsFor(city.slug);
 const localities = [...refs.localitiesOf(city.slug)].sort((a, b) => b.ratePerSqft - a.ratePerSqft);
+const homes = { segment: 'residential' } as const;
+// Trending searches: the busiest localities plus common shortcuts, each shown only when it has listings.
+const busiest = localities
+  .map((l) => ({ l, n: facets.count({ ...homes, purpose: 'buy', locality: l.slug }) }))
+  .filter((x) => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 3);
+const trending = [
+  ...busiest.map(({ l, n }) => ({ label: `Property in ${l.name}`, n, href: searchUrl('buy', city.slug, l.slug) })),
+  { label: '2 BHK flats for sale', n: facets.count({ ...homes, purpose: 'buy', bhk: 2 }), href: searchUrl('buy', city.slug, '2-bhk') },
+  { label: 'Ready to move homes', n: facets.ready({ ...homes, purpose: 'buy' }), href: `${searchUrl('buy', city.slug)}?possession=Ready+to+Move` },
+  { label: 'Homes under ₹50 L', n: facets.count({ ...homes, purpose: 'buy', band: 0 }), href: `${searchUrl('buy', city.slug)}?priceMax=5000000` },
+  { label: 'Flats for rent', n: facets.count({ ...homes, purpose: 'rent', type: 'Apartment' }), href: searchUrl('rent', city.slug, 'apartment') },
+].filter((t) => t.n > 0);
 const links = [
   { label: 'Buy', sub: `${formatNumber(stats.forSale)} homes for sale`, href: searchUrl('buy', city.slug) },
   { label: 'Rent', sub: `${formatNumber(stats.forRent)} homes for rent`, href: searchUrl('rent', city.slug) },
@@ -38,6 +50,15 @@ const links = [
   </section>
 
   <div class="container-x py-10">
+    {trending.length > 0 && (
+      <section class="mb-12">
+        <h2 class="section-title mb-4">Trending searches in {city.name}</h2>
+        <div class="flex flex-wrap gap-2">
+          {trending.map((t) => <a href={t.href} class="pill border border-slate-200 bg-white">{t.label}<span class="ml-1.5 text-xs text-slate-400">{formatNumber(t.n)}</span></a>)}
+        </div>
+      </section>
+    )}
+
     <h2 class="section-title mb-4">Localities in {city.name}</h2>
     <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table class="w-full min-w-[560px] text-sm">

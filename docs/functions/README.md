@@ -23,6 +23,7 @@ the files that implement it, and what REA observed on the reference site. Update
 | [Free Credit Score](credit-score/desc.md) | Tools | `/tools/credit-score` |
 | [Price Heatmap](price-heatmap/desc.md) | Insights | `/heatmap/{city}` |
 | [Home Page (hero & editorial landing)](home-page/desc.md) | Discovery | `/` |
+| [City Hub](city-hub/desc.md) | Discovery | `/city/{city}` |
 | [Property Search](property-search/desc.md) | Search | `/{buy|rent|commercial}/{city}/{facets}` |
 | [Ask AI search & assistant](ask-ai/desc.md) | Search | `/api/ask` |
 | [Project Detail](project-page/desc.md) | Projects | `/projects/{city}/{slug}` |

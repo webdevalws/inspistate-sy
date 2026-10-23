@@ -4,7 +4,7 @@ import type {
   Builder, City, Lead, Listing, ListingStatus, Locality, Project, ProjectDetail, UnitConfig,
 } from '../data/types';
 import type { Filters, Mode } from './search';
-import { MODES, PAGE_SIZE } from './search';
+import { BUDGET_BANDS, MODES, PAGE_SIZE } from './search';
 
 const db = () => env.DB;
 const json = <T,>(s: unknown, fallback: T): T => {
@@ -272,6 +272,56 @@ export function cityListingCounts(): Promise<Record<string, number>> {
     .then(({ results }) => Object.fromEntries(results.map((r) => [r.city_slug, r.n])));
   cityCountCache = { at: Date.now(), value };
   value.catch(() => (cityCountCache = null));
+  return value;
+}
+
+// ---------- city hub facets ----------
+
+/** One group of a city's live listings: purpose × segment × type × BHK (5 = 5+) × locality × budget band. */
+export interface FacetRow { purpose: 'buy' | 'rent'; segment: 'residential' | 'commercial'; type: string; bhk: number; locality: string; band: number; n: number; ready: number; rateSum: number }
+export type FacetFilter = Partial<Pick<FacetRow, 'purpose' | 'segment' | 'type' | 'bhk' | 'locality' | 'band'>>;
+export interface CityFacets {
+  rows: FacetRow[];
+  /** Live listings matching the filter. */
+  count(f: FacetFilter): number;
+  /** Of those, how many are ready to move. */
+  ready(f: FacetFilter): number;
+  /** Average price (or monthly rent) per sq ft of those, or 0. */
+  avgRate(f: FacetFilter): number;
+}
+
+const bandCase = (bands: readonly (readonly [number, number])[]) =>
+  `CASE ${bands.slice(0, -1).map(([, hi], i) => `WHEN price <= ${Number(hi)} THEN ${i}`).join(' ')} ELSE ${bands.length - 1} END`;
+const facetCache = new Map<string, { at: number; value: Promise<CityFacets> }>();
+
+/**
+ * Counts of a city's live listings by purpose, segment, type, BHK, locality and budget band (bands match
+ * BUDGET_BANDS), plus ready-to-move counts and rate sums. One grouped query per city, cached per isolate for
+ * 5 minutes like reference data. Used by the city hub to build links that never lead to empty pages.
+ */
+export function cityFacets(citySlug: string): Promise<CityFacets> {
+  const hit = facetCache.get(citySlug);
+  if (hit && Date.now() - hit.at < REFS_TTL_MS) return hit.value;
+  const value = db()
+    .prepare(`SELECT purpose, segment, type, min(bhk, 5) AS bhk, locality_slug AS locality,
+        CASE WHEN purpose = 'buy' THEN ${bandCase(BUDGET_BANDS.buy)} ELSE ${bandCase(BUDGET_BANDS.rent)} END AS band,
+        count(*) AS n, sum(possession = 'Ready to Move') AS ready, sum(1.0 * price / area_sqft) AS rateSum
+      FROM listings WHERE status = 'active' AND closed IS NULL AND city_slug = ?
+      GROUP BY 1, 2, 3, 4, 5, 6`)
+    .bind(citySlug)
+    .all<FacetRow>()
+    .then(({ results }) => {
+      const match = (f: FacetFilter) => results.filter((r) => (Object.keys(f) as (keyof FacetFilter)[]).every((k) => f[k] === undefined || r[k] === f[k]));
+      const sum = (rows: FacetRow[], k: 'n' | 'ready' | 'rateSum') => rows.reduce((s, r) => s + (r[k] ?? 0), 0);
+      return {
+        rows: results,
+        count: (f) => sum(match(f), 'n'),
+        ready: (f) => sum(match(f), 'ready'),
+        avgRate: (f) => { const m = match(f); const n = sum(m, 'n'); return n ? sum(m, 'rateSum') / n : 0; },
+      } satisfies CityFacets;
+    });
+  facetCache.set(citySlug, { at: Date.now(), value });
+  value.catch(() => facetCache.delete(citySlug));
   return value;
 }
 
