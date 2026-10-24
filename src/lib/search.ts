@@ -88,6 +88,29 @@ export function foldBhkSegments(segments: string[]): string[] | null {
   return out.filter((s, i) => s !== '5-bhk' || out.indexOf(s) === i);
 }
 
+/**
+ * One URL per facet combination: path segments in a fixed order (locality, then BHK, then type), each once.
+ * Returns the corrected segments and query (for a 301), or null when the URL is already canonical. A kind with
+ * more than one different value in the path (two localities) moves to the query string, merged with any values
+ * already there — the same URLs the filter panel builds (facetPath).
+ */
+export function canonicalFacets(segments: string[], f: Pick<Filters, 'locality' | 'bhk' | 'type'>, search: URLSearchParams): { segments: string[]; query: string } | null {
+  const q = new URLSearchParams(search);
+  const out: string[] = [];
+  const kinds: [string, (string | number)[], (v: string | number) => string | undefined, (v: string | number) => string][] = [
+    ['locality', f.locality, (v) => String(v), (v) => String(v)],
+    ['bhk', f.bhk, (v) => `${v}-bhk`, (v) => String(v)],
+    ['type', f.type, (v) => typeSlug(String(v)), (v) => String(v)],
+  ];
+  for (const [key, vals, toSeg, toQuery] of kinds) {
+    const uniq = [...new Set(vals)];
+    if (uniq.length === 1) out.push(toSeg(uniq[0])!);
+    else if (uniq.length > 1) q.set(key, [...new Set([...uniq.map(toQuery), ...list(q.get(key))])].join(','));
+  }
+  if (out.join('/') === segments.join('/') && q.toString() === search.toString()) return null;
+  return { segments: out, query: q.toString() };
+}
+
 /** Facet path segments give crawlable URLs: /buy/mumbai/powai/2-bhk/apartment ("5-bhk" = 5 and above). */
 export function parseFacets(segments: string[], localities: Locality[]) {
   const out: Pick<Filters, 'locality' | 'bhk' | 'type'> = { locality: [], bhk: [], type: [] };

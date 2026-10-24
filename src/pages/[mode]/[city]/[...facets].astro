@@ -13,7 +13,7 @@ import ChatWidget from '../../../components/islands/ChatWidget';
 import SearchMap from '../../../components/islands/SearchMap';
 import { getProjects, getRefs, marketStats, searchListings, searchLocalityPins } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
-import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, facetPath, foldBhkSegments, parseFacets, parseFilters, typeLabel, type Mode } from '../../../lib/search';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, canonicalFacets, facetPath, foldBhkSegments, parseFacets, parseFilters, typeLabel, type Mode } from '../../../lib/search';
 import { formatNumber, formatPrice, formatRange, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
 import { parseQuery } from '../../../lib/nlsearch';
@@ -39,6 +39,9 @@ if (folded) return Astro.redirect(`${searchUrl(m, city.slug, ...folded)}${Astro.
 if (m !== 'rent' && segments.includes('pg')) return Astro.redirect(`${searchUrl('rent', city.slug, ...segments)}${Astro.url.search}`, 301);
 const facetFilters = parseFacets(segments, localities);
 if (!facetFilters) return new Response(null, { status: 404 });
+// One URL per combination: /buy/mumbai/2-bhk/powai and /buy/mumbai/powai/powai/2-bhk → 301 to /buy/mumbai/powai/2-bhk.
+const canon = canonicalFacets(segments, facetFilters, Astro.url.searchParams);
+if (canon) return Astro.redirect(`${searchUrl(m, city.slug, ...canon.segments)}${canon.query ? `?${canon.query}` : ''}`, 301);
 const filters = parseFilters(Astro.url, facetFilters);
 // List or Map view (?view=map). Not a filter key, so the filter panel, sort and pagination keep it.
 const view = Astro.url.searchParams.get('view') === 'map' ? 'map' : 'list';

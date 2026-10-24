@@ -129,6 +129,13 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   (`<Base page={…}>`): search results, managed rentals and reviews — so page 2+ points at itself
   (`/buy/mumbai?page=2`) instead of page 1. Listing, project, city and locality pages use their own path.
 
+## One URL per facet combination (item 83)
+- Path facets have a fixed order — locality, then BHK, then type — each once (`canonicalFacets` in
+  `src/lib/search.ts`). Any other order or repeated segment gets a **301**, keeping the query string:
+  `/buy/mumbai/2-bhk/powai` and `/buy/mumbai/powai/powai/2-bhk` → `/buy/mumbai/powai/2-bhk`;
+  `/buy/mumbai/apartment/2-bhk/powai?sort=newest` → `/buy/mumbai/powai/2-bhk/apartment?sort=newest`. Two different
+  localities in the path move to `?locality=a,b` (merged with any already there), as the filter panel does.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
