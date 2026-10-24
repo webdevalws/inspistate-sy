@@ -346,7 +346,9 @@ export async function countProjectsByBuilder(): Promise<Map<string, number>> {
 
 // ---------- writes ----------
 
-export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat'] as const;
+export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat', 'referral'] as const;
+/** What a referred friend wants to do (/refer). */
+export const REFERRAL_NEEDS = { buy: 'buy a home', sell: 'sell a property', rent: 'rent a home', 'let-out': 'rent out a property' } as const;
 export type LeadKind = (typeof LEAD_KINDS)[number];
 
 export async function createLead(lead: Omit<Lead, 'id' | 'createdAt'> & { kind: LeadKind; userId: number | null }): Promise<number> {

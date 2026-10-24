@@ -157,6 +157,7 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
               {enquiries.map((e) => <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3 text-sm"><span>{safeNext(e.page) ? <a href={safeNext(e.page)!} class="font-medium underline">{e.subject}</a> : e.subject} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{e.kind.replace('-', ' ')}</span></span><span class="text-[#1C1A17]/55">{fmtDate(e.created_at)}</span></li>)}
             </ul>
           ) : <p class="text-sm text-[#1C1A17]/60">Enquiries you send while logged in appear here.</p>}
+          <p class="mt-4 text-sm text-[#1C1A17]/70">Know someone buying, selling or renting? <a href="/refer" class="font-semibold underline">Refer a friend</a> — referrals you send appear in this list.</p>
         </section>
 
         <section id="profile" class="scroll-mt-28">

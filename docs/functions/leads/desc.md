@@ -33,6 +33,8 @@ Stores callback, view-number, brochure, service and chat leads.
 - **Coupons once per person:** `/api/orders` (and the `/api/coupon` preview when logged in) refuse a code
   already used on a non-cancelled order from the same phone number or the same account (`couponUsed` in
   `src/lib/orders.ts`, reading `service_orders`) → 422 "You've already used this coupon."
+- **Referrals** (`/refer`) post `kind: referral` with the friend's name, mobile, need and city; the server
+  validates them and writes the subject (see [Refer a Friend](../refer/desc.md)).
 - Home-service estimators post `kind: service` leads whose subject carries the estimate (see `src/components/islands/HomeServices.tsx`).
 - Indian mobile validation; linked to user when logged in.
 - **View number (owner phone) needs an account.** `kind: view-number` without a login → 401 "Log in or
