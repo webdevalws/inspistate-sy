@@ -10,6 +10,7 @@ import { recentAdminActions } from '../../lib/audit';
 import { recentForumPosts } from '../../lib/forum';
 import { subscribers } from '../../lib/newsletter';
 import { userCounts } from '../../lib/admin-users';
+import { realPhone } from '../../lib/auth';
 
 // ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
 const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
@@ -55,7 +56,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
             <li class="card flex flex-wrap items-center justify-between gap-4 p-4">
               <div>
                 <p class="font-semibold">{r.name ?? 'Agent'}{r.company && ` · ${r.company}`} — {r.plan === 'yearly' ? 'Yearly' : 'Half-yearly'} plan, ₹{r.amount.toLocaleString('en-IN')}</p>
-                <p class="text-sm text-slate-500"><a href={`tel:+91${r.phone}`} class="underline">+91 {r.phone}</a> · requested {fmtTime(r.created_at)}</p>
+                <p class="text-sm text-slate-500">{realPhone(r.phone) ? <a href={`tel:+91${r.phone}`} class="underline">+91 {r.phone}</a> : 'No mobile number'} · requested {fmtTime(r.created_at)}</p>
               </div>
               <form method="post" action={`/api/admin/subscriptions/${r.id}`} class="flex gap-2">
                 <button name="action" value="activate" class="btn-primary py-2">Activate (payment received)</button>

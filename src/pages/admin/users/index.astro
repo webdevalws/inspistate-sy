@@ -4,6 +4,7 @@ import Pagination from '../../../components/Pagination.astro';
 import { getRefs } from '../../../lib/repo';
 import { isRoleFilter, isStateFilter, listUsers, type RoleFilter, type StateFilter } from '../../../lib/admin-users';
 import { planByKey, roleLabel } from '../../../data/plans';
+import { realPhone } from '../../../lib/auth';
 
 // All accounts, newest first: search by name or phone, filter by role and by active / blocked. Protected like the
 // rest of /admin (middleware).
@@ -58,7 +59,7 @@ const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active
           {res.rows.map((u) => (
             <tr>
               <td class="px-4 py-3 font-semibold"><a href={`/admin/users/${u.id}`} class="text-brand-700 hover:underline">{u.name ?? `User #${u.id}`}</a>{u.blocked_at && <span class="chip ml-1">blocked</span>}</td>
-              <td class="whitespace-nowrap px-4 py-3"><a href={`tel:+91${u.phone}`} class="text-brand-700 hover:underline">+91 {u.phone}</a></td>
+              <td class="whitespace-nowrap px-4 py-3">{realPhone(u.phone) ? <a href={`tel:+91${u.phone}`} class="text-brand-700 hover:underline">+91 {u.phone}</a> : '—'}</td>
               <td class="px-4 py-3">{u.role ? <span class="chip">{roleLabel(u.role)}</span> : <span class="text-slate-500">Not registered</span>}</td>
               <td class="px-4 py-3">{u.city_slug ? (refs.city(u.city_slug)?.name ?? u.city_slug) : '—'}</td>
               <td class="px-4 py-3">{u.role === 'agent' && u.company ? u.company : '—'}</td>

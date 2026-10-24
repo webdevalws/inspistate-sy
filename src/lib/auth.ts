@@ -123,7 +123,11 @@ export async function sendOtp(phone: string, clientIp: string): Promise<SendResu
   return { ok: false, error: 'Login by SMS is not configured yet.', status: 503 };
 }
 
-export async function verifyOtp(phone: string, code: string): Promise<{ ok: true; user: User; token: string } | { ok: false; error: string }> {
+/**
+ * Checks a code for the number (expiry, 5-attempt limit, dev test code) and uses it up when correct. Shared by
+ * login (verifyOtp) and adding a mobile number to a Google account (/api/account/phone).
+ */
+export async function checkOtp(phone: string, code: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const row = await db().prepare('SELECT code_hash, attempts, expires_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ code_hash: string; attempts: number; expires_at: number }>();
   if (!row || row.expires_at < Date.now()) return { ok: false, error: 'The code has expired. Request a new one.' };
   if (row.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: tooManyAttempts(row.expires_at) };
@@ -133,6 +137,12 @@ export async function verifyOtp(phone: string, code: string): Promise<{ ok: true
     return { ok: false, error: 'Incorrect code.' };
   }
   await db().prepare('DELETE FROM otp_codes WHERE phone = ?').bind(phone).run();
+  return { ok: true };
+}
+
+export async function verifyOtp(phone: string, code: string): Promise<{ ok: true; user: User; token: string } | { ok: false; error: string }> {
+  const check = await checkOtp(phone, code);
+  if (!check.ok) return check;
   // Blocked after the code was sent: no session.
   if (await isBlocked(phone)) return { ok: false, error: BLOCKED_MESSAGE };
   const user = (await db()

@@ -5,6 +5,7 @@ import { getRefs } from '../lib/repo';
 import { ROLES } from '../data/plans';
 import { roleForNext, safeNext } from '../lib/redirect';
 import { GOOGLE_ERRORS } from '../lib/google';
+import { realPhone } from '../lib/auth';
 
 const next = safeNext(Astro.url.searchParams.get('next'));
 const user = Astro.locals.user;
@@ -31,7 +32,7 @@ const error = Object.hasOwn(GOOGLE_ERRORS, errorKey) ? GOOGLE_ERRORS[errorKey] :
         </ul>
       </div>
       <div class="border-[0.5px] border-[#1C1A17]/15 bg-sand-50 p-6 sm:p-8">
-        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={user?.phone ?? ''} defaultRole={defaultRole} initialError={error} />
+        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={realPhone(user?.phone) ?? ''} defaultRole={defaultRole} initialError={error} />
       </div>
     </div>
   </div>

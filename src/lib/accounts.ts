@@ -1,7 +1,7 @@
 // Per-user data: shortlist, saved searches, own listings and enquiries.
 import { env } from 'cloudflare:workers';
 import { FREE_LISTINGS, planByKey, type PlanKey } from '../data/plans';
-import type { User } from './auth';
+import { hasRealPhone, type User } from './auth';
 
 const db = () => env.DB;
 type Kind = 'listing' | 'project';
@@ -75,7 +75,7 @@ export async function subscriptionState(userId: number): Promise<{ active: Subsc
   };
 }
 
-export type Allowance = { used: number; limit: number | null; canPost: boolean; hasPlan: boolean; reason: 'login' | 'register' | 'buyer' | 'limit' | null };
+export type Allowance = { used: number; limit: number | null; canPost: boolean; hasPlan: boolean; reason: 'login' | 'register' | 'buyer' | 'phone' | 'limit' | null };
 
 /** How many listings this account may still post. Live and under-review listings count; rejected ones don't. */
 export async function listingAllowance(user: User | null): Promise<Allowance> {
@@ -87,6 +87,8 @@ export async function listingAllowance(user: User | null): Promise<Allowance> {
   const hasPlan = !!(await subscriptionState(user.id)).active;
   const limit = hasPlan ? null : FREE_LISTINGS[user.role];
   if (user.role === 'user') return { used, limit: 0, canPost: false, hasPlan, reason: 'buyer' };
+  // Accounts created with Google add a mobile number before posting (buyers reach the owner through it).
+  if (!hasRealPhone(user.phone)) return { used, limit, canPost: false, hasPlan, reason: 'phone' };
   const canPost = limit === null || used < limit;
   return { used, limit, canPost, hasPlan, reason: canPost ? null : 'limit' };
 }
@@ -94,6 +96,8 @@ export async function listingAllowance(user: User | null): Promise<Allowance> {
 export async function requestSubscription(user: User, plan: PlanKey): Promise<{ ok: true } | { ok: false; error: string }> {
   const p = planByKey(plan);
   if (!p) return { ok: false, error: 'Unknown plan' };
+  // The sales team calls the agent on this number to collect payment.
+  if (!hasRealPhone(user.phone)) return { ok: false, error: 'Add your mobile number on your account page first, so our team can call you about the plan.' };
   const state = await subscriptionState(user.id);
   if (state.requested) return { ok: false, error: 'You already have a plan request in progress — our team will call you shortly.' };
   await db().batch([

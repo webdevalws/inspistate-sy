@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import AccountNav from '../components/AccountNav.astro';
 import ShortlistView from '../components/islands/ShortlistView';
 import SavedSearchList from '../components/islands/SavedSearchList';
+import AddPhone from '../components/islands/AddPhone';
+import { realPhone } from '../lib/auth';
 import { leadsReceived, listingAllowance, myEnquiries, myListings, savedSearches, subscriptionState } from '../lib/accounts';
 import { getRefs } from '../lib/repo';
 import { safeNext } from '../lib/redirect';
@@ -17,6 +19,9 @@ const [refs, listings, enquiries, searches, allowance, leads, subs] = await Prom
 ]);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const saved = Astro.url.searchParams.get('saved');
+// Accounts created with Google have no mobile number until they add one (sellers and agents need it to post).
+const phone = realPhone(user.phone);
+const phoneAdded = Astro.url.searchParams.get('phone') === 'added';
 const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
 const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
 // Result of an owner action (/api/account/listings/[id] redirects back with ?listing=…).
@@ -39,12 +44,18 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
         <section>
           <p class="ed-label text-[#1C1A17]/60">{user.role ? `${roleLabel(user.role)} account` : 'Welcome'}</p>
           <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Hello{user.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1>
-          <p class="mt-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#1C1A17]/55">+91 {user.phone}{user.city_slug && ` · ${refs.city(user.city_slug)?.name ?? ''}`}</p>
+          <p class="mt-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#1C1A17]/55">{phone ? `+91 ${phone}` : 'No mobile number yet'}{user.city_slug && ` · ${refs.city(user.city_slug)?.name ?? ''}`}</p>
 
           {!user.role && (
             <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
               <p class="text-sm">Finish creating your account — tell us whether you are a <b>Buyer</b>, <b>Seller</b> or <b>Agent</b>.</p>
               <a href="/login" data-auth-open class="ed-btn ed-btn-dark">Finish registration →</a>
+            </div>
+          )}
+          {lister && !phone && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+              <p class="text-sm">Add your mobile number to post listings and get enquiries from buyers.</p>
+              <a href="#profile" class="ed-btn ed-btn-dark">Add mobile number →</a>
             </div>
           )}
 
@@ -163,6 +174,13 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
         <section id="profile" class="scroll-mt-28">
           <h2 class={`${h2} mb-4`}>Profile</h2>
           {saved && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Profile saved.</p>}
+          {phoneAdded && phone && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Mobile number +91 {phone} added. You can also log in with it now.</p>}
+          {!phone && (
+            <div id="phone" class="mb-4">
+              <p class="mb-2 text-sm text-[#1C1A17]/70">Add your mobile number{lister ? ' — needed to post listings and get enquiries' : ''}. We’ll send a code to check it.</p>
+              <AddPhone client:visible />
+            </div>
+          )}
           <form method="post" action="/api/account/profile" class="grid gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5 sm:grid-cols-3 sm:items-end">
             <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Name<input name="name" maxlength="100" value={user.name ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
             <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Email<input name="email" type="email" maxlength="200" value={user.email ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>

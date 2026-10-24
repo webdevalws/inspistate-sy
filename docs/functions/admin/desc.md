@@ -41,6 +41,9 @@ branch) audit admin actions.
     refused ("Another account already uses that phone number"), also if it is taken at the same moment (UNIQUE).
     Changing it **ends all of the account's sessions** (logged out everywhere, so a lost phone or misused account
     can't keep old sessions) and drops any pending code for the old number.
+  - Accounts created with Google with no mobile number yet (placeholder `g:<id>`, item 99) show "—" (no `tel:` link),
+    the phone field is empty and optional (left empty, the account stays without one), phone search never matches the
+    placeholder, and the audit log writes "none" instead of it.
   - Each changed field is audited separately: `user.name|phone|role|city|agency`, target
     `user #12: old → new` (phone changes add "(logged out)").
 - **Plan** (item 96, `action=plan`): Free / Half-Yearly / Yearly (`setUserPlan`). A plan starts today and runs for

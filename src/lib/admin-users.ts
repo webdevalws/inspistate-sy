@@ -46,7 +46,8 @@ function where(f: UserQuery): { sql: string; binds: unknown[] } {
   if (q) {
     const digits = q.replace(/\D/g, '');
     // instr() rather than LIKE, so % and _ in the search box are plain characters.
-    parts.push(digits.length >= 3 ? '(instr(lower(coalesce(u.name, \'\')), lower(?)) > 0 OR instr(u.phone, ?) > 0)' : 'instr(lower(coalesce(u.name, \'\')), lower(?)) > 0');
+    // Digits never match a Google account's placeholder phone ('g:<id>').
+    parts.push(digits.length >= 3 ? "(instr(lower(coalesce(u.name, '')), lower(?)) > 0 OR (u.phone NOT LIKE 'g:%' AND instr(u.phone, ?) > 0))" : "instr(lower(coalesce(u.name, '')), lower(?)) > 0");
     binds.push(q, ...(digits.length >= 3 ? [digits.slice(-10)] : []));
   }
   if (f.role === 'none') parts.push('u.role IS NULL');

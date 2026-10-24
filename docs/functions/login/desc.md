@@ -83,7 +83,19 @@ endpoints are 404 and the button is hidden (`googleEnabled()` in `src/lib/google
   **Create your account** step (`/login` opens on it).
 - **No phone yet:** `users.phone` is NOT NULL UNIQUE, so a Google-only account stores the placeholder
   `g:<google id>`. `hasRealPhone()` / `realPhone()` (`src/lib/auth.ts`) keep it from ever being shown, texted
-  (`sendOtp` refuses anything but a real mobile), called or used for leads.
+  (`sendOtp` refuses anything but a real mobile), called or used for leads: the account page shows "No mobile number
+  yet", the login form and dialog aren't pre-filled with it, the forum falls back to "Member", admin pages show "—"
+  with no `tel:` link, admin phone search never matches it and the audit log writes "none".
+- **Adding a mobile number** (item 99): the account page's Profile shows **Add mobile number** (`AddPhone` island →
+  `POST /api/account/phone`): number → code by SMS (same `sendOtp` rules and daily limits as login) → `checkOtp`
+  → saved, replacing only the placeholder. It never logs in or creates an account. A number that already has an
+  account is refused: "This number already has an InspiState account. Log in with it, then use Continue with Google
+  to link your Google account." After adding it, the account can log in with either.
+- **Sellers and agents need a mobile number** before posting or requesting a plan: `listingAllowance` returns reason
+  `phone` (post page: "Add your mobile number to list your property" → account page; `/api/listings` refuses) and
+  `requestSubscription` refuses (the sales callback uses it). Enquiries and View Number use each listing's own
+  contact number, so without listings there is nothing to reach; buyers need no account phone (enquiry forms ask for
+  one each time).
 - Same sessions as phone login (`createSession`), redirect through `safeNext`.
 - **Dev-only mock** (`/api/dev/google-mock`, `src/lib/google-dev-mock.ts`): on `npm run dev` a code starting
   with `mock.` is exchanged with a local stand-in for Google's token endpoint and keys, so the callback can be
