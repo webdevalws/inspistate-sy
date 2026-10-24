@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { closeListing, getOwnedListing, getRefs, updateListing } from '../../../../lib/repo';
+import { closeListing, deleteListingPhotos, getOwnedListing, getRefs, updateListing } from '../../../../lib/repo';
 import { parseListingFields } from '../../../../lib/listing-form';
 
 // Owner actions on one listing: edit (JSON, from the post-property form) or mark sold / rented / delete
@@ -32,5 +32,7 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   if (as === 'sold' && listing.purpose !== 'buy') return Response.json({ error: 'Only a listing for sale can be marked sold.' }, { status: 422 });
   if (as === 'rented' && listing.purpose !== 'rent') return Response.json({ error: 'Only a listing for rent can be marked rented.' }, { status: 422 });
   await closeListing(id, as);
+  // Deleting is final for the owner: the photos go too (sold / rented listings keep theirs).
+  if (as === 'deleted') await deleteListingPhotos(id);
   return redirect(`/account?listing=${as}#listings`, 303);
 };

@@ -19,6 +19,11 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
   EXIF **Orientation** is written back as a minimal EXIF block so phone photos stay upright. PNG: `eXIf`, `tEXt`,
   `zTXt`, `iTXt`, `tIME` dropped. WebP: `EXIF` and `XMP ` chunks dropped and the VP8X flags cleared. Image data
   is copied byte for byte.
+- **Photo cleanup (item 58):** when the **owner deletes** a listing, its photos are deleted from R2 and from
+  `listing_photos` (`deleteListingPhotos`). When an **admin rejects** a listing (or closes it as deleted from
+  /admin) the photos stay in R2 so a later approval still has them, but `/media/…` returns **404** for any
+  rejected or deleted listing (`photosVisible`). Sold / rented listings keep their photos. Photos are cached
+  for a day (`max-age=86400`, was a year) so hidden photos drop out of caches.
 - `listingAllowance` gates both the page (login / register / switch-role / limit-reached panels) and `/api/listings`; `posted_by` is Agent for agents, Owner otherwise.
 - **"Verified" means reviewed and approved by our team before going live.** Approving a listing in
   `/admin` sets `verified = 1` (`setListingStatus` in `src/lib/repo.ts`); no separate document check exists

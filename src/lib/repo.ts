@@ -411,6 +411,24 @@ export async function createListing(l: NewListing): Promise<{ id: number; editTo
   return { id: id!, editToken };
 }
 
+/**
+ * Deletes a listing's photos from R2 and their rows (owner deleted the listing). Rejected listings keep their
+ * photos (only hidden by /media), so a later approval still has them.
+ */
+export async function deleteListingPhotos(listingId: number): Promise<number> {
+  const { results } = await db().prepare('SELECT r2_key FROM listing_photos WHERE listing_id = ?').bind(listingId).all<{ r2_key: string }>();
+  const keys = results.map((r) => r.r2_key);
+  if (keys.length) await env.MEDIA.delete(keys);
+  await db().prepare('DELETE FROM listing_photos WHERE listing_id = ?').bind(listingId).run();
+  return keys.length;
+}
+
+/** Whether a listing's photos may be served: not for rejected or deleted listings (pending ones are shown in previews). */
+export async function photosVisible(listingId: number): Promise<boolean> {
+  const r = await db().prepare('SELECT status, closed FROM listings WHERE id = ?').bind(listingId).first<{ status: string; closed: string | null }>();
+  return !!r && r.status !== 'rejected' && r.closed !== 'deleted';
+}
+
 export async function addListingPhotos(listingId: number, keys: string[]) {
   if (!keys.length) return;
   await db().batch(keys.map((k, i) => db().prepare('INSERT INTO listing_photos (listing_id, r2_key, position) VALUES (?, ?, ?)').bind(listingId, k, i)));
