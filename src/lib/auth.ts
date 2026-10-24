@@ -51,7 +51,13 @@ const tooManyAttempts = (until: number) => `Too many attempts. Try again in ${mi
 const OTP_PER_PHONE_PER_DAY = 5;
 const OTP_PER_IP_PER_DAY = 20;
 
+/** Shown when an admin has blocked the account (users.blocked_at, migration 0014). */
+export const BLOCKED_MESSAGE = 'This account has been blocked. Contact us if you think this is a mistake.';
+const isBlocked = async (phone: string) => !!(await db().prepare('SELECT 1 FROM users WHERE phone = ? AND blocked_at IS NOT NULL').bind(phone).first());
+
 export async function sendOtp(phone: string, clientIp: string): Promise<SendResult> {
+  // Blocked accounts can't log in, so no code is created or sent for them.
+  if (await isBlocked(phone)) return { ok: false, error: BLOCKED_MESSAGE, status: 403 };
   const now = Date.now();
   const existing = await db().prepare('SELECT attempts, expires_at, last_sent_at FROM otp_codes WHERE phone = ?').bind(phone).first<{ attempts: number; expires_at: number; last_sent_at: number }>();
   if (existing && now - existing.last_sent_at < OTP_RESEND_MS) {
@@ -117,6 +123,8 @@ export async function verifyOtp(phone: string, code: string): Promise<{ ok: true
     return { ok: false, error: 'Incorrect code.' };
   }
   await db().prepare('DELETE FROM otp_codes WHERE phone = ?').bind(phone).run();
+  // Blocked after the code was sent: no session.
+  if (await isBlocked(phone)) return { ok: false, error: BLOCKED_MESSAGE };
   const user = (await db()
     .prepare(`INSERT INTO users (phone) VALUES (?) ON CONFLICT(phone) DO UPDATE SET phone = excluded.phone RETURNING ${USER_COLS}`)
     .bind(phone)
@@ -134,7 +142,8 @@ export async function userFromCookies(cookies: AstroCookies): Promise<User | nul
   const token = cookies.get(SESSION_COOKIE)?.value;
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return db()
-    .prepare(`SELECT ${USER_COLS.split(', ').map((c) => `u.${c}`).join(', ')} FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`)
+    // Blocking ends the account's sessions; the blocked_at check is a second guard.
+    .prepare(`SELECT ${USER_COLS.split(', ').map((c) => `u.${c}`).join(', ')} FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.blocked_at IS NULL`)
     .bind(await sha256(token), Date.now())
     .first<User>();
 }

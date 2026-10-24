@@ -42,6 +42,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
         {([['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']] as const).map(([k, l]) => (
           <a href={`/admin/users?role=${k}`} class="pill border border-slate-200 bg-white">{l} · {users[k]}</a>
         ))}
+        <a href="/admin/users?state=blocked" class="pill border border-slate-200 bg-white">Blocked · {users.blocked}</a>
       </div>
     </section>
 
@@ -74,7 +75,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
           <div class="card flex flex-col gap-4 p-4 sm:flex-row">
             <Photo photo={l.photos[0]} hue={l.hue} alt={listingTitle(l, refs)} class="h-32 shrink-0 rounded-xl sm:w-48" label={l.photos.length ? `${l.photos.length} photo${l.photos.length > 1 ? 's' : ''}` : 'No photos'} />
             <div class="flex-1">
-              <a href={`/property/${l.id}?token=${l.editToken}`} class="font-semibold hover:text-brand-700">#{l.id} · {listingTitle(l, refs)}</a>
+              <a href={`/property/${l.id}?token=${l.editToken}`} class="font-semibold hover:text-brand-700">#{l.id} · {listingTitle(l, refs)}</a>{l.ownerBlocked && <span class="chip ml-1">owner blocked</span>}
               <p class="text-sm font-bold">{listingPrice(l)} · {l.areaSqft.toLocaleString('en-IN')} sq.ft</p>
               <p class="mt-1 text-sm text-slate-500">{l.contactName} · +91 {l.contactPhone} · submitted {fmtTime(l.postedAt)}</p>
               {l.description && <p class="mt-1 line-clamp-2 text-sm text-slate-600">{l.description}</p>}

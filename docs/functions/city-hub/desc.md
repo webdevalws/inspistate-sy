@@ -14,8 +14,8 @@ One page per city that links into everything we have for it: search, localities,
 
 ## How it works
 - **Data:** reference data from `getRefs()`, `cityStats()`, the city's projects, and one extra grouped query,
-  `cityFacets(city)` in `src/lib/repo.ts`. It counts the city's live listings (`status = 'active' AND
-  closed IS NULL`) by purpose × segment × type × BHK (5 = 5+) × locality × budget band, with
+  `cityFacets(city)` in `src/lib/repo.ts`. It counts the city's live listings (`live()` in `src/lib/repo.ts`:
+  approved, open, owner not blocked) by purpose × segment × type × BHK (5 = 5+) × locality × budget band, with
   ready-to-move counts and rate sums, and is cached per isolate for 5 minutes (like `cityListingCounts`).
   Helpers: `count(filter)`, `ready(filter)`, `avgRate(filter)`. Budget bands come from `BUDGET_BANDS` in
   `src/lib/search.ts`, shared with the search page's budget links.

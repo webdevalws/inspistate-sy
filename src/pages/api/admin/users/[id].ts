@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { adminUser, setUserPlan, updateUserProfile } from '../../../../lib/admin-users';
+import { adminUser, setUserBlocked, setUserPlan, updateUserProfile } from '../../../../lib/admin-users';
 import { normalizePhone } from '../../../../lib/auth';
 import { getRefs } from '../../../../lib/repo';
 import { logAdmin } from '../../../../lib/audit';
@@ -51,6 +51,15 @@ export const POST: APIRoute = async (ctx) => {
     const label = (k: string | null) => (k ? planByKey(k)?.name ?? k : 'Free');
     await logAdmin(ctx, 'user.plan', `user #${id}: ${label(res[0])} → ${label(res[1])}`);
     return back('done=plan');
+  }
+
+  if (action === 'block' || action === 'unblock') {
+    const blocked = action === 'block';
+    if (!(await setUserBlocked(id, blocked))) return back('done=unchanged');
+    await logAdmin(ctx, `user.${action}`, blocked
+      ? `user #${id} (+91 ${user.phone}): active → blocked; logged out, listings hidden`
+      : `user #${id} (+91 ${user.phone}): blocked → active; listings shown again`);
+    return back(`done=${action}`);
   }
   return new Response('Bad action', { status: 400 });
 };

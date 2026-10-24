@@ -47,6 +47,18 @@ branch) audit admin actions.
   its full length (`PLANS[].months`); a waiting request for the same plan is activated (it leaves **Agent plan
   requests**), otherwise a new active subscription is added. Any other active plan is cancelled first; Free
   cancels the active plan. Audited as `user.plan` (`user #12: Free → Yearly Plan`).
+- **Block / unblock** (item 97, `action=block|unblock`, `setUserBlocked`). **Migration 0014** (additive) adds
+  `users.blocked_at` (NULL = active) and `listings.owner_blocked` (0/1). Blocking, in one batch: sets
+  `blocked_at`, ends all of the account's sessions (logged out at once) and flags all of its listings. While
+  blocked: requesting or verifying a login code is refused ("This account has been blocked…"), sessions are
+  ignored, posting needs a login so it is refused, and the listings are left out of every public page (shared
+  `live()` condition, see [property search](../property-search/desc.md)). Unblocking clears both flags; they log in
+  again normally. Audited as `user.block` / `user.unblock`.
+  - The list has an Active / Blocked filter and a "blocked" chip; `/admin` shows the Blocked count. Admin pages
+    still show the listings, marked "owner blocked" (user detail and pending listings); their links use the
+    edit token so the admin can open them.
+- **Protection:** like every admin route — admin Basic auth (with the wrong-password slow-down and lockout),
+  same-origin check on every POST, `noindex` + `no-store` (`src/middleware.ts`).
 
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).
@@ -64,4 +76,5 @@ branch) audit admin actions.
 
 ## Files
 - `src/pages/admin/index.astro`, `src/pages/api/admin/*`, `src/middleware.ts`
-- `migrations/0013_admin_audit.sql`
+- `migrations/0013_admin_audit.sql`, `migrations/0014_user_blocking.sql`
+- `src/lib/admin-users.ts`, `src/pages/admin/users/*`, `src/pages/api/admin/users/[id].ts`

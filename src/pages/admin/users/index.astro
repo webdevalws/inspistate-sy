@@ -2,14 +2,16 @@
 import Base from '../../../layouts/Base.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { getRefs } from '../../../lib/repo';
-import { isRoleFilter, listUsers, type RoleFilter } from '../../../lib/admin-users';
+import { isRoleFilter, isStateFilter, listUsers, type RoleFilter, type StateFilter } from '../../../lib/admin-users';
 import { planByKey, roleLabel } from '../../../data/plans';
 
-// All accounts, newest first: search by name or phone, filter by role. Protected like the rest of /admin (middleware).
+// All accounts, newest first: search by name or phone, filter by role and by active / blocked. Protected like the
+// rest of /admin (middleware).
 const sp = Astro.url.searchParams;
 const q = (sp.get('q') ?? '').trim().slice(0, 60);
 const role = isRoleFilter(sp.get('role')) ? (sp.get('role') as RoleFilter) : undefined;
-const [refs, res] = await Promise.all([getRefs(), listUsers({ q, role, page: Math.floor(Number(sp.get('page')) || 1) })]);
+const state = isStateFilter(sp.get('state')) ? (sp.get('state') as StateFilter) : undefined;
+const [refs, res] = await Promise.all([getRefs(), listUsers({ q, role, state, page: Math.floor(Number(sp.get('page')) || 1) })]);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
 // Filter links keep the other filters and the search, and start again at page 1.
 const filterHref = (key: string, value: string) => {
@@ -20,6 +22,7 @@ const filterHref = (key: string, value: string) => {
   return `/admin/users${s ? `?${s}` : ''}`;
 };
 const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']];
+const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active'], ['blocked', 'Blocked']];
 ---
 <Base title="Users · Admin">
   <div class="container-x py-8">
@@ -28,6 +31,7 @@ const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['sell
 
     <form method="get" action="/admin/users" class="mt-6 flex flex-wrap items-center gap-2">
       {role && <input type="hidden" name="role" value={role} />}
+      {state && <input type="hidden" name="state" value={state} />}
       <label class="sr-only" for="user-q">Search by name or phone</label>
       <input id="user-q" name="q" type="search" value={q} maxlength="60" placeholder="Name or phone" class="input w-full max-w-xs" />
       <button class="btn-primary py-2">Search</button>
@@ -39,6 +43,11 @@ const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['sell
         <a href={filterHref('role', k)} class:list={['pill border border-slate-200 bg-white', (role ?? '') === k && 'pill-active']} aria-current={(role ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
+    <div class="mt-2 flex flex-wrap gap-2" aria-label="Filter by status">
+      {stateFilters.map(([k, l]) => (
+        <a href={filterHref('state', k)} class:list={['pill border border-slate-200 bg-white', (state ?? '') === k && 'pill-active']} aria-current={(state ?? '') === k ? 'true' : undefined}>{l}</a>
+      ))}
+    </div>
 
     <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table class="w-full min-w-[960px] text-sm">
@@ -48,7 +57,7 @@ const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['sell
         <tbody class="divide-y divide-slate-100">
           {res.rows.map((u) => (
             <tr>
-              <td class="px-4 py-3 font-semibold"><a href={`/admin/users/${u.id}`} class="text-brand-700 hover:underline">{u.name ?? `User #${u.id}`}</a></td>
+              <td class="px-4 py-3 font-semibold"><a href={`/admin/users/${u.id}`} class="text-brand-700 hover:underline">{u.name ?? `User #${u.id}`}</a>{u.blocked_at && <span class="chip ml-1">blocked</span>}</td>
               <td class="whitespace-nowrap px-4 py-3"><a href={`tel:+91${u.phone}`} class="text-brand-700 hover:underline">+91 {u.phone}</a></td>
               <td class="px-4 py-3">{u.role ? <span class="chip">{roleLabel(u.role)}</span> : <span class="text-slate-500">Not registered</span>}</td>
               <td class="px-4 py-3">{u.city_slug ? (refs.city(u.city_slug)?.name ?? u.city_slug) : '—'}</td>

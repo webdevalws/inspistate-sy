@@ -15,6 +15,7 @@ const [refs, listings, sent, received, plans] = await Promise.all([getRefs(), ad
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
 const details: [string, string][] = [
+  ['Status', user.blocked_at ? `Blocked since ${fmtTime(user.blocked_at)}` : 'Active'],
   ['Phone', `+91 ${user.phone}`],
   ['Email', user.email ?? '—'],
   ['Role', user.role ? roleLabel(user.role) : 'Not registered'],
@@ -26,7 +27,11 @@ const details: [string, string][] = [
   ['Enquiries sent', String(user.enquiries)],
 ];
 // Result of the last edit (/api/admin/users/{id} redirects back with ?done= or ?error=).
-const done = ({ profile: 'Changes saved.', plan: 'Plan saved.', unchanged: 'Nothing changed.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+const done = ({
+  profile: 'Changes saved.', plan: 'Plan saved.', unchanged: 'Nothing changed.',
+  block: 'Account blocked: logged out everywhere, login and posting refused, listings hidden from the site.',
+  unblock: 'Account unblocked: they can log in again and their listings are back on the site.',
+} as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
 const error = ({
   phone: 'Enter a valid 10-digit mobile number.',
   'phone-taken': 'Another account already uses that phone number. Nothing was changed.',
@@ -40,7 +45,7 @@ const error = ({
 <Base title={`${user.name ?? `User #${user.id}`} · Admin`}>
   <div class="container-x py-8">
     <p class="text-sm"><a href="/admin/users" class="text-brand-700 hover:underline">← All users</a></p>
-    <h1 class="mt-2 text-2xl font-extrabold">{user.name ?? `User #${user.id}`}</h1>
+    <h1 class="mt-2 text-2xl font-extrabold">{user.name ?? `User #${user.id}`}{user.blocked_at && <span class="chip ml-2 align-middle">blocked</span>}</h1>
 
     <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
       {details.map(([k, v]) => (
@@ -83,6 +88,14 @@ const error = ({
         <button class="btn-primary py-2">Save plan</button>
         <p class="w-full text-xs text-slate-500">A plan starts today and runs for its full length; Free cancels the active plan.</p>
       </form>
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card mt-4 flex flex-wrap items-center justify-between gap-4 p-5">
+        <p class="text-sm text-slate-600">{user.blocked_at
+          ? 'Blocked: they can’t log in or post, and their listings are hidden from the site.'
+          : 'Blocking logs them out everywhere, stops login and posting, and hides their listings from the site.'}</p>
+        {user.blocked_at
+          ? <button name="action" value="unblock" class="btn-primary py-2">Unblock account</button>
+          : <button name="action" value="block" class="btn-ghost py-2">Block account</button>}
+      </form>
     </section>
 
     <section id="listings" class="mt-10">
@@ -96,12 +109,12 @@ const error = ({
                 <td class="px-4 py-3 font-semibold">{l.id}</td>
                 <td class="px-4 py-3">
                   {l.closed === 'deleted' ? <span>{l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</span> : (
-                    <a href={`/property/${l.id}${l.status === 'active' && !l.closed ? '' : `?token=${l.edit_token}`}`} class="text-brand-700 hover:underline">{l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</a>
+                    <a href={`/property/${l.id}${l.status === 'active' && !l.closed && !user.blocked_at ? '' : `?token=${l.edit_token}`}`} class="text-brand-700 hover:underline">{l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</a>
                   )}
                 </td>
                 <td class="whitespace-nowrap px-4 py-3">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtDate(l.posted_at)}</td>
-                <td class="px-4 py-3"><span class="chip">{listingStateLabel(l)}</span></td>
+                <td class="whitespace-nowrap px-4 py-3"><span class="chip">{listingStateLabel(l)}</span>{l.owner_blocked && !l.closed && <span class="chip ml-1">owner blocked</span>}</td>
               </tr>
             ))}
             {listings.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No listings.</td></tr>}

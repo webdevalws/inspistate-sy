@@ -25,7 +25,8 @@ const kind = l.type === 'Plot' ? 'plot' : l.segment === 'commercial' ? 'office' 
 const rate = l.price / l.areaSqft;
 const localityRate = l.purpose === 'buy' ? loc.ratePerSqft : loc.rentPerSqft;
 const vs = ((rate - localityRate) / localityRate) * 100;
-const isPending = l.status !== 'active';
+// Previews (edit-token links) of listings that aren't public: pending review, or the owner's account is blocked.
+const isPending = l.status !== 'active' || l.ownerBlocked;
 const similar = isPending ? [] : await getSimilarListings(l, 3);
 
 const facts = [
@@ -47,7 +48,7 @@ const [main, ...rest] = l.photos;
 <Base title={`${title} — ${listingPrice(l)}`} description={description.slice(0, 300)} noindex={isPending}>
   {isPending && (
     <div class="bg-accent-500 text-white">
-      <p class="container-x py-2.5 text-sm font-semibold">This listing is pending review and is only visible to you. Keep this link to check its status.</p>
+      <p class="container-x py-2.5 text-sm font-semibold">{l.ownerBlocked ? "This listing is hidden from the site because the owner's account is blocked." : 'This listing is pending review and is only visible to you. Keep this link to check its status.'}</p>
     </div>
   )}
   <div class="container-x py-6">
