@@ -28,7 +28,7 @@ const faq = [
   { q: 'Can InspiState edit or remove negative reviews?', a: 'No. We publish honest reviews, positive or negative, as long as they follow the guidelines above.' },
 ];
 ---
-<Base title={`InspiState Reviews${res.total ? ` — ${res.avg.toFixed(1)}★ from ${res.total} reviews` : ''}`} description="Read what home buyers, tenants and owners say about InspiState — or share your own experience.">
+<Base page={res.page} title={`InspiState Reviews${res.total ? ` — ${res.avg.toFixed(1)}★ from ${res.total} reviews` : ''}`} description="Read what home buyers, tenants and owners say about InspiState — or share your own experience.">
   <div class="container-x py-6">
     <Breadcrumbs items={[{ label: 'Reviews' }]} />
     <div class="mt-4 grid gap-6 lg:grid-cols-[1fr_360px]">

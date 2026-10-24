@@ -100,7 +100,7 @@ const faq = [
   { q: 'Are the listings verified?', a: 'Listings marked “Verified” have been reviewed and approved by our team before going live. Use the “Verified listings only” filter to see just those.' },
 ];
 ---
-<Base title={`${heading} — ${formatNumber(total)} listings`} description={`Browse ${plural(total, 'listing')} — ${heading.toLowerCase()}. Filter by budget, BHK, locality, furnishing, amenities and possession. Verified photos and prices on InspiState.`}>
+<Base page={page} title={`${heading} — ${formatNumber(total)} listings`} description={`Browse ${plural(total, 'listing')} — ${heading.toLowerCase()}. Filter by budget, BHK, locality, furnishing, amenities and possession. Verified photos and prices on InspiState.`}>
   <div class="border-b border-slate-200 bg-white">
     <div class="container-x py-3">
       <SearchBox client:idle {...sb} variant="bar" initialCity={city.slug} initialTab={m === 'commercial' ? 'commercial' : m} />

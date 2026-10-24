@@ -124,6 +124,11 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   project. `/api/suggest` has the same-site check and a per-IP daily limit of 2,000 (`guard()`), generous for
   normal typing.
 
+## Canonical URLs (item 82)
+- `Base.astro` sets the canonical to the page path without query filters. Paginated lists pass their current page
+  (`<Base page={…}>`): search results, managed rentals and reviews — so page 2+ points at itself
+  (`/buy/mumbai?page=2`) instead of page 1. Listing, project, city and locality pages use their own path.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
