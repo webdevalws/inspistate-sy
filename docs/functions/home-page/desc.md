@@ -19,8 +19,8 @@ espresso bands, hairline borders, mono bracket labels, wide display headings):
 10. City directory — hairline grid, cells invert on hover.
 11. Expert strip (`#expert`) — compact: heading, consultation + tour buttons, one row of platform numbers.
 12. Footer (site-wide, `Footer.astro`) — opens with the signature full-width INSPISTATE wordmark
-    behind the tower cut-out (`.ft-art`, dusk glow; image rendered at 210vw on phones); **on the home
-    page only** (`flush`), the tagline "Search smarter. Live better." sits centred under the wordmark in
+    behind the tower cut-out (`.ft-art`, dusk glow; image rendered at 210vw on phones); on every
+    page the tagline "Search smarter. Live better." sits centred under the wordmark in
     the same mono style as the bottom-bar tagline; below that the options: blurb, Explore/Post buttons (`.ed-pair-tight`), newsletter, socials and the hairline link
     directory (2 columns on phones, 4 from sm); then a mono bottom bar.
 
