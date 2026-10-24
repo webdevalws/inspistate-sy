@@ -162,7 +162,7 @@ const toolTiles = [
       <div class="mx-auto max-w-5xl bg-[#1C1A17] p-4 shadow-[0_30px_60px_-20px_rgba(28,26,23,0.5)] sm:p-6">
         <div class="mb-3 flex items-center justify-between gap-4">
           <p class="ed-label text-sand-50/70"><span class="bracket"></span>Find your home</p>
-          <a href="/property-search" class="font-mono text-[10px] uppercase tracking-[0.2em] text-sand-50/60 transition hover:text-sand-50">Ask in plain words →</a>
+          <a href="#home-search" data-ask-plain class="font-mono text-[10px] uppercase tracking-[0.2em] text-sand-50/60 transition hover:text-sand-50">Ask in plain words →</a>
         </div>
         <SearchBox client:load {...sb} initialCity={currentCity(Astro.url, Astro.cookies, cities).slug} />
         <div class="mt-4 hidden space-y-1.5 border-t-[0.5px] border-sand-50/15 pt-3 text-xs text-sand-50/70 sm:block">
@@ -602,6 +602,17 @@ const toolTiles = [
 
   <!-- Tour modal + hero parallax -->
   <script is:inline>
+    // "Ask in plain words →": the search box below reads plain-language queries (Ask AI parser), so focus it with an
+    // example. Without JS the link still jumps to #home-search.
+    document.querySelector('[data-ask-plain]')?.addEventListener('click', function (e) {
+      var input = document.querySelector('#home-search input[aria-label="Search by locality, project or builder"]');
+      if (!input) return;
+      e.preventDefault();
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      input.placeholder = 'Try: 2 BHK in Powai under 3 Cr, ready to move';
+      input.focus({ preventScroll: true });
+    });
+
     // Global functions for opening and switching modal video tours
     window.openTourModal = function(videoSrc, title, subtitle) {
       const modal = document.getElementById('video-modal');

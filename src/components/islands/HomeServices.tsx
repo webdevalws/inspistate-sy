@@ -9,13 +9,21 @@ import {
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const BHKS = ['1 BHK', '2 BHK', '3 BHK', '4 BHK'];
 
+/**
+ * A row of toggle chips with its own visible legend. A <fieldset>/<legend> (not a <label>) groups them, so each chip
+ * keeps its own accessible name ("1 BHK") and clicking the legend doesn't select an option.
+ */
 function Chips<T extends string>({ options, value, set, label }: { options: readonly T[]; value: T; set: (v: T) => void; label: string }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
-      {options.map((o) => <button key={o} type="button" aria-pressed={value === o} onClick={() => set(o)} className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${value === o ? 'border-brand-900 bg-brand-900 text-white' : 'border-neutral-200 bg-white'}`}>{o}</button>)}
-    </div>
+    <fieldset className="block text-sm">
+      <legend className="mb-1 block font-medium text-neutral-600">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => <button key={o} type="button" aria-pressed={value === o} onClick={() => set(o)} className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${value === o ? 'border-brand-900 bg-brand-900 text-white' : 'border-neutral-200 bg-white'}`}>{o}</button>)}
+      </div>
+    </fieldset>
   );
 }
+/** Label for one form control (input, select). Chip groups use Chips, which has its own legend. */
 function L({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm"><span className="mb-1 block font-medium text-neutral-600">{label}</span>{children}</label>;
 }
@@ -72,7 +80,7 @@ export function PackersEstimator() {
         <L label={`Distance: ${km} km`}><input type="range" min={1} max={2500} value={km} onChange={(x) => setKm(Number(x.target.value))} className="w-full accent-brand-900" aria-label="Distance in km" /></L>
         <L label="Moving date"><input type="date" className="input" value={date} onChange={(x) => setDate(x.target.value)} min={new Date().toISOString().slice(0, 10)} /></L>
       </div>
-      <L label="Home size"><Chips options={BHKS} value={size} set={setSize} label="Home size" /></L>
+      <Chips options={BHKS} value={size} set={setSize} label="Home size" />
       <div className="flex gap-4 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={car} onChange={(x) => setCar(x.target.checked)} className="accent-brand-900" />Move my car</label><label className="flex items-center gap-2"><input type="checkbox" checked={bike} onChange={(x) => setBike(x.target.checked)} className="accent-brand-900" />Move my bike</label></div>
       <Estimate title={`Estimated cost · ${bandLabel}`} value={`${inr(e.min)} – ${inr(e.max)}`} sub={e.outOfRange ? 'Over 2,500 km — the partner will quote after a survey.' : 'Final price after a free survey of your goods.'} />
       <ServiceLead service="Packers & movers" summary={`${size}${car ? '+car' : ''}${bike ? '+bike' : ''}, ${from || '?'} → ${to || '?'} (${km} km), ${date || 'date TBD'}, est ${inr(e.min)}–${inr(e.max)}`} cta="Get free quotes" />
@@ -96,12 +104,12 @@ export function PaintingEstimator() {
   const e = paintEstimate(carpet, finish, scope, repaint, ceiling);
   return (
     <div className="space-y-5">
-      <L label="Home"><Chips options={BHKS} value={bhk} set={(b) => { setBhk(b); setCarpet(PAINT_CARPET[b]); }} label="Home size" /></L>
+      <Chips options={BHKS} value={bhk} set={(b) => { setBhk(b); setCarpet(PAINT_CARPET[b]); }} label="Home" />
       <div className="grid gap-3 sm:grid-cols-2">
         <L label="Carpet area (sq ft)"><input type="number" className="input" min={100} value={carpet} onChange={(x) => setCarpet(Math.max(100, Number(x.target.value)))} /></L>
         <L label="Paint finish"><select className="input" value={finish} onChange={(x) => setFinish(x.target.value as typeof finish)}>{Object.entries(PAINT_FINISHES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></L>
       </div>
-      <L label="What to paint"><Chips options={['interior', 'exterior', 'both'] as const} value={scope} set={setScope} label="Scope" /></L>
+      <Chips options={['interior', 'exterior', 'both'] as const} value={scope} set={setScope} label="What to paint" />
       <div className="flex flex-wrap gap-4 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={repaint} onChange={(x) => setRepaint(x.target.checked)} className="accent-brand-900" />Repaint (walls already painted)</label>{scope !== 'exterior' && <label className="flex items-center gap-2"><input type="checkbox" checked={ceiling} onChange={(x) => setCeiling(x.target.checked)} className="accent-brand-900" />Include ceilings</label>}</div>
       <Estimate title={`Estimated cost · ~${e.area.toLocaleString('en-IN')} sq ft paintable area`} value={`${inr(e.min)} – ${inr(e.max)}`} sub={`About ${e.days} working days. Includes material and labour; putty and waterproofing are extra.`} />
       <ServiceLead service="Home painting" summary={`${bhk} ${carpet} sqft, ${scope}, ${PAINT_FINISHES[finish].label}${repaint ? ', repaint' : ''}, est ${inr(e.min)}–${inr(e.max)}`} cta="Book a free site visit" />
@@ -123,7 +131,7 @@ export function SolarEstimator() {
         <L label="Tariff (₹ per unit)"><input type="number" className="input" min={2} step={0.5} value={tariff} onChange={(x) => setTariff(Math.max(1, Number(x.target.value)))} /></L>
         <L label="Shadow-free roof (sq ft)"><input type="number" className="input" min={100} step={50} value={roof} onChange={(x) => setRoof(Math.max(0, Number(x.target.value)))} /></L>
       </div>
-      <L label="Property"><Chips options={['Home', 'Housing society / commercial'] as const} value={residential ? 'Home' : 'Housing society / commercial'} set={(v) => setResidential(v === 'Home')} label="Property type" /></L>
+      <Chips options={['Home', 'Housing society / commercial'] as const} value={residential ? 'Home' : 'Housing society / commercial'} set={(v) => setResidential(v === 'Home')} label="Property" />
       <div className="grid gap-3 sm:grid-cols-2">
         <Estimate title="Recommended system" value={`${e.kw} kW`} sub={`${e.monthlyUnits} units a month${e.limitedByRoof ? ' · limited by roof space' : ''}`} />
         <Estimate title="You pay after subsidy" value={inr(e.net)} sub={`${inr(e.cost)} system${e.subsidy ? ` − ${inr(e.subsidy)} central subsidy` : ''}`} />
@@ -187,12 +195,12 @@ export function RentPackageEstimator() {
   const what = [pkg !== 'No furniture' && `${pkg} furniture`, ...addons].filter(Boolean).join(' + ');
   return (
     <div className="space-y-5">
-      <L label="Furniture package"><Chips options={[...RENT_PACKAGES.map((p) => p.name), 'No furniture']} value={pkg} set={setPkg} label="Furniture package" /></L>
+      <Chips options={[...RENT_PACKAGES.map((p) => p.name), 'No furniture']} value={pkg} set={setPkg} label="Furniture package" />
       <div role="group" aria-label="Appliances" className="text-sm">
         <span className="mb-1 block font-medium text-neutral-600">Appliances</span>
         <div className="flex flex-wrap gap-x-4 gap-y-2">{RENT_ADDONS.map((a) => <label key={a.name} className="flex items-center gap-2"><input type="checkbox" checked={addons.includes(a.name)} onChange={() => toggle(a.name)} className="accent-brand-900" />{a.name}</label>)}</div>
       </div>
-      <L label="Plan"><Chips options={RENT_PLANS.map((t) => `${t.months} months`)} value={`${months} months`} set={(v) => setMonths(parseInt(v))} label="Plan" /></L>
+      <Chips options={RENT_PLANS.map((t) => `${t.months} months`)} value={`${months} months`} set={(v) => setMonths(parseInt(v))} label="Plan" />
       <Estimate title="Estimated monthly rent · demo prices" value={what ? `${inr(e.monthly)}/month` : '—'} sub={what ? `${what} · ${months} months · refundable deposit about ${inr(e.deposit)}` : 'Pick a package or at least one appliance.'} />
       <ServiceLead service="Furniture & appliances on rent" summary={`${what || 'nothing selected'}; ${months} mo; est ${inr(e.monthly)}/mo (demo)`} cta="Get a callback" note="Demo prices for illustration. Our partner confirms the final rent for your city." />
     </div>
@@ -212,12 +220,12 @@ export function PropertyManagementForm() {
         <div className="space-y-4">
           <L label="City *"><select className="input" value={d.city} onChange={(e) => setD({ ...d, city: e.target.value })}><option value="">Select city</option>{PM_CITIES.map((c) => <option key={c}>{c}</option>)}</select></L>
           <L label="Property type *"><select className="input" value={d.type} onChange={(e) => setD({ ...d, type: e.target.value, bhk: PM_NO_BHK.has(e.target.value) ? '' : d.bhk })}><option value="">Select type</option>{PM_TYPES.map((c) => <option key={c}>{c}</option>)}</select></L>
-          {needsBhk && <L label="Configuration *"><Chips options={['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK'] as const} value={d.bhk as '1 BHK'} set={(v) => setD({ ...d, bhk: v })} label="Configuration" /></L>}
+          {needsBhk && <Chips options={['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK'] as const} value={d.bhk as '1 BHK'} set={(v) => setD({ ...d, bhk: v })} label="Configuration *" />}
           <button type="button" className="btn-primary w-full py-3" disabled={!step1Ok} onClick={() => setStep(2)}>Continue</button>
         </div>
       ) : (
         <div className="space-y-4">
-          <L label="You are"><Chips options={['Resident', 'NRI'] as const} value={d.resident as 'Resident'} set={(v) => setD({ ...d, resident: v })} label="Resident type" /></L>
+          <Chips options={['Resident', 'NRI'] as const} value={d.resident as 'Resident'} set={(v) => setD({ ...d, resident: v })} label="You are" />
           <ServiceLead service="Property management" summary={`${d.type}${d.bhk ? ` ${d.bhk}` : ''} in ${d.city}, owner ${d.resident}`} cta="Get my personalised plan" />
           <button type="button" className="text-sm font-semibold text-brand-700 hover:underline" onClick={() => setStep(1)}>← Back</button>
         </div>
@@ -234,7 +242,7 @@ export function InspectionBooking() {
   const price = INSPECTION_PRICES[bhk];
   return (
     <div className="space-y-4">
-      <L label="Home size"><Chips options={Object.keys(INSPECTION_PRICES)} value={bhk} set={setBhk} label="Home size" /></L>
+      <Chips options={Object.keys(INSPECTION_PRICES)} value={bhk} set={setBhk} label="Home size" />
       <div className="grid gap-3 sm:grid-cols-2">
         <L label="Inspection for"><select className="input" value={stage} onChange={(e) => setStage(e.target.value)}>{['New home — builder handover', 'Resale purchase', 'After renovation', 'Before renting out'].map((s) => <option key={s}>{s}</option>)}</select></L>
         <L label="Preferred date"><input type="date" className="input" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} /></L>

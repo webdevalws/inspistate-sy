@@ -1,5 +1,5 @@
 ---
-import Newsletter from './islands/Newsletter';
+import Newsletter, { type NewsletterResult } from './islands/Newsletter';
 import { getRefs } from '../lib/repo';
 import { currentCity } from '../lib/city';
 
@@ -8,6 +8,10 @@ const { cities } = await getRefs();
 const c0 = currentCity(Astro.url, Astro.cookies, cities).slug;
 // The homepage ends on a dark band, so the footer sits flush there; other pages get breathing room.
 const flush = Astro.url.pathname === '/';
+// Newsletter without JS: the form posts to /api/newsletter, which redirects back here with ?newsletter=ok|invalid|error.
+const newsletterResult = (['ok', 'invalid', 'error'] as const).find((r) => r === Astro.url.searchParams.get('newsletter')) as NewsletterResult | undefined;
+const backParams = new URLSearchParams([...Astro.url.searchParams].filter(([k]) => k !== 'newsletter')).toString();
+const newsletterBack = `${Astro.url.pathname}${backParams ? `?${backParams}` : ''}`;
 const cols: [string, [string, string][]][] = [
   ['Popular Searches', [['Buy Properties', `/buy/${c0}`], ['Rent Properties', `/rent/${c0}`], ['New Projects', `/new-projects/${c0}`], ['Commercial Properties', `/commercial/${c0}`], ['Plots & Land', `/buy/${c0}/plot`], ['Villas', `/buy/${c0}/villa`], ['2/3 BHK Apartments', `/buy/${c0}?bhk=2,3`], ['Ready to Move', `/buy/${c0}?possession=Ready+to+Move`]]],
   ['Company', [['About Us', '/about'], ['Careers', '/careers'], ['Press', '/press'], ['Contact Us', '/contact'], ['Partner With Us', '/partner-with-us'], ['Advertise', '/advertise'], ['For Businesses', '/business'], ['Download App', '/app-download'], ['Help Center', '/faq'], ['Fraud Awareness', '/fraud-awareness'], ['Terms & Conditions', '/terms'], ['Privacy Policy', '/privacy']]],
@@ -40,7 +44,7 @@ const socials: [string, string][] = [
         <a href="/post-property" class="ed-btn ed-btn-ghost-light">Post property free</a>
       </div>
       <p class="ed-label mt-10 text-sand-50/55"><span class="bracket"></span>Market notes · monthly</p>
-      <div class="mt-3"><Newsletter client:visible /></div>
+      <div class="mt-3"><Newsletter client:visible back={newsletterBack} result={newsletterResult} /></div>
       <ul class="mt-6 flex gap-2">
         {socials.map(([n, d]) => (
           <li>
