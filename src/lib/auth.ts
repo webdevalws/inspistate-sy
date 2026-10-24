@@ -37,6 +37,14 @@ export const normalizePhone = (raw: string) => {
   return /^[6-9]\d{9}$/.test(d) ? d : null;
 };
 
+/**
+ * Accounts created with Google have no mobile number yet: users.phone (NOT NULL UNIQUE) holds the placeholder
+ * 'g:<google_sub>' (migration 0015). Only a real 10-digit mobile may be shown, called, texted or used for leads.
+ */
+export const hasRealPhone = (phone: string | null | undefined): phone is string => !!phone && /^[6-9]\d{9}$/.test(phone);
+export const realPhone = (phone: string | null | undefined) => (hasRealPhone(phone) ? phone : null);
+export const googlePlaceholderPhone = (sub: string) => `g:${sub}`;
+
 function randomCode(): string {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
   return String(n).padStart(6, '0');
@@ -56,6 +64,8 @@ export const BLOCKED_MESSAGE = 'This account has been blocked. Contact us if you
 const isBlocked = async (phone: string) => !!(await db().prepare('SELECT 1 FROM users WHERE phone = ? AND blocked_at IS NOT NULL').bind(phone).first());
 
 export async function sendOtp(phone: string, clientIp: string): Promise<SendResult> {
+  // Only real mobile numbers are ever texted (never a Google account's placeholder).
+  if (!hasRealPhone(phone)) return { ok: false, error: 'Enter a valid 10-digit Indian mobile number.', status: 422 };
   // Blocked accounts can't log in, so no code is created or sent for them.
   if (await isBlocked(phone)) return { ok: false, error: BLOCKED_MESSAGE, status: 403 };
   const now = Date.now();
@@ -129,9 +139,14 @@ export async function verifyOtp(phone: string, code: string): Promise<{ ok: true
     .prepare(`INSERT INTO users (phone) VALUES (?) ON CONFLICT(phone) DO UPDATE SET phone = excluded.phone RETURNING ${USER_COLS}`)
     .bind(phone)
     .first<User>())!;
+  return { ok: true, user, token: await createSession(user.id) };
+}
+
+/** Starts a server-side session for the account (phone or Google login) and returns the cookie token. */
+export async function createSession(userId: number): Promise<string> {
   const token = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
-  await db().prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), user.id, Date.now() + SESSION_DAYS * 86400000).run();
-  return { ok: true, user, token };
+  await db().prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), userId, Date.now() + SESSION_DAYS * 86400000).run();
+  return token;
 }
 
 export function setSessionCookie(cookies: AstroCookies, token: string, secure: boolean) {

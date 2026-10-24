@@ -4,12 +4,16 @@ import AuthFlow from '../components/islands/AuthFlow';
 import { getRefs } from '../lib/repo';
 import { ROLES } from '../data/plans';
 import { roleForNext, safeNext } from '../lib/redirect';
+import { GOOGLE_ERRORS } from '../lib/google';
 
 const next = safeNext(Astro.url.searchParams.get('next'));
 const user = Astro.locals.user;
 if (user?.role) return Astro.redirect(next ?? '/account');
 const cities = (await getRefs()).cities.map((c) => ({ slug: c.slug, name: c.name }));
 const defaultRole = roleForNext(next);
+// Why a Google sign-in was refused (the callback redirects here with ?error=…).
+const errorKey = Astro.url.searchParams.get('error') ?? '';
+const error = Object.hasOwn(GOOGLE_ERRORS, errorKey) ? GOOGLE_ERRORS[errorKey] : '';
 ---
 <Base title="Login or Register" noindex>
   <div class="bg-sand-100">
@@ -27,7 +31,7 @@ const defaultRole = roleForNext(next);
         </ul>
       </div>
       <div class="border-[0.5px] border-[#1C1A17]/15 bg-sand-50 p-6 sm:p-8">
-        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={user?.phone ?? ''} defaultRole={defaultRole} />
+        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={user?.phone ?? ''} defaultRole={defaultRole} initialError={error} />
       </div>
     </div>
   </div>

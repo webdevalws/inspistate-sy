@@ -12,6 +12,8 @@ interface Props {
   startAt?: Step;
   knownPhone?: string;
   defaultRole?: Role;
+  /** Shown on the first step, e.g. why a Google sign-in was refused (/login?error=…). */
+  initialError?: string;
 }
 
 const ROLE_ICONS: Record<Role, string> = {
@@ -31,7 +33,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data;
 }
 
-export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user' }: Props) {
+export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user', initialError = '' }: Props) {
   const [step, setStep] = useState<Step>(startAt);
   const [phone, setPhone] = useState(knownPhone);
   const [code, setCode] = useState('');
@@ -44,7 +46,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   const [city, setCity] = useState('');
   const [company, setCompany] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
 
   useEffect(() => {
     if (resendIn <= 0) return;

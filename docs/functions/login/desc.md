@@ -1,4 +1,4 @@
-# Login / Register (phone OTP + role)
+# Login / Register (phone OTP or Google + role)
 
 **Area:** Accounts · **Route:** `/login` and a site-wide dialog · **Status:** built
 
@@ -56,6 +56,39 @@ name, optional email, optional city and (agents) a required agency name.
   are ended when the admin blocks and ignored while blocked (`userFromCookies`). With no session they can't post.
 - **Admin phone change** (item 95): the admin can change an account's phone (its login); that ends all of the
   account's sessions.
+## Continue with Google (items 98–102)
+Alongside phone + OTP (unchanged). Needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; without them both
+endpoints are 404 and the button is hidden (`googleEnabled()` in `src/lib/google.ts`).
+- **Start** `GET /api/auth/google/start?next=` — `guard()` (same-site + 30 per IP per day, feature
+  `google-start`). Creates `state` (32 random bytes), a PKCE `code_verifier` (S256 challenge) and a `nonce`,
+  and stores them with the safe `next` and, when someone is logged in, their account id (to link) in the
+  `is_google_flow` cookie: HttpOnly, SameSite=Lax, Secure on https, path `/api/auth/google`, 10 minutes, HMAC-signed
+  (key derived from the client secret) so it can't be altered. Redirects to Google with scopes `openid email profile`
+  only and `prompt=select_account`.
+- **Callback** `GET /api/auth/google/callback` — Google's redirect back is cross-site, so `guard()`'s same-site
+  check can't apply; the signed state cookie ties the request to a flow started on our site, and the same daily
+  counter limits it (60 per IP per day, `google-callback`). The cookie is read once and deleted. Checks, in order:
+  state matches → flow not expired → no `error` from Google → code exchanged **server to server** with
+  `client_secret` + `code_verifier` → ID token **RS256 signature** checked against Google's published keys
+  (cached 1 h) → `iss` (accounts.google.com), `aud` = our client id, `exp` in the future, `iat` sane, `nonce`
+  matches → `email_verified === true`. Any failure redirects to `/login?error=…` with a message
+  (`GOOGLE_ERRORS`; blocked accounts get the same message as phone login).
+- **Accounts** (`signInWithGoogle`, migration 0015 adds `users.google_sub` with a unique index and
+  `users.google_email`): (1) found by Google account id → logged in (refused if blocked); (2) someone logged in
+  who started the flow → Google is **linked** to that account (refused if that Google account belongs to another
+  account, or this account is linked to another Google account); (3) an account with the same email (registration
+  email or Google email) is **not** linked automatically, because registration emails aren't verified — the
+  message says "An account with this email exists — log in with your phone, then use Continue with Google to link
+  it."; (4) otherwise a new account is created (name and email from Google) and goes through the usual
+  **Create your account** step (`/login` opens on it).
+- **No phone yet:** `users.phone` is NOT NULL UNIQUE, so a Google-only account stores the placeholder
+  `g:<google id>`. `hasRealPhone()` / `realPhone()` (`src/lib/auth.ts`) keep it from ever being shown, texted
+  (`sendOtp` refuses anything but a real mobile), called or used for leads.
+- Same sessions as phone login (`createSession`), redirect through `safeNext`.
+- **Dev-only mock** (`/api/dev/google-mock`, `src/lib/google-dev-mock.ts`): on `npm run dev` a code starting
+  with `mock.` is exchanged with a local stand-in for Google's token endpoint and keys, so the callback can be
+  tested end to end. It sits behind `import.meta.env.DEV`, so production builds answer 404 and don't contain
+  the mock.
 - **Safe redirects** (`safeNext` in `src/lib/redirect.ts`): every `next` (login page, dialog, after
   login/register) and the role-switch `back` value must be a path on our own site. It must start with a
   single `/`; values with `//`, `\`, control characters (browsers drop tabs/newlines, so `/\t/x` becomes
@@ -79,7 +112,8 @@ name, optional email, optional city and (agents) a required agency name.
 - `src/pages/login.astro`, `src/lib/auth.ts`, `src/pages/api/auth/*`, `src/pages/api/account/register.ts`
 - `src/lib/redirect.ts` — `safeNext`, `roleForNext`, `destinationAfterRegister` (also used by `src/pages/api/account/role.ts`)
 - `src/data/plans.ts` — role definitions and perks
-- `migrations/0010_roles_plans.sql`
+- `src/lib/google.ts`, `src/pages/api/auth/google/start.ts`, `src/pages/api/auth/google/callback.ts`
+- `migrations/0010_roles_plans.sql`, `migrations/0015_google_login.sql`
 
 ## Reference behaviour (Square Yards)
 From user-supplied screenshots: "Login" opens a modal; a new number gets a **Register** modal with
@@ -87,4 +121,4 @@ From user-supplied screenshots: "Login" opens a modal; a new number gets a **Reg
 InspiState adds a third role (Buyer, for buyers/tenants; stored as `user`) and splits Individual into Seller.
 
 ## Gaps vs reference
-- No Google / email login.
+- No email (magic link) login.
