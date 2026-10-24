@@ -30,7 +30,8 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
   const params = new URLSearchParams();
 
   // City (aliases first), then locality within it — a locality name also implies its city.
-  let city = cities.find((c) => q.includes(` ${c.name.toLowerCase()} `) || q.includes(` ${c.slug} `));
+  // Longest names first, so "navi mumbai" is Navi Mumbai rather than Mumbai.
+  let city = [...cities].sort((a, b) => b.name.length - a.name.length).find((c) => q.includes(` ${c.name.toLowerCase()} `) || q.includes(` ${c.slug} `));
   for (const [alias, slug] of Object.entries(CITY_ALIASES)) if (!city && q.includes(` ${alias} `)) city = cities.find((c) => c.slug === slug);
   const locs = [...localities].sort((a, b) => b.name.length - a.name.length);
   const loc = locs.find((l) => (!city || l.citySlug === city.slug) && q.includes(` ${l.name.toLowerCase()} `));

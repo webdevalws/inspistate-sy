@@ -60,12 +60,16 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
   Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
-- **Cities:** 11 — the ten original demo cities plus **Lucknow** (hand-written sample data: 5 localities,
-  4 listings and 3 projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer,
+- **Cities:** 12 — the ten original demo cities plus **Lucknow** and **Navi Mumbai** (hand-written sample
+  data, 5 localities each with real coordinates; Lucknow 4 listings and 3 projects, Navi Mumbai — Vashi,
+  Nerul, CBD Belapur, Kharghar, Panvel — 4 listings (ids 50808–50811) and 3 projects (ids 1034–1036,
+  `MAHARERA-DEMO-…`); see `db/seed-data.ts`). Navi Mumbai is no longer in the not-covered list
+  (`src/data/indian-cities.ts`). The Ask AI parser matches longer city names first, so "navi mumbai" is
+  Navi Mumbai, not Mumbai. Every city list (city picker, header menus, footer,
   home city strip and "Popular cities", search box city menu, "Our cities" links, the 404 page, near me)
   reads the `cities` table, so a new city appears everywhere automatically. The home page's market-insight
-  and locality tabs show the first 8 cities plus the most recently added city (last in sort order) when it
-  has projects — today Mumbai…Chennai plus Lucknow (9 tabs).
+  and locality tabs show the first 8 cities plus **every** later city that has projects — today
+  Mumbai…Chennai plus Lucknow and Navi Mumbai (10 tabs).
 
 ## PG / co-living (item 49)
 - **Type:** `PG` (shown as "PG / Co-living", `typeLabel` in `src/lib/search.ts`), residential and **rent only**; BHK 0,
