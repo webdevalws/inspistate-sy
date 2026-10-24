@@ -1,0 +1,44 @@
+# Settings InspiState reads at runtime. Copy this file to `.dev.vars` for local development
+# (`cp .dev.vars.example .dev.vars`) and fill in your own values. Never commit `.dev.vars`.
+#
+# In production these are NOT read from a file: set each one as a Cloudflare secret, e.g.
+#   npx wrangler secret put ADMIN_PASSWORD
+# `npm run doctor` checks that the required ones are present. See DEPLOY.md.
+
+# ---------------------------------------------------------------------------
+# Required in production
+# ---------------------------------------------------------------------------
+
+# Password for /admin (HTTP Basic auth; any username). Without it /admin answers 503 "Admin is disabled".
+# Use a long random value in production. Wrong passwords are rate-limited per IP.
+ADMIN_PASSWORD=change-me-to-a-long-random-password
+
+# SMS gateway for login codes: InspiState POSTs JSON {"to": "+91XXXXXXXXXX", "message": "..."} to this URL.
+# Without it, login by SMS is "not configured" in production (local dev can use TEST_OTP / DEV_SHOW_OTP).
+SMS_WEBHOOK_URL=https://sms-gateway.example.com/send
+
+# ---------------------------------------------------------------------------
+# Optional
+# ---------------------------------------------------------------------------
+
+# Anthropic API key for automatic room detection in the Vastu tool (/tools/vastu). Without it, users mark
+# rooms by hand; everything else works. Usage is capped per client and per day site-wide.
+ANTHROPIC_API_KEY=
+
+# Helpline number shown when an owner's number can't be revealed ("or call ..."), e.g. +91 22 4000 0000.
+PUBLIC_HELPLINE=
+
+# WhatsApp number (digits with country code, no +) for the "WhatsApp" button on project pages, e.g. 919800000000.
+# Without it the button is hidden.
+PUBLIC_WHATSAPP=
+
+# ---------------------------------------------------------------------------
+# Local development only — ignored by production builds, leave unset there
+# ---------------------------------------------------------------------------
+
+# A fixed 6-digit code that logs in any phone number on `npm run dev` (e.g. 123456). Only works on the
+# dev server; a built Worker ignores it.
+TEST_OTP=123456
+
+# 1 = show the real one-time code on screen instead of sending an SMS (dev server only).
+DEV_SHOW_OTP=1
