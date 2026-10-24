@@ -42,6 +42,14 @@ else {
   const r2 = (config.r2_buckets ?? []).find((b: any) => b.binding === 'MEDIA');
   d1 ? ok(`D1 binding DB → ${d1.database_name}`) : bad('No D1 binding "DB" in wrangler.jsonc', 'Add it under "d1_databases" (see DEPLOY.md).');
   r2 ? ok(`R2 binding MEDIA → ${r2.bucket_name}`) : bad('No R2 binding "MEDIA" in wrangler.jsonc', 'Add it under "r2_buckets" (see DEPLOY.md).');
+  const kv = (config.kv_namespaces ?? []).find((k: any) => k.binding === 'SESSION');
+  config.images?.binding === 'IMAGES' ? ok('Images binding IMAGES') : bad('No "images" binding IMAGES in wrangler.jsonc', 'Add "images": { "binding": "IMAGES" } (see DEPLOY.md).');
+  kv ? ok('KV binding SESSION') : bad('No KV binding "SESSION" in wrangler.jsonc', 'Add it under "kv_namespaces" (see DEPLOY.md).');
+  if (remote) {
+    const placeholder = (id: string | undefined) => !id || /^0+(-0+)*$|^00000000-0000-4000-8000-000000000000$/.test(id);
+    placeholder(d1?.database_id) ? bad('D1 database_id is a placeholder', 'npx wrangler d1 create inspistate-db, then put its id in wrangler.jsonc.') : ok('D1 database_id is set');
+    placeholder(kv?.id) ? bad('SESSION KV id is a placeholder', 'npx wrangler kv namespace create SESSION, then put its id in wrangler.jsonc.') : ok('SESSION KV id is set');
+  }
   if (remote && r2) {
     const list = wrangler(['r2', 'bucket', 'list']);
     list.ok && list.out.includes(r2.bucket_name) ? ok(`R2 bucket ${r2.bucket_name} exists`) : bad(`R2 bucket ${r2.bucket_name} not found`, `npx wrangler r2 bucket create ${r2.bucket_name}`);

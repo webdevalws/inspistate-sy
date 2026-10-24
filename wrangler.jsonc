@@ -11,6 +11,11 @@
 	"observability": {
 		"enabled": true
 	},
+	// IDs to replace per environment (see DEPLOY.md):
+	//   d1_databases[0].database_id → from `npx wrangler d1 create inspistate-db`
+	//   kv_namespaces[0].id         → from `npx wrangler kv namespace create SESSION`
+	// The R2 bucket is referenced by name (`npx wrangler r2 bucket create inspistate-media`); IMAGES needs no id.
+	// `npm run doctor -- --remote` flags placeholder ids.
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -25,6 +30,17 @@
 		{
 			"binding": "MEDIA",
 			"bucket_name": "inspistate-media"
+		}
+	],
+	// Used by the Astro Cloudflare adapter: Cloudflare Images for image processing in production.
+	"images": {
+		"binding": "IMAGES"
+	},
+	// Used by the Astro Cloudflare adapter for sessions. Replace the placeholder id with your own namespace's id.
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "00000000000000000000000000000000"
 		}
 	]
 }

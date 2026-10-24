@@ -41,5 +41,13 @@ reference data for an empty production database, Cloudflare bindings, deployment
 - Note: locality coordinates and rates for the ten original cities are demo estimates (generated around the
   city centre); Lucknow's and Navi Mumbai's coordinates are real. Review them before relying on them.
 
+## Cloudflare bindings (item 68)
+- `wrangler.jsonc` declares every binding the Worker uses: `DB` (D1), `MEDIA` (R2), `IMAGES` (Cloudflare Images,
+  used by the Astro adapter for image processing in production) and `SESSION` (KV, used by the adapter for
+  sessions). A comment at the top lists the **ids to replace per environment**: the D1 `database_id` (from
+  `wrangler d1 create`) and the SESSION KV `id` (from `wrangler kv namespace create SESSION`, placeholder
+  `000…0` in the repo). The R2 bucket is referenced by name; IMAGES needs no id.
+- `npm run doctor` checks that all four bindings are declared; with `--remote` it also flags placeholder ids.
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`
