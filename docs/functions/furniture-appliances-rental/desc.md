@@ -37,6 +37,13 @@ return a **301** to this page (`MERGED` in `src/pages/services/[slug].astro`) an
   Services → Home & move menus, and the city hub's "For tenants" tab.
 - No new tables: leads use the existing `leads` table.
 
+## Accessibility of the chips (item 77)
+- Chip groups in every home-service estimator (`Chips` in `HomeServices.tsx`: furniture package, plan, home size,
+  paint scope, solar property, configuration, resident type) are a `<fieldset>` with a visible `<legend>`. They used
+  to sit inside a `<label>`, which gave the first chip the group's name ("Furniture package" instead of "1 BHK")
+  and made a click on the label text select the first option. `L` (a `<label>`) is now only used for single inputs
+  and selects.
+
 ## Files
 - `src/data/home-services.ts` (`RENT_PACKAGES`, `RENT_ADDONS`, `RENT_PLANS`, `rentPackageEstimate`, `SERVICE_CONTENT`)
 - `src/components/islands/HomeServices.tsx` (`RentPackageEstimator`, `RentalCatalogue`, `ServiceLead`)
