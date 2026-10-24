@@ -25,6 +25,12 @@ branch) audit admin actions.
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).
 
+## Service orders (item 61)
+- Each row in **Service orders** has a status dropdown + Save: submitted → awaiting payment → paid → in
+  progress → completed / cancelled (`ORDER_STATUSES` / `setOrderStatus` in `src/lib/orders.ts`, same values as
+  the table's CHECK constraint; `/api/admin/orders/{id}`). Changes are audited as `order.status`
+  ("order #12: awaiting_payment → in_progress").
+
 ## Files
 - `src/pages/admin/index.astro`, `src/pages/api/admin/*`, `src/middleware.ts`
 - `migrations/0013_admin_audit.sql`

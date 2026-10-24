@@ -4,7 +4,7 @@ import Photo from '../../components/Photo.astro';
 import { adminCounts, getRefs, LEAD_KINDS, listingsByStatus, recentLeads, type LeadKind } from '../../lib/repo';
 import { listingPrice, listingTitle } from '../../lib/listing';
 import { env } from 'cloudflare:workers';
-import { recentOrders } from '../../lib/orders';
+import { ORDER_STATUSES, recentOrders } from '../../lib/orders';
 import { safeNext } from '../../lib/redirect';
 import { recentAdminActions } from '../../lib/audit';
 import { recentForumPosts } from '../../lib/forum';
@@ -23,7 +23,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
 <Base title="Admin">
   <div class="container-x py-8">
     <h1 class="text-2xl font-extrabold">Admin dashboard</h1>
-    {done && !done.startsWith('sub-') && <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Listing {({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.</p>}
+    {done && !done.startsWith('sub-') && !done.startsWith('order-') && <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Listing {({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.</p>}
 
     <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
       {[['Leads (total)', counts.leads], ['Leads (24 h)', counts.leads24], ['Pending listings', counts.pending], ['Live listings', counts.active]].map(([k, v]) => (
@@ -102,6 +102,7 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
 
     <section id="orders" class="mt-12">
       <h2 class="section-title mb-4">Service orders ({orders.length})</h2>
+      {done?.startsWith('order-') && <p class="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Order #{done.slice(6)} status saved.</p>}
       <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table class="w-full min-w-[720px] text-sm">
           <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">#</th><th class="px-4 py-3">When</th><th class="px-4 py-3">Service</th><th class="px-4 py-3">Customer</th><th class="px-4 py-3">Amount</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Details</th></tr></thead>
@@ -113,7 +114,13 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
                 <td class="px-4 py-3"><span class="chip">{o.kind}</span></td>
                 <td class="px-4 py-3">{o.name}<br /><a href={`tel:+91${o.phone}`} class="text-xs text-brand-700">+91 {o.phone}</a>{o.email && <span class="block text-xs text-slate-500">{o.email}</span>}</td>
                 <td class="px-4 py-3">₹{o.amount.toLocaleString("en-IN")}{o.coupon && <span class="block text-xs text-slate-500">{o.coupon}</span>}</td>
-                <td class="px-4 py-3"><span class="chip">{o.status.replace("_", " ")}</span></td>
+                <td class="px-4 py-3">
+                  <form method="post" action={`/api/admin/orders/${o.id}`} class="flex items-center gap-2">
+                    <label class="sr-only" for={`order-${o.id}`}>Status of order {o.id}</label>
+                    <select id={`order-${o.id}`} name="status" class="input w-auto py-1.5 text-xs">{ORDER_STATUSES.map((st) => <option value={st} selected={st === o.status}>{st.replace('_', ' ')}</option>)}</select>
+                    <button class="btn-ghost px-3 py-1.5 text-xs">Save</button>
+                  </form>
+                </td>
                 <td class="max-w-xs truncate px-4 py-3 text-xs text-slate-500" title={o.details}>{o.details}</td>
               </tr>
             ))}
