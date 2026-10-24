@@ -13,6 +13,12 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
 
 ## How it works
 - Server validates fields and image magic bytes; photos stored in R2; status pending until admin approves.
+- **Photo privacy (item 57):** before a photo is stored, `stripMetadata()` (`src/lib/strip-metadata.ts`, no
+  library, no re-encoding) removes EXIF — including **GPS location** — XMP, IPTC, comments and PNG text/time
+  chunks. JPEG: APP1/APP13/other APPn and COM segments are dropped (JFIF, ICC profile and Adobe kept), and the
+  EXIF **Orientation** is written back as a minimal EXIF block so phone photos stay upright. PNG: `eXIf`, `tEXt`,
+  `zTXt`, `iTXt`, `tIME` dropped. WebP: `EXIF` and `XMP ` chunks dropped and the VP8X flags cleared. Image data
+  is copied byte for byte.
 - `listingAllowance` gates both the page (login / register / switch-role / limit-reached panels) and `/api/listings`; `posted_by` is Agent for agents, Owner otherwise.
 - **"Verified" means reviewed and approved by our team before going live.** Approving a listing in
   `/admin` sets `verified = 1` (`setListingStatus` in `src/lib/repo.ts`); no separate document check exists
