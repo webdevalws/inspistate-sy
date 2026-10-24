@@ -4,10 +4,17 @@ import { env } from 'cloudflare:workers';
 import type { PlanKey, Role } from '../data/plans';
 import { isRole, planByKey } from '../data/plans';
 import { subscriptionState } from './accounts';
+import { hasRealPhone } from './auth';
 
 const db = () => env.DB;
 
 export const USERS_PAGE_SIZE = 25;
+
+/** How the account logs in: a real mobile number (OTP), a linked Google account, or both. */
+export const loginMethod = (u: Pick<AdminUserRow, 'phone' | 'google'>) => {
+  const phone = hasRealPhone(u.phone);
+  return phone && u.google ? 'Phone + Google' : u.google ? 'Google' : 'Phone';
+};
 
 /** Role filter values: a role, or 'none' for accounts that never finished registration. */
 export type RoleFilter = Role | 'none';
@@ -18,6 +25,10 @@ export interface AdminUserRow {
   company: string | null; created_at: string; listings: number; enquiries: number;
   /** When the admin blocked the account (null = active). */
   blocked_at: string | null;
+  /** Verified Google email of a linked Google account (migration 0015), else null. */
+  google_email: string | null;
+  /** 1 when a Google account is linked. */
+  google: number;
   /** Active, unexpired plan, if any. */
   plan: PlanKey | null;
   /** A plan request is waiting for activation. */
@@ -31,7 +42,7 @@ export interface UserQuery { q?: string; role?: RoleFilter; state?: StateFilter;
 
 // Listings count excludes owner-deleted ones (as on the owner's own account page); enquiries are the leads the
 // user sent.
-const ROW_SELECT = `SELECT u.id, u.phone, u.name, u.email, u.role, u.city_slug, u.company, u.created_at, u.blocked_at,
+const ROW_SELECT = `SELECT u.id, u.phone, u.name, u.email, u.role, u.city_slug, u.company, u.created_at, u.blocked_at, u.google_email, u.google_sub IS NOT NULL AS google,
   (SELECT count(*) FROM listings l WHERE l.user_id = u.id AND (l.closed IS NULL OR l.closed != 'deleted')) AS listings,
   (SELECT count(*) FROM leads ld WHERE ld.user_id = u.id) AS enquiries,
   (SELECT s.plan FROM subscriptions s WHERE s.user_id = u.id AND s.status = 'active' AND s.ends_at > strftime('%Y-%m-%dT%H:%M:%SZ', 'now') ORDER BY s.id DESC LIMIT 1) AS plan,

@@ -1,7 +1,7 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import { getRefs } from '../../../lib/repo';
-import { adminUser, adminUserListings, adminUserPlans, listingStateLabel } from '../../../lib/admin-users';
+import { adminUser, adminUserListings, adminUserPlans, listingStateLabel, loginMethod } from '../../../lib/admin-users';
 import { leadsReceived, myEnquiries } from '../../../lib/accounts';
 import { formatPrice, formatRent } from '../../../lib/format';
 import { safeNext } from '../../../lib/redirect';
@@ -19,6 +19,8 @@ const details: [string, string][] = [
   ['Status', user.blocked_at ? `Blocked since ${fmtTime(user.blocked_at)}` : 'Active'],
   // Accounts created with Google have no mobile number until they add one (users.phone holds a placeholder).
   ['Phone', realPhone(user.phone) ? `+91 ${user.phone}` : '—'],
+  ['Login method', loginMethod(user)],
+  ['Google email', user.google_email ?? '—'],
   ['Email', user.email ?? '—'],
   ['Role', user.role ? roleLabel(user.role) : 'Not registered'],
   ['City', user.city_slug ? (refs.city(user.city_slug)?.name ?? user.city_slug) : '—'],

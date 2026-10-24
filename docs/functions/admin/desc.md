@@ -33,6 +33,10 @@ branch) audit admin actions.
   Rejected, Sold, Rented, Deleted — non-live ones open with the edit token, deleted ones are not linked);
   **Enquiries sent**; **Leads on their listings**; and **Plans** (every request and plan with dates).
   Unknown ids are 404.
+- **Login method** (item 101): the list has a **Login** column — Phone, Google or Phone + Google (`loginMethod`: a real
+  mobile number and/or a linked Google account, migration 0015) — with the Google email under it; the detail page
+  shows **Login method** and **Google email**. Linking Google (by the user, see [login](../login/desc.md)) isn't
+  audited; admin edits stay audited as before.
 - **Edit account** (item 95), a plain form posting to `/api/admin/users/{id}` (`action=profile`): name, phone,
   role (Buyer / Seller / Agent; "Not registered" is only offered while the account has no role), city and
   agency. Same rules as registration: name 2+ characters (or empty), agents need an agency name (cleared for
