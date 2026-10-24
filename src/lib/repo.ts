@@ -151,7 +151,8 @@ const SORT_SQL: Record<Filters['sort'], string> = {
   'area-desc': 'l.area_sqft DESC',
 };
 
-export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
+/** WHERE clause for a search: the mode's inventory in a city plus every user filter. Shared by the list and map views. */
+function filtered(mode: Mode, citySlug: string, f: Filters) {
   const { where, args } = scope(mode, citySlug, f.commercialPurpose);
   const inList = (col: string, vals: (string | number)[]) => {
     if (!vals.length) return;
@@ -183,8 +184,11 @@ export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
   for (const a of f.amenities) { where.push('EXISTS (SELECT 1 FROM json_each(l.amenities) WHERE value = ?)'); args.push(a); }
   if (f.verified) where.push('l.verified = 1');
   if (f.managed) where.push('l.managed = 1');
+  return { whereSql: where.join(' AND '), args };
+}
 
-  const whereSql = where.join(' AND ');
+export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
+  const { whereSql, args } = filtered(mode, citySlug, f);
   const total = (await db().prepare(`SELECT count(*) AS n FROM listings l WHERE ${whereSql}`).bind(...args).first<number>('n')) ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(f.page, pages);
@@ -193,6 +197,16 @@ export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
     .bind(...args)
     .all<Row>();
   return { items: results.map(toListing), total, page, pages };
+}
+
+/** Map view: one row per locality with results for this search (count and price range). One grouped query. */
+export async function searchLocalityPins(mode: Mode, citySlug: string, f: Filters) {
+  const { whereSql, args } = filtered(mode, citySlug, f);
+  const { results } = await db()
+    .prepare(`SELECT l.locality_slug AS locality, count(*) AS n, min(l.price) AS lo, max(l.price) AS hi FROM listings l WHERE ${whereSql} GROUP BY l.locality_slug`)
+    .bind(...args)
+    .all<{ locality: string; n: number; lo: number; hi: number }>();
+  return results;
 }
 
 /** Market snapshot for a search scope, computed on the unfiltered inventory. */

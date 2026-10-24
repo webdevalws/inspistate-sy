@@ -81,7 +81,7 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold">Filters {activeCount > 0 && <span className="chip ml-1 bg-brand-100 text-brand-700">{activeCount}</span>}</h2>
         {activeCount > 0 && (
-          <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={() => (window.location.href = basePath)}>Reset</button>
+          <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={() => (window.location.href = new URLSearchParams(window.location.search).get('view') === 'map' ? `${basePath}?view=map` : basePath)}>Reset</button>
         )}
       </div>
 

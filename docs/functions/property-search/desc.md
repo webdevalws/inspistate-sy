@@ -88,6 +88,22 @@ Filtered, sorted, paginated listings with SEO facet URLs.
 - **Demo data:** 3 hand-written PGs (ids 50805–50807: Koramangala women / double / food, Hinjewadi men / triple /
   food, Powai anyone / single / no food), inserted after the Lucknow rows so every earlier row is unchanged.
 
+## Map view (item 55)
+- **Toggle:** a "List / Map" pair of real `<button>`s (a GET form that resubmits the current search with or
+  without `view=map`, so it works with the keyboard and without JS). `view` is not a filter key, so the
+  filter panel, sort, pagination, Reset and "Clear all filters" keep it; it is in the URL, so sharing and
+  back/forward work. Works for buy, rent, commercial and PG results.
+- **Pins:** `searchLocalityPins(mode, city, filters)` in `src/lib/repo.ts` — **one grouped query** by locality
+  (count, min and max price) using the same WHERE builder (`filtered()`) as the list, so pins match the
+  current search and filters exactly; it never loads listings. Coordinates come from the cached locality
+  reference data.
+- **Map:** `src/components/islands/SearchMap.tsx` reuses the heatmap's Leaflet + OpenStreetMap setup and is
+  rendered (`client:only`) **only in Map view**, so Leaflet loads only then. Pins use the theme's brand
+  colour. Popup: locality name, matching count, price range (`formatRange`), and "View N homes in X →" to
+  that locality with the same filters (list view).
+- No results → the normal empty state. Map view hides pagination and shows "Pins show localities, not
+  exact addresses." Listings have no coordinates of their own; exact pins would need a migration.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
