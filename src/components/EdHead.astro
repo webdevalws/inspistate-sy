@@ -1,12 +1,12 @@
 ---
-// Editorial section header used on the landing page: mono bracket label, wide display title,
+// Editorial section header used on the landing page: mono label, wide display title,
 // optional intro + text link aligned to the right. `dark` flips colours for espresso bands.
 interface Props { label: string; title: string; sub?: string; href?: string; linkLabel?: string; dark?: boolean }
 const { label, title, sub, href, linkLabel = 'View all', dark = false } = Astro.props;
 ---
 <div class="mb-8 grid gap-5 sm:mb-10 md:grid-cols-12 md:items-end">
   <div class="md:col-span-7">
-    <p class:list={['ed-label', dark ? 'text-sand-50/60' : 'text-[#1C1A17]/60']}><span class="bracket"></span>{label}</p>
+    <p class:list={['ed-label', dark ? 'text-sand-50/60' : 'text-[#1C1A17]/60']}>{label}</p>
     <h2 class:list={['mt-4 font-display text-[clamp(1.75rem,3.4vw,2.75rem)] font-bold leading-[1.04] tracking-[-0.02em]', dark ? '!text-sand-50' : '!text-[#1C1A17]']} set:html={title} />
   </div>
   {(sub || href) && (

@@ -110,6 +110,8 @@ export interface Listing {
   contactName: string;
   verified: boolean;
   status: ListingStatus;
+  /** The owner's account is blocked: hidden from every public page (migration 0014). Absent = not blocked. */
+  ownerBlocked?: boolean;
   photos: string[];
   hue: number;
   /** Owner-managed rental: low deposit, no brokerage (migration 0008). */

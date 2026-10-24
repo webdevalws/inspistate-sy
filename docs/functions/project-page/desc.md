@@ -13,6 +13,8 @@ Full project dossier.
 
 ## How it works
 - Loads project + units, transactions, reviews, similar projects in parallel.
+- The registered-transactions table carries a short "Demo data." note until real registration records are
+  connected (like the footer's demo-data label, it stays until launch).
 - **Ranges** (price range, carpet area) use `formatRange(min, max, fmt)` from `src/lib/format.ts`, which
   shows one value when both ends are equal ("₹98 L", not "₹98 L – ₹98 L"). The same helper is used by
   project cards, the brochure, compare, the affordability tool and the home page's locality and project

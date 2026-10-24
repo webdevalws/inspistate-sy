@@ -24,18 +24,22 @@ const socials: [string, string][] = [
   ['YouTube', 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9l5 3-5 3z'],
   ['LinkedIn', 'M4 9h4v11H4zM6 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM10 9h4v2a4 4 0 0 1 7 3v6h-4v-6a2 2 0 0 0-4 0v6h-3z'],
 ];
+// Profile URLs by name, e.g. { Instagram: 'https://www.instagram.com/…' }. Only icons with a URL are shown, so the
+// row stays hidden until the accounts exist; add a URL to bring that icon back.
+const socialUrls: Record<string, string> = {};
+const socialLinks = socials.filter(([n]) => socialUrls[n]);
 ---
 <footer id="site-footer" class:list={['print:hidden relative w-full overflow-hidden bg-[#1C1A17] text-sand-50', flush ? 'border-t-[0.5px] border-sand-50/10' : 'mt-16']}>
-  <!-- Signature: the wordmark sits behind the towers, echoing the hero -->
+  {/* Signature: the wordmark sits behind the towers, echoing the hero */}
   <div class="ft-art mt-10 sm:mt-14" aria-hidden="true">
     <span class="ft-wordmark font-display font-extrabold uppercase leading-[0.8] text-sand-50/90">InspiState</span>
     <img src="/images/hero-towers-cut.webp" alt="" loading="lazy" />
     <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#1C1A17] to-transparent"></div>
   </div>
-  <!-- Tagline under the wordmark on every page, styled like the footer's bottom-row tagline -->
+  {/* Tagline under the wordmark on every page, styled like the footer's bottom-row tagline */}
   <p class="container-x relative pb-8 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-sand-50/50">Search smarter. Live better.</p>
 
-  <!-- Options: newsletter + quick actions, then the link directory -->
+  {/* Options: newsletter + quick actions, then the link directory */}
   <div class="container-x relative grid gap-12 border-t-[0.5px] border-sand-50/15 py-12 sm:py-14 lg:grid-cols-12 lg:gap-14">
     <div class="lg:col-span-4">
       <p class="max-w-xs text-sm leading-relaxed text-sand-50/70">Verified homes, honest data and zero brokerage — across India's prime cities.</p>
@@ -43,28 +47,30 @@ const socials: [string, string][] = [
         <a href={`/buy/${c0}`} class="ed-btn ed-btn-sand">Explore homes <span aria-hidden="true">→</span></a>
         <a href="/post-property" class="ed-btn ed-btn-ghost-light">Post property free</a>
       </div>
-      <p class="ed-label mt-10 text-sand-50/55"><span class="bracket"></span>Market notes · monthly</p>
+      <p class="ed-label mt-10 text-sand-50/55">Market notes · monthly</p>
       <div class="mt-3"><Newsletter client:visible back={newsletterBack} result={newsletterResult} /></div>
-      <ul class="mt-6 flex gap-2">
-        {socials.map(([n, d]) => (
-          <li>
-            <span class="grid h-10 w-10 cursor-pointer place-items-center border-[0.5px] border-sand-50/25 text-sand-50/80 transition hover:border-sand-50 hover:bg-sand-50 hover:text-[#1C1A17]" title={n} aria-label={n}>
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {socialLinks.length > 0 && (
+        <ul class="mt-6 flex gap-2">
+          {socialLinks.map(([n, d]) => (
+            <li>
+              <a href={socialUrls[n]} target="_blank" rel="noopener" class="grid h-10 w-10 place-items-center border-[0.5px] border-sand-50/25 text-sand-50/80 transition hover:border-sand-50 hover:bg-sand-50 hover:text-[#1C1A17]" title={n} aria-label={n}>
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
 
     <nav class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:col-span-8" aria-label="Footer">
       {cols.map(([title, links]) => (
         <div>
-          <h3 class="ed-label !text-sand-50/55"><span class="bracket"></span>{title}</h3>
+          <h3 class="ed-label !text-sand-50/55">{title}</h3>
           <ul class="mt-5 space-y-2.5 text-[13px]">{links.map(([l, h]) => <li><a href={h} class="nav-line text-sand-50/70 transition hover:text-sand-50">{l}</a></li>)}</ul>
         </div>
       ))}
       <div>
-        <h3 class="ed-label !text-sand-50/55"><span class="bracket"></span>Popular Cities</h3>
+        <h3 class="ed-label !text-sand-50/55">Popular Cities</h3>
         <ul class="mt-5 space-y-2.5 text-[13px]">{cities.map((c) => <li><a href={`/city/${c.slug}`} class="nav-line text-sand-50/70 transition hover:text-sand-50">{c.name}</a></li>)}</ul>
       </div>
     </nav>

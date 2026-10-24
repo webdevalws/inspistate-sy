@@ -141,6 +141,15 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   message and `noindex` (e.g. `/buy/lucknow/5-bhk/villa`, `/buy/mumbai?priceMax=1`). A city's plain search page
   (`/rent/navi-mumbai`) stays **200** even when empty; `sort`, `view` and `page` are not filters.
 
+## Blocked owners (item 97)
+- Every public listing query uses the shared `live()` condition (`src/lib/repo.ts`): `status = 'active' AND closed
+  IS NULL AND owner_blocked = 0`. A blocked owner's listings (migration 0014, see [admin](../admin/desc.md)) leave
+  search results, the map, city and project pages, compare, similar listings, stats and the sitemap at once;
+  cached counts can lag up to 5 minutes. The listing page is 404 without its edit token (with it — owner and admin
+  previews — it is `noindex` and shows a "hidden because the owner's account is blocked" banner, no enquiry form).
+- With no one blocked the change is invisible: 544 listing-dependent pages, the sitemaps and `/api/suggest` were
+  identical before and after.
+
 ## Sitemap (item 85)
 - `/sitemap.xml` is a **sitemap index** of five parts served at `/sitemap-{part}.xml` (`src/lib/sitemap.ts`):
   `static` (home, hubs, tools, services, guides, loans, design ideas, research), `places` (city pages, locality

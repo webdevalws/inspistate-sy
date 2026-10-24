@@ -50,8 +50,9 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
 ## Owners manage their listings
 - **Lifecycle column** (migration 0011): `listings.closed` = `sold` | `rented` | `deleted` (NULL while open)
   and `closed_at`, kept separate from the moderation `status`. A listing is public only when
-  `status = 'active' AND closed IS NULL` — every public query (search, detail, similar, counts, stats,
-  sitemap, view-number) checks both. Deleting is soft, so leads and photos keep their listing.
+  `status = 'active' AND closed IS NULL AND owner_blocked = 0` (item 97: the owner's account isn't blocked) —
+  every public query (search, map, detail, similar, project and city pages, compare, counts, stats, sitemap,
+  view-number) uses the shared `live()` condition in `src/lib/repo.ts`. Deleting is soft, so leads and photos keep their listing.
 - **Account page → My Listings:** open listings show **Edit · Mark sold** (sale) or **Mark rented**
   (rental) **· Delete** (asks for confirmation). Sold / rented listings stay in the list with a Sold /
   Rented chip and no link; deleted ones disappear from the list.

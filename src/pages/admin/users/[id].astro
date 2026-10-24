@@ -1,0 +1,177 @@
+---
+import Base from '../../../layouts/Base.astro';
+import { getRefs } from '../../../lib/repo';
+import { adminUser, adminUserListings, adminUserPlans, listingStateLabel } from '../../../lib/admin-users';
+import { leadsReceived, myEnquiries } from '../../../lib/accounts';
+import { formatPrice, formatRent } from '../../../lib/format';
+import { safeNext } from '../../../lib/redirect';
+import { PLANS, planByKey, ROLES, roleLabel } from '../../../data/plans';
+
+// One account: details, listings (every state), enquiries sent and leads received. Protected by the admin middleware.
+const id = Number(Astro.params.id);
+const user = Number.isInteger(id) && id > 0 ? await adminUser(id) : null;
+if (!user) return new Response('User not found', { status: 404 });
+const [refs, listings, sent, received, plans] = await Promise.all([getRefs(), adminUserListings(id), myEnquiries(id), leadsReceived(id), adminUserPlans(id)]);
+const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
+const details: [string, string][] = [
+  ['Status', user.blocked_at ? `Blocked since ${fmtTime(user.blocked_at)}` : 'Active'],
+  ['Phone', `+91 ${user.phone}`],
+  ['Email', user.email ?? '—'],
+  ['Role', user.role ? roleLabel(user.role) : 'Not registered'],
+  ['City', user.city_slug ? (refs.city(user.city_slug)?.name ?? user.city_slug) : '—'],
+  ['Agency', user.role === 'agent' && user.company ? user.company : '—'],
+  ['Plan', `${user.plan ? planByKey(user.plan)?.name ?? user.plan : 'Free'}${user.plan_requested ? ' (request waiting)' : ''}`],
+  ['Joined', fmtTime(user.created_at)],
+  ['Listings', String(user.listings)],
+  ['Enquiries sent', String(user.enquiries)],
+];
+// Result of the last edit (/api/admin/users/{id} redirects back with ?done= or ?error=).
+const done = ({
+  profile: 'Changes saved.', plan: 'Plan saved.', unchanged: 'Nothing changed.',
+  block: 'Account blocked: logged out everywhere, login and posting refused, listings hidden from the site.',
+  unblock: 'Account unblocked: they can log in again and their listings are back on the site.',
+} as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+const error = ({
+  phone: 'Enter a valid 10-digit mobile number.',
+  'phone-taken': 'Another account already uses that phone number. Nothing was changed.',
+  name: 'A name needs at least 2 characters (or leave it empty).',
+  role: 'Choose Buyer, Seller or Agent.',
+  company: 'Agents need an agency name (at least 2 characters).',
+  city: 'Choose a city from the list.',
+  plan: 'Choose a plan from the list.',
+} as Record<string, string>)[Astro.url.searchParams.get('error') ?? ''];
+---
+<Base title={`${user.name ?? `User #${user.id}`} · Admin`}>
+  <div class="container-x py-8">
+    <p class="text-sm"><a href="/admin/users" class="text-brand-700 hover:underline">← All users</a></p>
+    <h1 class="mt-2 text-2xl font-extrabold">{user.name ?? `User #${user.id}`}{user.blocked_at && <span class="chip ml-2 align-middle">blocked</span>}</h1>
+
+    <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+      {details.map(([k, v]) => (
+        <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="font-semibold">{k === 'Phone' ? <a href={`tel:+91${user.phone}`} class="text-brand-700 hover:underline">{v}</a> : v}</dd></div>
+      ))}
+    </dl>
+
+    <section id="edit" class="mt-10 scroll-mt-28">
+      <h2 class="section-title mb-4">Edit account</h2>
+      {done && <p class="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">{done}</p>}
+      {error && <p class="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+        <input type="hidden" name="action" value="profile" />
+        <label class="block"><span class="text-sm text-slate-500">Name</span><input name="name" value={user.name ?? ''} maxlength="100" class="input mt-1" /></label>
+        <label class="block"><span class="text-sm text-slate-500">Phone (login)</span><input name="phone" value={user.phone} inputmode="numeric" maxlength="14" required class="input mt-1" /></label>
+        <label class="block"><span class="text-sm text-slate-500">Role</span>
+          <select name="role" class="input mt-1">
+            {!user.role && <option value="" selected>Not registered</option>}
+            {ROLES.map((r) => <option value={r.key} selected={r.key === user.role}>{r.label}</option>)}
+          </select>
+        </label>
+        <label class="block"><span class="text-sm text-slate-500">City</span>
+          <select name="city" class="input mt-1">
+            <option value="" selected={!user.city_slug}>—</option>
+            {refs.cities.map((c) => <option value={c.slug} selected={c.slug === user.city_slug}>{c.name}</option>)}
+          </select>
+        </label>
+        <label class="block"><span class="text-sm text-slate-500">Agency (agents only)</span><input name="company" value={user.company ?? ''} maxlength="120" class="input mt-1" /></label>
+        <div class="flex items-end"><button class="btn-primary py-2">Save changes</button></div>
+        <p class="text-xs text-slate-500 sm:col-span-2 lg:col-span-3">Changing the phone number changes their login and logs them out everywhere.</p>
+      </form>
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card mt-4 flex flex-wrap items-end gap-4 p-5">
+        <input type="hidden" name="action" value="plan" />
+        <label class="block"><span class="text-sm text-slate-500">Plan</span>
+          <select name="plan" class="input mt-1">
+            <option value="free" selected={!user.plan}>Free</option>
+            {PLANS.map((p) => <option value={p.key} selected={p.key === user.plan}>{p.name}</option>)}
+          </select>
+        </label>
+        <button class="btn-primary py-2">Save plan</button>
+        <p class="w-full text-xs text-slate-500">A plan starts today and runs for its full length; Free cancels the active plan.</p>
+      </form>
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card mt-4 flex flex-wrap items-center justify-between gap-4 p-5">
+        <p class="text-sm text-slate-600">{user.blocked_at
+          ? 'Blocked: they can’t log in or post, and their listings are hidden from the site.'
+          : 'Blocking logs them out everywhere, stops login and posting, and hides their listings from the site.'}</p>
+        {user.blocked_at
+          ? <button name="action" value="unblock" class="btn-primary py-2">Unblock account</button>
+          : <button name="action" value="block" class="btn-ghost py-2">Block account</button>}
+      </form>
+    </section>
+
+    <section id="listings" class="mt-10">
+      <h2 class="section-title mb-4">Listings ({listings.length})</h2>
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[720px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">#</th><th class="px-4 py-3">Listing</th><th class="px-4 py-3">Price</th><th class="px-4 py-3">Posted</th><th class="px-4 py-3">Status</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            {listings.map((l) => (
+              <tr>
+                <td class="px-4 py-3 font-semibold">{l.id}</td>
+                <td class="px-4 py-3">
+                  {l.closed === 'deleted' ? <span>{l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</span> : (
+                    <a href={`/property/${l.id}${l.status === 'active' && !l.closed && !user.blocked_at ? '' : `?token=${l.edit_token}`}`} class="text-brand-700 hover:underline">{l.bhk ? `${l.bhk} BHK ` : ''}{l.type} in {refs.locality(l.city_slug, l.locality_slug)?.name}, {refs.city(l.city_slug)?.name}</a>
+                  )}
+                </td>
+                <td class="whitespace-nowrap px-4 py-3">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtDate(l.posted_at)}</td>
+                <td class="whitespace-nowrap px-4 py-3"><span class="chip">{listingStateLabel(l)}</span>{l.owner_blocked && !l.closed && <span class="chip ml-1">owner blocked</span>}</td>
+              </tr>
+            ))}
+            {listings.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No listings.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="enquiries" class="mt-12">
+      <h2 class="section-title mb-4">Enquiries sent ({sent.length})</h2>
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[560px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">When</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">About</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            {sent.map((e) => (
+              <tr><td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(e.created_at)}</td><td class="px-4 py-3"><span class="chip">{e.kind}</span></td><td class="px-4 py-3">{safeNext(e.page) ? <a href={safeNext(e.page)!} class="text-brand-700 hover:underline">{e.subject}</a> : e.subject}</td></tr>
+            ))}
+            {sent.length === 0 && <tr><td colspan="3" class="px-4 py-6 text-center text-slate-500">No enquiries sent.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="leads" class="mt-12">
+      <h2 class="section-title mb-4">Leads on their listings ({received.length})</h2>
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[640px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">When</th><th class="px-4 py-3">Listing</th><th class="px-4 py-3">From</th><th class="px-4 py-3">Phone</th><th class="px-4 py-3">About</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            {received.map((ld) => (
+              <tr>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(ld.created_at)}</td>
+                <td class="px-4 py-3">#{ld.listing_id}</td>
+                <td class="px-4 py-3 font-semibold">{ld.name}</td>
+                <td class="whitespace-nowrap px-4 py-3"><a href={`tel:+91${ld.phone}`} class="text-brand-700 hover:underline">+91 {ld.phone}</a></td>
+                <td class="px-4 py-3">{ld.subject}</td>
+              </tr>
+            ))}
+            {received.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No leads yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="plans" class="mt-12">
+      <h2 class="section-title mb-4">Plans ({plans.length})</h2>
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[560px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">#</th><th class="px-4 py-3">Plan</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">From</th><th class="px-4 py-3">Until</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            {plans.map((p) => (
+              <tr><td class="px-4 py-3 font-semibold">{p.id}</td><td class="px-4 py-3">{planByKey(p.plan)?.name ?? p.plan} · ₹{p.amount.toLocaleString('en-IN')}</td><td class="px-4 py-3"><span class="chip">{p.status}</span></td><td class="whitespace-nowrap px-4 py-3 text-slate-500">{p.starts_at ? fmtDate(p.starts_at) : '—'}</td><td class="whitespace-nowrap px-4 py-3 text-slate-500">{p.ends_at ? fmtDate(p.ends_at) : '—'}</td></tr>
+            ))}
+            {plans.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No plans.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</Base>

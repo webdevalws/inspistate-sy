@@ -291,16 +291,6 @@
   .hero-photo, .hero-wordmark, .hero-reveal { animation: none; }
 }
 
-/* Corner-bracket marker used beside small mono labels */
-.bracket {
-  --s: 3px;
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 1px solid currentColor;
-  mask: conic-gradient(at var(--s) var(--s), #0000 75%, #000 0) 0 0 / calc(100% - var(--s)) calc(100% - var(--s));
-}
-
 /* Overlay header nav: hairline underline on hover */
 .nav-line {
   background: linear-gradient(currentColor, currentColor) left bottom / 0 0.5px no-repeat;

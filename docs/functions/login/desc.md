@@ -51,6 +51,11 @@ name, optional email, optional city and (agents) a required agency name.
   "Finish registration").
 - Any element with `data-auth-open` opens the dialog (`data-auth-next` sets the redirect, and pre-selects
   Seller for `/post-property`, Agent for `/account/plans` — `roleForNext`). Without JS these are links to `/login`.
+- **Blocked accounts** (item 97, `users.blocked_at`, set from /admin): requesting a code answers 403 "This
+  account has been blocked…" (no code is created or sent), verifying a code is refused too, and existing sessions
+  are ended when the admin blocks and ignored while blocked (`userFromCookies`). With no session they can't post.
+- **Admin phone change** (item 95): the admin can change an account's phone (its login); that ends all of the
+  account's sessions.
 - **Safe redirects** (`safeNext` in `src/lib/redirect.ts`): every `next` (login page, dialog, after
   login/register) and the role-switch `back` value must be a path on our own site. It must start with a
   single `/`; values with `//`, `\`, control characters (browsers drop tabs/newlines, so `/\t/x` becomes

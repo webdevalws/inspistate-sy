@@ -6,7 +6,7 @@
 The landing page. A full-screen "layered depth" hero shows a giant INSPISTATE wordmark sitting
 *behind* a cut-out of a residential tower, with live platform stats, the headline, CTAs and a
 short excerpt overlaid. Below it the whole page uses one editorial system (sand bands alternating with
-espresso bands, hairline borders, mono bracket labels, wide display headings):
+espresso bands, hairline borders, mono uppercase labels, wide display headings):
 1. Search dock overlapping the hero, then a scrolling city marquee (pauses on hover).
 2. About — photo collage + statement heading + 4 live stats + CTAs.
 3. Curated collections — 6-tile bento (exactly fills 4×3 / 2×N) + "Also explore" chips.
@@ -21,7 +21,7 @@ espresso bands, hairline borders, mono bracket labels, wide display headings):
 12. Footer (site-wide, `Footer.astro`) — opens with the signature full-width INSPISTATE wordmark
     behind the tower cut-out (`.ft-art`, dusk glow; image rendered at 210vw on phones); on every
     page the tagline "Search smarter. Live better." sits centred under the wordmark in
-    the same mono style as the bottom-bar tagline; below that the options: blurb, Explore/Post buttons (`.ed-pair-tight`), newsletter, socials and the hairline link
+    the same mono style as the bottom-bar tagline; below that the options: blurb, Explore/Post buttons (`.ed-pair-tight`), newsletter, social icons (hidden until profile URLs are set in `socialUrls`) and the hairline link
     directory (2 columns on phones, 4 from sm); then a mono bottom bar.
 
 **Phones:** every button pair uses `.ed-pair` (two equal halves side by side, inline from `sm`); the
@@ -70,8 +70,12 @@ search form puts city + Search on one row under the query field.
   `violet`/`purple` = clay, `blue`/`sky`/`indigo` = olive-taupe; `canvas` = #F7F4EE. Emerald/rose are
   untouched (price up/down). Inline chart colours were moved to the same palette.
 - **Tokens:** `--color-sand-50/100/200`, `--font-display` (Archivo, wide axis), `--font-mono`
-  (DM Mono) in `global.css`; helpers `.hero-*`, `.bracket`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
+  (DM Mono) in `global.css`; helpers `.hero-*`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
+- **Site icon:** `public/favicon.svg` (linked from `Base.astro`); `public/favicon.ico` is the same house mark at
+  32 and 16 px for browsers and crawlers that ask for `/favicon.ico` directly.
+- **Comments:** template notes use Astro comments (`{/* … */}`), which are not sent to the browser; HTML comments
+  (`<!-- … -->`) would be.
 
 ## Data loading (item 79)
 - The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one
