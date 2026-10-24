@@ -141,6 +141,15 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   message and `noindex` (e.g. `/buy/lucknow/5-bhk/villa`, `/buy/mumbai?priceMax=1`). A city's plain search page
   (`/rent/navi-mumbai`) stays **200** even when empty; `sort`, `view` and `page` are not filters.
 
+## Sitemap (item 85)
+- `/sitemap.xml` is a **sitemap index** of five parts served at `/sitemap-{part}.xml` (`src/lib/sitemap.ts`):
+  `static` (home, hubs, tools, services, guides, loans, design ideas, research), `places` (city pages, locality
+  pages and guides), `search`, `listings` (active, open listings only, with lastmod) and `projects` (projects and
+  builders). Unknown parts are 404. `robots.txt` still points at `/sitemap.xml`.
+- The `search` part lists each mode per city and single facets (locality, BHK, type incl. PG and commercial types)
+  **only when they have results** (cached `cityFacets` counts), so empty filter pages — which answer 404 — are
+  never submitted. Demo data: 350 search URLs, all 200.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
