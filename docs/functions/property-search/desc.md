@@ -60,52 +60,12 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
   Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
-- **Seed date (item 72):** `db/build-seed.ts` uses a fixed "today" (`SEED_DATE = 2026-10-24`) instead of the
-  clock, so `db/seed.sql` no longer changes after every reset. Demo "posted N days ago" dates, transactions and
-  reviews are relative to that date and will look older over time.
-- **Cities:** 12 — the ten original demo cities plus **Lucknow** and **Navi Mumbai** (hand-written sample
-  data, 5 localities each with real coordinates; Lucknow 4 listings and 3 projects, Navi Mumbai — Vashi,
-  Nerul, CBD Belapur, Kharghar, Panvel — 4 listings (ids 50808–50811) and 3 projects (ids 1034–1036,
-  `MAHARERA-DEMO-…`); see `db/seed-data.ts`). Navi Mumbai is no longer in the not-covered list
-  (`src/data/indian-cities.ts`). The Ask AI parser matches longer city names first, so "navi mumbai" is
-  Navi Mumbai, not Mumbai. Every city list (city picker, header menus, footer,
+- **Cities:** 11 — the ten original demo cities plus **Lucknow** (hand-written sample data: 5 localities,
+  4 listings and 3 projects; see `db/seed-data.ts`). Every city list (city picker, header menus, footer,
   home city strip and "Popular cities", search box city menu, "Our cities" links, the 404 page, near me)
   reads the `cities` table, so a new city appears everywhere automatically. The home page's market-insight
-  and locality tabs show the first 8 cities plus every city added **after the original ten** demo cities
-  that has projects (`ORIGINAL_CITIES = 10` in `src/pages/index.astro`) — today Mumbai…Chennai plus Lucknow
-  and Navi Mumbai (10 tabs; Thane and Kolkata are not tabs).
-
-## PG / co-living (item 49)
-- **Type:** `PG` (shown as "PG / Co-living", `typeLabel` in `src/lib/search.ts`), residential and **rent only**; BHK 0,
-  price = monthly rent per bed, area = room size. Details in `listings.pg_sharing` / `pg_for` / `pg_food`
-  (migration 0012), read into `Listing.pg`.
-- **URLs:** `/rent/{city}/pg` is a normal type facet (`TYPE_SLUGS.pg`). `/buy/{city}/pg` and
-  `/commercial/{city}/pg` **301** to the same facets under `/rent`.
-- **Filters:** in Rent mode the type list adds "PG / Co-living"; while it is chosen, a PG group offers sharing
-  (`sharing=single,double,triple`), who it is for (`pgFor=men,women,any`) and `food=1`, and BHK is hidden.
-- **Ask AI / search box text:** "pg", "paying guest", "co-living" and "hostel" mean Rent + type PG; "women /
-  girls / ladies" or "men / boys" set `pgFor`, "single / double / triple" set `sharing`, "with food" sets `food=1`.
-- **Rates:** PGs are left out of per-sq.ft rent averages (search market stats, locality rent rate, city hub),
-  because their rent is per bed. The property page hides "Is this a fair price?" for PGs.
-- **Display:** titles like "Double sharing PG for Women in Koramangala, Bengaluru"; price "₹14,000/month per bed".
-- **Demo data:** 3 hand-written PGs (ids 50805–50807: Koramangala women / double / food, Hinjewadi men / triple /
-  food, Powai anyone / single / no food), inserted after the Lucknow rows so every earlier row is unchanged.
-
-## Map view (item 55)
-- **Toggle:** a "List / Map" pair of real `<button>`s (a GET form that resubmits the current search with or
-  without `view=map`, so it works with the keyboard and without JS). `view` is not a filter key, so the
-  filter panel, sort, pagination, Reset and "Clear all filters" keep it; it is in the URL, so sharing and
-  back/forward work. Works for buy, rent, commercial and PG results.
-- **Pins:** `searchLocalityPins(mode, city, filters)` in `src/lib/repo.ts` — **one grouped query** by locality
-  (count, min and max price) using the same WHERE builder (`filtered()`) as the list, so pins match the
-  current search and filters exactly; it never loads listings. Coordinates come from the cached locality
-  reference data.
-- **Map:** `src/components/islands/SearchMap.tsx` reuses the heatmap's Leaflet + OpenStreetMap setup and is
-  rendered (`client:only`) **only in Map view**, so Leaflet loads only then. Pins use the theme's brand
-  colour. Popup: locality name, matching count, price range (`formatRange`), and "View N homes in X →" to
-  that locality with the same filters (list view).
-- No results → the normal empty state. Map view hides pagination and shows "Pins show localities, not
-  exact addresses." Listings have no coordinates of their own; exact pins would need a migration.
+  and locality tabs show the first 8 cities plus the most recently added city (last in sort order) when it
+  has projects — today Mumbai…Chennai plus Lucknow (9 tabs).
 
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`

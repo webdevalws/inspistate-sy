@@ -30,8 +30,7 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
   const params = new URLSearchParams();
 
   // City (aliases first), then locality within it — a locality name also implies its city.
-  // Longest names first, so "navi mumbai" is Navi Mumbai rather than Mumbai.
-  let city = [...cities].sort((a, b) => b.name.length - a.name.length).find((c) => q.includes(` ${c.name.toLowerCase()} `) || q.includes(` ${c.slug} `));
+  let city = cities.find((c) => q.includes(` ${c.name.toLowerCase()} `) || q.includes(` ${c.slug} `));
   for (const [alias, slug] of Object.entries(CITY_ALIASES)) if (!city && q.includes(` ${alias} `)) city = cities.find((c) => c.slug === slug);
   const locs = [...localities].sort((a, b) => b.name.length - a.name.length);
   const loc = locs.find((l) => (!city || l.citySlug === city.slug) && q.includes(` ${l.name.toLowerCase()} `));
@@ -42,7 +41,7 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
 
   let mode: ParsedQuery['mode'] = defaultMode;
   const modeWords: [RegExp, ParsedQuery['mode']][] = [
-    [/\b(buy|buying|sale|purchase|resale)\b/, 'buy'], [/\b(rent|rental|lease|pg|tenant|paying guests?|co-?living|hostel)\b/, 'rent'],
+    [/\b(buy|buying|sale|purchase|resale)\b/, 'buy'], [/\b(rent|rental|lease|pg|tenant)\b/, 'rent'],
     [/\b(office|shop|showroom|commercial|retail|coworking)\b/, 'commercial'], [/\b(new project|new launch|upcoming|pre ?launch|builder project)s?\b/, 'new-projects'],
   ];
   for (const [re, m] of modeWords) if (re.test(q)) mode = m;
@@ -53,16 +52,9 @@ export function parseQuery(raw: string, cities: City[], localities: Locality[], 
   const bhk = [...q.matchAll(/\b(\d)\s*(?:bhk|bed(?:room)?s?|rk)\b/g)].map((m) => Number(m[1]));
   if (bhk.length && mode !== 'commercial') { params.set('bhk', [...new Set(bhk.map((b) => Math.min(b, 5)))].join(',')); summary.push(`${bhk.join('/')} BHK`); }
 
-  const types: [RegExp, string][] = [[/\bpgs?\b|paying guests?|co-?living|hostel/, 'PG'], [/\bvillas?\b|\bbungalows?\b|independent house/, 'Villa'], [/\bplots?\b|\bland\b/, 'Plot'], [/builder floor|\bfloors?\b/, 'Builder Floor'], [/\bflats?\b|apartments?/, 'Apartment'], [/\boffices?\b/, 'Office'], [/\bshops?\b|showroom|retail/, 'Shop']];
+  const types: [RegExp, string][] = [[/\bvillas?\b|\bbungalows?\b|independent house/, 'Villa'], [/\bplots?\b|\bland\b/, 'Plot'], [/builder floor|\bfloors?\b/, 'Builder Floor'], [/\bflats?\b|apartments?/, 'Apartment'], [/\boffices?\b/, 'Office'], [/\bshops?\b|showroom|retail/, 'Shop']];
   const type = types.find(([re]) => re.test(q));
-  if (type && mode !== 'new-projects') { params.set('type', type[1]); summary.push(type[1] === 'PG' ? 'PG / Co-living' : type[1]); }
-  if (type?.[1] === 'PG') {
-    if (/\b(women|girls|ladies|female)\b/.test(q)) { params.set('pgFor', 'women'); summary.push('for women'); }
-    else if (/\b(men|boys|male|gents)\b/.test(q)) { params.set('pgFor', 'men'); summary.push('for men'); }
-    const sharing = q.match(/\b(single|double|triple)\b/);
-    if (sharing) { params.set('sharing', sharing[1]); summary.push(`${sharing[1]} sharing`); }
-    if (/\b(with food|food included|meals)\b/.test(q)) { params.set('food', '1'); summary.push('food included'); }
-  }
+  if (type && mode !== 'new-projects') { params.set('type', type[1]); summary.push(type[1]); }
 
   const between = q.match(new RegExp(String.raw`(?:between|from)\s+${AMT}\s+(?:and|to|-)\s+${AMT}`));
   const under = q.match(new RegExp(String.raw`(?:under|below|less than|upto|up to|within|max(?:imum)?|budget)\s+(?:of\s+)?(?:rs\s+)?${AMT}`));

@@ -16,7 +16,6 @@ const P = {
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
   mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
-  refer: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a6 6 0 0 1 12 0M17 8v6M14 11h6',
 };
 const items: { label: string; href: string; icon: string; on?: boolean }[] = [
   { label: 'Overview', href: '/account', icon: P.overview, on: active === 'overview' },
@@ -29,7 +28,6 @@ const items: { label: string; href: string; icon: string; on?: boolean }[] = [
   { label: 'Shortlist', href: '/account#shortlist', icon: P.heart },
   { label: 'Saved Searches', href: '/account#searches', icon: P.search },
   { label: 'My Enquiries', href: '/account#enquiries', icon: P.mail },
-  { label: 'Refer a Friend', href: '/refer', icon: P.refer },
   { label: 'Profile', href: '/account#profile', icon: P.user },
 ];
 ---

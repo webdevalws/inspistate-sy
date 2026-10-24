@@ -1,7 +1,7 @@
 // Data access backed by Cloudflare D1. Pages and API routes only talk to the database through here.
 import { env } from 'cloudflare:workers';
 import type {
-  Builder, City, Lead, Listing, ListingStatus, Locality, PgFor, PgSharing, Project, ProjectDetail, UnitConfig,
+  Builder, City, Lead, Listing, ListingStatus, Locality, Project, ProjectDetail, UnitConfig,
 } from '../data/types';
 import type { Filters, Mode } from './search';
 import { BUDGET_BANDS, MODES, PAGE_SIZE } from './search';
@@ -126,7 +126,6 @@ const toListing = (r: Row): Listing => ({
   contactName: r.contact_name as string, verified: !!r.verified, status: r.status as ListingStatus,
   photos: json(r.photos, []), hue: r.hue as number,
   managed: !!r.managed, depositMonths: (r.deposit_months as number) ?? 2, availableFrom: (r.available_from as string) ?? null,
-  pg: r.type === 'PG' && r.pg_sharing ? { sharing: r.pg_sharing as PgSharing, for: (r.pg_for as PgFor) ?? 'any', food: !!r.pg_food } : null,
 });
 
 /** WHERE clause for the active inventory of a search mode in a city (before user filters). */
@@ -151,8 +150,7 @@ const SORT_SQL: Record<Filters['sort'], string> = {
   'area-desc': 'l.area_sqft DESC',
 };
 
-/** WHERE clause for a search: the mode's inventory in a city plus every user filter. Shared by the list and map views. */
-function filtered(mode: Mode, citySlug: string, f: Filters) {
+export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
   const { where, args } = scope(mode, citySlug, f.commercialPurpose);
   const inList = (col: string, vals: (string | number)[]) => {
     if (!vals.length) return;
@@ -164,9 +162,6 @@ function filtered(mode: Mode, citySlug: string, f: Filters) {
   inList('l.furnishing', f.furnishing);
   inList('l.posted_by', f.postedBy);
   inList('l.possession', f.possession);
-  inList('l.pg_sharing', f.pgSharing);
-  inList('l.pg_for', f.pgFor);
-  if (f.pgFood) where.push('l.pg_food = 1');
   if (f.bhk.length) {
     // "5" in the UI means 5 BHK and above.
     const exact = f.bhk.filter((b) => b < 5);
@@ -184,11 +179,8 @@ function filtered(mode: Mode, citySlug: string, f: Filters) {
   for (const a of f.amenities) { where.push('EXISTS (SELECT 1 FROM json_each(l.amenities) WHERE value = ?)'); args.push(a); }
   if (f.verified) where.push('l.verified = 1');
   if (f.managed) where.push('l.managed = 1');
-  return { whereSql: where.join(' AND '), args };
-}
 
-export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
-  const { whereSql, args } = filtered(mode, citySlug, f);
+  const whereSql = where.join(' AND ');
   const total = (await db().prepare(`SELECT count(*) AS n FROM listings l WHERE ${whereSql}`).bind(...args).first<number>('n')) ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(f.page, pages);
@@ -199,23 +191,12 @@ export async function searchListings(mode: Mode, citySlug: string, f: Filters) {
   return { items: results.map(toListing), total, page, pages };
 }
 
-/** Map view: one row per locality with results for this search (count and price range). One grouped query. */
-export async function searchLocalityPins(mode: Mode, citySlug: string, f: Filters) {
-  const { whereSql, args } = filtered(mode, citySlug, f);
-  const { results } = await db()
-    .prepare(`SELECT l.locality_slug AS locality, count(*) AS n, min(l.price) AS lo, max(l.price) AS hi FROM listings l WHERE ${whereSql} GROUP BY l.locality_slug`)
-    .bind(...args)
-    .all<{ locality: string; n: number; lo: number; hi: number }>();
-  return results;
-}
-
 /** Market snapshot for a search scope, computed on the unfiltered inventory. */
 export async function marketStats(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
   const { where, args } = scope(mode, citySlug, commercialPurpose);
   const w = where.join(' AND ');
   const [overall, byBhk, byType, byFurnishing] = await db().batch([
-    // PG rents are per bed, so PGs are left out of the per-sq.ft average.
-    db().prepare(`SELECT count(*) AS n, avg(CASE WHEN type != 'PG' THEN 1.0 * price / area_sqft END) AS rate, min(price) AS lo, max(price) AS hi FROM listings l WHERE ${w}`).bind(...args),
+    db().prepare(`SELECT count(*) AS n, avg(1.0 * price / area_sqft) AS rate, min(price) AS lo, max(price) AS hi FROM listings l WHERE ${w}`).bind(...args),
     db().prepare(`SELECT bhk, count(*) AS n, avg(price) AS avg FROM listings l WHERE ${w} AND bhk BETWEEN 1 AND 4 GROUP BY bhk ORDER BY bhk`).bind(...args),
     db().prepare(`SELECT type AS k, count(*) AS n, avg(price) AS avg FROM listings l WHERE ${w} GROUP BY type ORDER BY n DESC`).bind(...args),
     db().prepare(`SELECT furnishing AS k, count(*) AS n, avg(price) AS avg FROM listings l WHERE ${w} AND type != 'Plot' GROUP BY furnishing ORDER BY n DESC`).bind(...args),
@@ -250,9 +231,8 @@ export async function getListingsByIds(ids: number[]): Promise<Listing[]> {
 export async function getSimilarListings(l: Listing, limit = 3): Promise<Listing[]> {
   const { results } = await db()
     .prepare(`${LISTING_SELECT} WHERE l.status = 'active' AND l.closed IS NULL AND l.id != ? AND l.city_slug = ? AND l.purpose = ? AND l.segment = ? AND abs(l.bhk - ?) <= 1
-        AND (l.type = 'PG') = (? = 'PG')
       ORDER BY abs(l.price - ?) LIMIT ?`)
-    .bind(l.id, l.citySlug, l.purpose, l.segment, l.bhk, l.type, l.price, limit)
+    .bind(l.id, l.citySlug, l.purpose, l.segment, l.bhk, l.price, limit)
     .all<Row>();
   return results.map(toListing);
 }
@@ -306,7 +286,7 @@ export interface CityFacets {
   count(f: FacetFilter): number;
   /** Of those, how many are ready to move. */
   ready(f: FacetFilter): number;
-  /** Average price (or monthly rent) per sq ft of those, or 0. PGs (rent per bed) count only when asked for by type. */
+  /** Average price (or monthly rent) per sq ft of those, or 0. */
   avgRate(f: FacetFilter): number;
 }
 
@@ -337,7 +317,7 @@ export function cityFacets(citySlug: string): Promise<CityFacets> {
         rows: results,
         count: (f) => sum(match(f), 'n'),
         ready: (f) => sum(match(f), 'ready'),
-        avgRate: (f) => { const m = match(f).filter((r) => f.type === 'PG' || r.type !== 'PG'); const n = sum(m, 'n'); return n ? sum(m, 'rateSum') / n : 0; },
+        avgRate: (f) => { const m = match(f); const n = sum(m, 'n'); return n ? sum(m, 'rateSum') / n : 0; },
       } satisfies CityFacets;
     });
   facetCache.set(citySlug, { at: Date.now(), value });
@@ -360,9 +340,7 @@ export async function countProjectsByBuilder(): Promise<Map<string, number>> {
 
 // ---------- writes ----------
 
-export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat', 'referral', 'booking'] as const;
-/** What a referred friend wants to do (/refer). */
-export const REFERRAL_NEEDS = { buy: 'buy a home', sell: 'sell a property', rent: 'rent a home', 'let-out': 'rent out a property' } as const;
+export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat'] as const;
 export type LeadKind = (typeof LEAD_KINDS)[number];
 
 export async function createLead(lead: Omit<Lead, 'id' | 'createdAt'> & { kind: LeadKind; userId: number | null }): Promise<number> {
@@ -393,40 +371,18 @@ export interface NewListing {
   contactPhone: string;
   userId: number | null;
   postedBy?: 'Owner' | 'Agent';
-  /** PG / co-living details; null unless type is PG. */
-  pgSharing: string | null;
-  pgFor: string | null;
-  pgFood: number | null;
 }
 
 export async function createListing(l: NewListing): Promise<{ id: number; editToken: string }> {
   const editToken = crypto.randomUUID().replace(/-/g, '');
   const id = await db()
     .prepare(`INSERT INTO listings (purpose, segment, type, bhk, bathrooms, area_sqft, price, city_slug, locality_slug, furnishing,
-        posted_by, possession, description, contact_name, contact_phone, status, edit_token, hue, user_id, pg_sharing, pg_for, pg_food)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ready to Move', ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?) RETURNING id`)
+        posted_by, possession, description, contact_name, contact_phone, status, edit_token, hue, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ready to Move', ?, ?, ?, 'pending', ?, ?, ?) RETURNING id`)
     .bind(l.purpose, l.segment, l.type, l.bhk, Math.max(l.bhk ? 1 : 0, l.bhk - 1), l.areaSqft, l.price, l.citySlug, l.localitySlug,
-      l.furnishing, l.postedBy ?? 'Owner', l.description, l.contactName, l.contactPhone, editToken, 150 + Math.floor(Math.random() * 110), l.userId, l.pgSharing, l.pgFor, l.pgFood)
+      l.furnishing, l.postedBy ?? 'Owner', l.description, l.contactName, l.contactPhone, editToken, 150 + Math.floor(Math.random() * 110), l.userId)
     .first<number>('id');
   return { id: id!, editToken };
-}
-
-/**
- * Deletes a listing's photos from R2 and their rows (owner deleted the listing). Rejected listings keep their
- * photos (only hidden by /media), so a later approval still has them.
- */
-export async function deleteListingPhotos(listingId: number): Promise<number> {
-  const { results } = await db().prepare('SELECT r2_key FROM listing_photos WHERE listing_id = ?').bind(listingId).all<{ r2_key: string }>();
-  const keys = results.map((r) => r.r2_key);
-  if (keys.length) await env.MEDIA.delete(keys);
-  await db().prepare('DELETE FROM listing_photos WHERE listing_id = ?').bind(listingId).run();
-  return keys.length;
-}
-
-/** Whether a listing's photos may be served: not for rejected or deleted listings (pending ones are shown in previews). */
-export async function photosVisible(listingId: number): Promise<boolean> {
-  const r = await db().prepare('SELECT status, closed FROM listings WHERE id = ?').bind(listingId).first<{ status: string; closed: string | null }>();
-  return !!r && r.status !== 'rejected' && r.closed !== 'deleted';
 }
 
 export async function addListingPhotos(listingId: number, keys: string[]) {
@@ -442,21 +398,20 @@ export type ClosedAs = 'sold' | 'rented' | 'deleted';
 export async function getOwnedListing(id: number) {
   return db()
     .prepare(`SELECT id, user_id, purpose, segment, type, bhk, area_sqft, price, city_slug, locality_slug, furnishing, description,
-        contact_name, contact_phone, status, closed, edit_token, pg_sharing, pg_for, pg_food FROM listings WHERE id = ?`)
+        contact_name, contact_phone, status, closed, edit_token FROM listings WHERE id = ?`)
     .bind(id)
     .first<{ id: number; user_id: number | null; purpose: 'buy' | 'rent'; segment: 'residential' | 'commercial'; type: string; bhk: number; area_sqft: number; price: number;
       city_slug: string; locality_slug: string; furnishing: string; description: string | null; contact_name: string; contact_phone: string | null;
-      status: ListingStatus; closed: ClosedAs | null; edit_token: string | null; pg_sharing: string | null; pg_for: string | null; pg_food: number | null }>();
+      status: ListingStatus; closed: ClosedAs | null; edit_token: string | null }>();
 }
 
 /** Saves an owner's edit. Any edit goes back to review (pending, not verified), even for a live listing. */
 export async function updateListing(id: number, f: Omit<NewListing, 'userId' | 'postedBy'>) {
   await db()
     .prepare(`UPDATE listings SET purpose = ?, segment = ?, type = ?, bhk = ?, area_sqft = ?, price = ?, city_slug = ?, locality_slug = ?,
-        furnishing = ?, description = ?, contact_name = ?, contact_phone = ?, pg_sharing = ?, pg_for = ?, pg_food = ?, status = 'pending', verified = 0
+        furnishing = ?, description = ?, contact_name = ?, contact_phone = ?, status = 'pending', verified = 0
       WHERE id = ? AND closed IS NULL`)
-    .bind(f.purpose, f.segment, f.type, f.bhk, f.areaSqft, f.price, f.citySlug, f.localitySlug, f.furnishing, f.description, f.contactName, f.contactPhone,
-      f.pgSharing, f.pgFor, f.pgFood, id)
+    .bind(f.purpose, f.segment, f.type, f.bhk, f.areaSqft, f.price, f.citySlug, f.localitySlug, f.furnishing, f.description, f.contactName, f.contactPhone, id)
     .run();
 }
 
@@ -471,13 +426,12 @@ export async function closeListing(id: number, as: ClosedAs): Promise<boolean> {
 
 // ---------- admin ----------
 
-/** Newest leads, optionally of one kind (admin filter). */
-export async function recentLeads(limit = 100, kind?: LeadKind): Promise<(Lead & { listingTitle: string | null; projectName: string | null; kind: string })[]> {
+export async function recentLeads(limit = 100): Promise<(Lead & { listingTitle: string | null; projectName: string | null; kind: string })[]> {
   const { results } = await db()
     .prepare(`SELECT ld.*, p.name AS project_name, l.type AS l_type, l.bhk AS l_bhk, l.locality_slug AS l_loc
       FROM leads ld LEFT JOIN projects p ON p.id = ld.project_id LEFT JOIN listings l ON l.id = ld.listing_id
-      ${kind ? 'WHERE ld.kind = ?' : ''} ORDER BY ld.id DESC LIMIT ?`)
-    .bind(...(kind ? [kind] : []), limit)
+      ORDER BY ld.id DESC LIMIT ?`)
+    .bind(limit)
     .all<Row>();
   return results.map((r) => ({
     id: r.id as number, name: r.name as string, phone: r.phone as string, email: (r.email as string) ?? null,

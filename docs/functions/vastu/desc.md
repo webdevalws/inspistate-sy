@@ -22,9 +22,6 @@ Analyses an uploaded floor plan: works out which compass direction each room sit
 - Rating points: Best 3, Good 2, Poor 1, Danger 0. Score = Σ points / (3 × scored rooms) × 100.
 - Detection: client downscales the image to ≤1600 px JPEG and POSTs base64 to `/api/tools/vastu-detect`, which calls Claude (`claude-opus-5-5`, server-side fallback enabled) with a JSON-schema output of `{is_floor_plan, north_arrow_degrees, rooms[{type, x, y, label_on_plan}]}`. North is snapped to 22.5°. Rejects non-plans and refusals; same-origin only; 10 calls per hashed IP per day (`ai_usage` table). Without `ANTHROPIC_API_KEY` it returns 503 and the user marks rooms manually.
 - Detection runs in the background while the user sets orientation and centre.
-- **Site-wide cap (item 59):** besides 10 per client per day, all users together get **200 detections per UTC
-  day** (`SITE_DAILY_LIMIT`, an `ai_usage` row with client `all-users`). When it is reached the API returns 429
-  with a friendly message to mark rooms manually or try tomorrow; neither counter keeps that use.
 - The daily count goes up before the Claude call. **Failures on our side give it back** (API or rate-limit
   errors, a reply cut off at `max_tokens` → 502 "Detection was cut short…", or a reply that can't be
   read). Refusals and "not a floor plan" answers still count, because those calls were made and billed.
@@ -51,5 +48,5 @@ Reference pages: https://www.squareyards.com/vastu-calculator (landing) and `/va
 
 ## Gaps vs reference
 - **Matched:** upload limits, 22.5° orientation dial, draggable centre, auto-detect + manual verify, same sector maths, 4-level ratings, score + per-room report + remedies, PDF via print.
-- **Different by design:** rating table and remedies are our own (20 room types, not 49); full report is free with an expert-callback lead instead of a ₹399 paywall; detection uses Claude vision (`/api/tools/vastu-detect`), capped at 10 per client and 200 for all users per day.
+- **Different by design:** rating table and remedies are our own (20 room types, not 49); full report is free with an expert-callback lead instead of a ₹399 paywall; detection uses Claude vision (`/api/tools/vastu-detect`), capped at 10 per client per day.
 - **Not yet built:** choosing a floor plan from our project database, plan flip, saved drafts, paid report option.
