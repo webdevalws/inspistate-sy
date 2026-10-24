@@ -72,6 +72,8 @@ search form puts city + Search on one row under the query field.
 - **Tokens:** `--color-sand-50/100/200`, `--font-display` (Archivo, wide axis), `--font-mono`
   (DM Mono) in `global.css`; helpers `.hero-*`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
+- **Site icon:** `public/favicon.svg` (linked from `Base.astro`); `public/favicon.ico` is the same house mark at
+  32 and 16 px for browsers and crawlers that ask for `/favicon.ico` directly.
 
 ## Data loading (item 79)
 - The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one
