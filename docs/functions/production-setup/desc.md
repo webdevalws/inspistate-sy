@@ -56,5 +56,9 @@ reference data for an empty production database, Cloudflare bindings, deployment
   (Time Travel restore, or an export into a new database). The README's Deploy section points to it and no
   longer suggests the remote demo seed.
 
+## CI (item 70)
+- `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`, `npm run build`,
+  `npx astro check` on Node 24 (read-only permissions, no secrets, older runs on the same branch cancelled).
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`, `.github/workflows/ci.yml`
