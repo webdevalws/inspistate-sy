@@ -67,6 +67,22 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   and locality tabs show the first 8 cities plus the most recently added city (last in sort order) when it
   has projects — today Mumbai…Chennai plus Lucknow (9 tabs).
 
+## PG / co-living (item 49)
+- **Type:** `PG` (shown as "PG / Co-living", `typeLabel` in `src/lib/search.ts`), residential and **rent only**; BHK 0,
+  price = monthly rent per bed, area = room size. Details in `listings.pg_sharing` / `pg_for` / `pg_food`
+  (migration 0012), read into `Listing.pg`.
+- **URLs:** `/rent/{city}/pg` is a normal type facet (`TYPE_SLUGS.pg`). `/buy/{city}/pg` and
+  `/commercial/{city}/pg` **301** to the same facets under `/rent`.
+- **Filters:** in Rent mode the type list adds "PG / Co-living"; while it is chosen, a PG group offers sharing
+  (`sharing=single,double,triple`), who it is for (`pgFor=men,women,any`) and `food=1`, and BHK is hidden.
+- **Ask AI / search box text:** "pg", "paying guest", "co-living" and "hostel" mean Rent + type PG; "women /
+  girls / ladies" or "men / boys" set `pgFor`, "single / double / triple" set `sharing`, "with food" sets `food=1`.
+- **Rates:** PGs are left out of per-sq.ft rent averages (search market stats, locality rent rate, city hub),
+  because their rent is per bed. The property page hides "Is this a fair price?" for PGs.
+- **Display:** titles like "Double sharing PG for Women in Koramangala, Bengaluru"; price "₹14,000/month per bed".
+- **Demo data:** 3 hand-written PGs (ids 50805–50807: Koramangala women / double / food, Hinjewadi men / triple /
+  food, Powai anyone / single / no food), inserted after the Lucknow rows so every earlier row is unchanged.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`

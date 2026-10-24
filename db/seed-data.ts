@@ -6,7 +6,7 @@ import type {
 } from '../src/data/types.ts';
 
 type SeedProject = Omit<Project, 'priceMin' | 'priceMax' | 'bhkLabel'> & { units: UnitConfig[] };
-type SeedListing = Omit<Listing, 'postedAt' | 'projectName' | 'projectSlug' | 'status' | 'photos' | 'description' | 'managed' | 'depositMonths' | 'availableFrom'> & { postedDaysAgo: number };
+type SeedListing = Omit<Listing, 'postedAt' | 'projectName' | 'projectSlug' | 'status' | 'photos' | 'description' | 'managed' | 'depositMonths' | 'availableFrom' | 'pg'> & { postedDaysAgo: number };
 
 function rng(seed: number) {
   let a = seed >>> 0;
@@ -326,5 +326,38 @@ export const extraListings: (SeedListing & { description: string })[] = [
     amenities: ['Power Backup', 'Covered Parking'], postedDaysAgo: 12,
     contactName: 'Pankaj Tiwari', verified: true, hue: 160,
     description: 'Compact 1 BHK in a quiet lane of Aliganj with a separate entrance and two-wheeler parking. Close to Kapoorthala market.',
+  },
+];
+/**
+ * Hand-written PG / co-living listings (migration 0012), appended after the Lucknow ones in their own insert so
+ * every earlier row stays the same. Existing localities; prices are monthly rent per bed; people are fictional.
+ */
+export const pgListings: (SeedListing & { description: string; pg: NonNullable<Listing['pg']> })[] = [
+  {
+    id: 50805, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 160, price: 14000,
+    citySlug: 'bengaluru', localitySlug: 'koramangala', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 2, totalFloors: 4, facing: 'East', ageYears: 6,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Laundry', 'Power Backup', '24x7 Security', 'CCTV Surveillance'], postedDaysAgo: 2,
+    contactName: 'Lakshmi Rao', verified: true, hue: 330,
+    pg: { sharing: 'double', for: 'women', food: true },
+    description: 'Women-only PG in a quiet Koramangala street with double-sharing rooms, attached bathrooms, three home-style meals a day and weekly housekeeping.',
+  },
+  {
+    id: 50806, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 220, price: 8500,
+    citySlug: 'pune', localitySlug: 'hinjewadi', projectId: null, furnishing: 'Furnished', postedBy: 'Agent',
+    possession: 'Ready to Move', floor: 1, totalFloors: 3, facing: 'North', ageYears: 4,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Power Backup', 'Covered Parking'], postedDaysAgo: 6,
+    contactName: 'Rohan Kulkarni', verified: true, hue: 40,
+    pg: { sharing: 'triple', for: 'men', food: true },
+    description: 'Triple-sharing PG for men a short ride from the Hinjewadi IT parks. Breakfast and dinner included, two-wheeler parking and daily cleaning.',
+  },
+  {
+    id: 50807, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 140, price: 22000,
+    citySlug: 'mumbai', localitySlug: 'powai', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 5, totalFloors: 12, facing: 'West', ageYears: 3,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Laundry', 'Lift', 'Gymnasium', '24x7 Security'], postedDaysAgo: 4,
+    contactName: 'Kabir Shah', verified: false, hue: 260,
+    pg: { sharing: 'single', for: 'any', food: false },
+    description: 'Private single rooms in a co-living flat near Powai lake: shared kitchen and lounge, fast Wi-Fi, a gym in the building and weekly cleaning. Open to everyone.',
   },
 ];

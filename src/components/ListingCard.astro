@@ -4,7 +4,7 @@ import Photo from './Photo.astro';
 import ShortlistButton from './islands/ShortlistButton';
 import LeadDialog from './islands/LeadDialog';
 import { getRefs } from '../lib/repo';
-import { daysSince, listingPrice, listingTitle } from '../lib/listing';
+import { daysSince, listingPrice, listingTitle, pgFacts } from '../lib/listing';
 import { formatNumber, formatRate, postedAgo } from '../lib/format';
 import { listingUrl } from '../lib/urls';
 
@@ -14,7 +14,7 @@ const refs = await getRefs();
 const loc = refs.locality(l.citySlug, l.localitySlug);
 const title = listingTitle(l, refs);
 const kind = l.type === 'Plot' ? 'plot' : l.segment === 'commercial' ? 'office' : l.type === 'Villa' ? 'house' : 'tower';
-const facts = [
+const facts = l.pg ? ['PG / Co-living', ...pgFacts(l), l.furnishing] : [
   l.bhk ? `${l.bhk} BHK` : l.type,
   `${formatNumber(l.areaSqft)} sq.ft`,
   l.type !== 'Plot' ? l.furnishing : null,

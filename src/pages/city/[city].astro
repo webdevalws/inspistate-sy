@@ -36,7 +36,7 @@ const builders = [...perBuilder]
   .map(([slug, n]) => ({ b: refs.builder(slug), n }))
   .filter((x) => !!x.b).sort((a, b) => b.n - a.n || b.b!.delivered - a.b!.delivered).slice(0, 4);
 // Buy / Rent quick links by budget, type and BHK; a link shows only when it has listings, a group only when it has links.
-const TYPE_LABEL: Record<string, string> = { Apartment: 'Flats', 'Builder Floor': 'Builder floors', Villa: 'Villas', Plot: 'Plots' };
+const TYPE_LABEL: Record<string, string> = { Apartment: 'Flats', 'Builder Floor': 'Builder floors', Villa: 'Villas', Plot: 'Plots', PG: 'PG / Co-living' };
 const quick = (['buy', 'rent'] as const).map((purpose) => {
   const f = { ...homes, purpose };
   const fmt = purpose === 'rent' ? formatRent : formatPrice;

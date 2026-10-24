@@ -1,7 +1,7 @@
 // Generates db/seed.sql from the deterministic demo data.
 // Run: node db/build-seed.ts   (Node 22.18+/24 strips TypeScript types natively)
 import { writeFileSync } from 'node:fs';
-import { builders, cities, extraListings, extraProjects, listings, localities, projects } from './seed-data.ts';
+import { builders, cities, extraListings, extraProjects, listings, localities, pgListings, projects } from './seed-data.ts';
 
 const q = (v: unknown): string => {
   if (v === null || v === undefined) return 'NULL';
@@ -28,7 +28,7 @@ const LISTING_COLS = ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'a
 const listingRow = (l: (typeof listings)[number]) => {
   // Managed rentals (same rule as migration 0008): every third residential rental, one-month
   // deposit, available a week after posting. Kept here because a reset re-inserts all listings.
-  const managed = l.purpose === 'rent' && l.segment === 'residential' && l.id % 3 === 0;
+  const managed = l.purpose === 'rent' && l.segment === 'residential' && l.type !== 'PG' && l.id % 3 === 0;
   return [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo),
     managed ? 1 : 0, managed ? 1 : 2, managed ? iso(l.postedDaysAgo - 7).slice(0, 10) : null];
 };
@@ -103,6 +103,8 @@ const out = [
   insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'], unitRows(extraProjects)),
   insert('listings', LISTING_COLS, listings.map(listingRow)),
   insert('listings', [...LISTING_COLS, 'description'], extraListings.map((l) => [...listingRow(l), l.description])),
+  insert('listings', [...LISTING_COLS, 'description', 'pg_sharing', 'pg_for', 'pg_food'],
+    pgListings.map((l) => [...listingRow(l), l.description, l.pg.sharing, l.pg.for, l.pg.food ? 1 : 0])),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], transactions),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], extraTransactions),
   insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], reviews),
@@ -112,4 +114,4 @@ const out = [
 ].join('\n');
 
 writeFileSync(new URL('./seed.sql', import.meta.url), out);
-console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length + extraProjects.length} projects, ${listings.length + extraListings.length} listings`);
+console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length + extraProjects.length} projects, ${listings.length + extraListings.length + pgListings.length} listings`);

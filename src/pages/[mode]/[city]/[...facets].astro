@@ -12,7 +12,7 @@ import SaveSearch from '../../../components/islands/SaveSearch';
 import ChatWidget from '../../../components/islands/ChatWidget';
 import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
-import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, foldBhkSegments, parseFacets, parseFilters, typeLabel, type Mode } from '../../../lib/search';
 import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
 import { parseQuery } from '../../../lib/nlsearch';
@@ -34,6 +34,8 @@ if (q) return Astro.redirect(parseQuery(`${q.slice(0, 300)} ${segments.join(' ')
 // 6–9 BHK URLs have no option of their own: send them (301) to the "5+ BHK" URL, keeping everything else.
 const folded = foldBhkSegments(segments);
 if (folded) return Astro.redirect(`${searchUrl(m, city.slug, ...folded)}${Astro.url.search}`, 301);
+// PGs are rent-only: /buy/{city}/pg (or /commercial/…/pg) moves to the same facets under /rent.
+if (m !== 'rent' && segments.includes('pg')) return Astro.redirect(`${searchUrl('rent', city.slug, ...segments)}${Astro.url.search}`, 301);
 const facetFilters = parseFacets(segments, localities);
 if (!facetFilters) return new Response(null, { status: 404 });
 const filters = parseFilters(Astro.url, facetFilters);
@@ -53,7 +55,7 @@ const budgets = (isRentish ? RENT_BUDGETS : BUY_BUDGETS).map((v) => ({ value: v,
 const singleLoc = filters.locality.length === 1 ? refs.locality(city.slug, filters.locality[0]) : undefined;
 const place = singleLoc ? `${singleLoc.name}, ${city.name}` : city.name;
 const bhkPrefix = filters.bhk.length === 1 ? `${filters.bhk[0]} BHK ` : '';
-const typePrefix = filters.type.length === 1 ? `${filters.type[0]}s ` : '';
+const typePrefix = filters.type.length === 1 ? (filters.type[0] === 'PG' ? 'PG / Co-living ' : `${filters.type[0]}s `) : '';
 const heading = bhkPrefix || typePrefix
   ? `${bhkPrefix}${typePrefix || 'Flats '}for ${m === 'rent' ? 'Rent' : 'Sale'} in ${place}`
   : MODES[m].heading(place);
@@ -76,7 +78,7 @@ const budgetHref = ([lo, hi]: readonly number[]) => `${searchUrl(m, city.slug)}?
 const faq = [
   { q: `How many properties are available ${m === 'rent' ? 'for rent' : 'for sale'} in ${city.name}?`, a: `InspiState currently lists ${plural(stats.count, 'property')} ${m === 'rent' ? 'for rent' : m === 'commercial' ? 'in the commercial segment' : 'for sale'} in ${city.name}, across ${localities.length} localities.` },
   { q: `What is the average ${isRentish ? 'rent' : 'price'} in ${city.name}?`, a: stats.count ? `The average works out to ${formatRate(stats.avgRate)}${isRentish ? ' per month' : ''}, with listings ranging from ${fmtBudget(stats.min)} to ${fmtBudget(stats.max)}.` : 'There are no listings yet.' },
-  { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${t.key} (${t.count})`).join(', ') + '.' },
+  { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${typeLabel(t.key)} (${t.count})`).join(', ') + '.' },
   { q: `Which are the top localities in ${city.name}?`, a: `${[...localities].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 4).map((l) => l.name).join(', ')} have seen the strongest price growth on InspiState.` },
   { q: `Which developers have projects in ${city.name}?`, a: developers.length ? `${developers.map((d) => d.name).join(', ')}.` : 'No developer projects are listed yet.' },
   { q: 'Are the listings verified?', a: 'Listings marked “Verified” have been reviewed and approved by our team before going live. Use the “Verified listings only” filter to see just those.' },
@@ -123,10 +125,10 @@ const faq = [
       <aside>
         <details class="card p-4 lg:hidden">
           <summary class="cursor-pointer font-semibold">Show filters</summary>
-          <div class="mt-4"><FilterPanel client:idle basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} /></div>
+          <div class="mt-4"><FilterPanel client:idle basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} isRent={m === 'rent'} localities={localities} budgets={budgets} /></div>
         </details>
         <div class="card sticky top-20 hidden max-h-[calc(100vh-6rem)] overflow-y-auto p-5 lg:block">
-          <FilterPanel client:load basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} />
+          <FilterPanel client:load basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} isRent={m === 'rent'} localities={localities} budgets={budgets} />
         </div>
       </aside>
 
@@ -166,7 +168,7 @@ const faq = [
           <div class="card p-6">
             <h2 class="text-lg font-bold">Types of property</h2>
             <ul class="mt-3 divide-y divide-slate-100 text-sm">
-              {stats.byType.map((t) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?type=${encodeURIComponent(t.key)}`} class="font-semibold text-brand-700 hover:underline">{t.key}</a><span class="text-slate-500">{t.count} · avg {fmtBudget(t.avg)}</span></li>)}
+              {stats.byType.map((t) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?type=${encodeURIComponent(t.key)}`} class="font-semibold text-brand-700 hover:underline">{typeLabel(t.key)}</a><span class="text-slate-500">{t.count} · avg {fmtBudget(t.avg)}</span></li>)}
             </ul>
           </div>
           {stats.byBhk.length > 0 && (

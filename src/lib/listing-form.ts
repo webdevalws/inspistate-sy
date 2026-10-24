@@ -1,8 +1,9 @@
 // Field validation for a listing form, shared by "post property" (/api/listings) and the owner's edit
 // (/api/account/listings/[id]) so both accept exactly the same values.
 import type { NewListing, Refs } from './repo';
+import { PG_FOR, PG_SHARING } from './search';
 
-const RES_TYPES = ['Apartment', 'Builder Floor', 'Villa', 'Plot'];
+const RES_TYPES = ['Apartment', 'Builder Floor', 'Villa', 'Plot', 'PG'];
 const COM_TYPES = ['Office', 'Shop'];
 const FURNISHING = ['Furnished', 'Semi-Furnished', 'Unfurnished'];
 
@@ -18,12 +19,19 @@ export function parseListingFields(form: FormData, refs: Refs): { ok: true; fiel
   if (!purpose || !segment) return fail('Choose whether you want to sell or rent, and the category');
   const type = s('type');
   if (!(segment === 'residential' ? RES_TYPES : COM_TYPES).includes(type)) return fail('Invalid property type');
+  // PG / co-living: rent only, no BHK; sharing and who it is for are required, rent is per bed.
+  const isPg = type === 'PG';
+  if (isPg && purpose !== 'rent') return fail('A PG / co-living can only be rented out');
+  const pgSharing = isPg ? s('pgSharing') : null;
+  const pgFor = isPg ? s('pgFor') : null;
+  if (isPg && !(Object.hasOwn(PG_SHARING, pgSharing!) && Object.hasOwn(PG_FOR, pgFor!))) return fail('Choose the sharing type and who the PG is for');
+  const pgFood = isPg ? (s('pgFood') === '1' ? 1 : 0) : null;
 
   const citySlug = s('city');
   const localitySlug = s('locality');
   if (!refs.locality(citySlug, localitySlug)) return fail('Choose a city and locality');
 
-  const hasBhk = segment === 'residential' && type !== 'Plot';
+  const hasBhk = segment === 'residential' && type !== 'Plot' && !isPg;
   const bhk = hasBhk ? n('bhk') : 0;
   if (hasBhk && !(Number.isInteger(bhk) && bhk >= 1 && bhk <= 10)) return fail('Invalid BHK');
   const areaSqft = n('area');
@@ -40,6 +48,6 @@ export function parseListingFields(form: FormData, refs: Refs): { ok: true; fiel
 
   return {
     ok: true,
-    fields: { purpose, segment, type, bhk, areaSqft: Math.round(areaSqft), price: Math.round(price), citySlug, localitySlug, furnishing, description, contactName, contactPhone },
+    fields: { purpose, segment, type, bhk, areaSqft: Math.round(areaSqft), price: Math.round(price), citySlug, localitySlug, furnishing, description, contactName, contactPhone, pgSharing, pgFor, pgFood },
   };
 }

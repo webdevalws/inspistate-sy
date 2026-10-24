@@ -23,6 +23,7 @@ if (editParam !== null) {
       purpose: l.purpose === 'buy' ? 'Sell' : 'Rent out', segment: l.segment === 'commercial' ? 'Commercial' : 'Residential', type: l.type,
       city: l.city_slug, locality: l.locality_slug, bhk: String(l.bhk || 2), area: String(l.area_sqft), price: String(l.price),
       furnishing: l.furnishing, description: l.description ?? '', name: l.contact_name, phone: l.contact_phone ?? '',
+      ...(l.type === 'PG' ? { pgSharing: l.pg_sharing ?? 'double', pgFor: l.pg_for ?? 'any', pgFood: String(l.pg_food ?? 0) } : {}),
     },
   };
 }

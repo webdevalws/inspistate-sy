@@ -25,6 +25,11 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
   (`men` | `women` | `any`) and `listings.pg_food` (0 | 1). They are NULL for every listing that is not a
   PG. Nullable columns, so existing rows are unchanged.
 
+- **Posting a PG:** with "Rent out" + Residential the type list adds "PG / Co-living". Its details step asks
+  for sharing, who it is for and food (instead of BHK), "Room area" and "Monthly rent per bed".
+  `parseListingFields` rejects a PG for sale and requires valid sharing and "for" values; the edit form
+  pre-fills them.
+
 ## Owners manage their listings
 - **Lifecycle column** (migration 0011): `listings.closed` = `sold` | `rented` | `deleted` (NULL while open)
   and `closed_at`, kept separate from the moderation `status`. A listing is public only when
