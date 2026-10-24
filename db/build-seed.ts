@@ -1,7 +1,7 @@
 // Generates db/seed.sql from the deterministic demo data.
 // Run: node db/build-seed.ts   (Node 22.18+/24 strips TypeScript types natively)
 import { writeFileSync } from 'node:fs';
-import { builders, cities, extraListings, extraProjects, listings, localities, naviMumbaiListings, naviMumbaiProjects, pgListings, projects } from './seed-data.ts';
+import { builders, cities, extraListings, extraProjects, listings, localities, projects } from './seed-data.ts';
 
 const q = (v: unknown): string => {
   if (v === null || v === undefined) return 'NULL';
@@ -21,18 +21,14 @@ const insert = (table: string, cols: string[], rows: unknown[][]) => {
   return parts.join('');
 };
 
-// A fixed "today" so db/seed.sql is the same on every machine and every run (it used to change after each
-// reset). Demo dates ("posted 3 days ago", transactions, reviews) are relative to this date, so on the live
-// site they slowly look older; move the date forward and regenerate when that matters.
-const SEED_DATE = '2026-10-24T10:00:00Z';
-const now = Date.parse(SEED_DATE);
+const now = Date.now();
 const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
 const LISTING_COLS = ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at', 'managed', 'deposit_months', 'available_from'];
 const listingRow = (l: (typeof listings)[number]) => {
   // Managed rentals (same rule as migration 0008): every third residential rental, one-month
   // deposit, available a week after posting. Kept here because a reset re-inserts all listings.
-  const managed = l.purpose === 'rent' && l.segment === 'residential' && l.type !== 'PG' && l.id % 3 === 0;
+  const managed = l.purpose === 'rent' && l.segment === 'residential' && l.id % 3 === 0;
   return [l.id, l.purpose, l.segment, l.type, l.bhk, l.bathrooms, l.areaSqft, l.price, l.citySlug, l.localitySlug, l.projectId, l.furnishing, l.postedBy, l.possession, l.floor, l.totalFloors, l.facing, l.ageYears, l.amenities, l.contactName, l.verified, 'active', l.hue, iso(l.postedDaysAgo),
     managed ? 1 : 0, managed ? 1 : 2, managed ? iso(l.postedDaysAgo - 7).slice(0, 10) : null];
 };
@@ -72,9 +68,6 @@ const reviews = reviewsFor(projects);
 // generated ones, so every generated row stays the same.
 const extraTransactions = transactionsFor(extraProjects);
 const extraReviews = reviewsFor(extraProjects);
-// Navi Mumbai projects draw theirs after Lucknow's, so Lucknow's rows stay the same too.
-const naviMumbaiTransactions = transactionsFor(naviMumbaiProjects);
-const naviMumbaiReviews = reviewsFor(naviMumbaiProjects);
 
 const PROJECT_COLS = ['id', 'slug', 'name', 'city_slug', 'locality_slug', 'builder_slug', 'status', 'possession', 'rera', 'land_acres', 'total_units', 'towers', 'floors', 'rate_per_sqft', 'price_min', 'price_max', 'bhk_label', 'amenities', 'highlights', 'price_trend', 'nearby', 'hue', 'launched_year'];
 const projectRow = (p: (typeof projects)[number]) => {
@@ -106,24 +99,17 @@ const out = [
   insert('projects', PROJECT_COLS, projects.map(projectRow)),
   // Hand-written rows (Lucknow) go in their own inserts so the generated rows above stay unchanged.
   insert('projects', PROJECT_COLS, extraProjects.map(projectRow)),
-  insert('projects', PROJECT_COLS, naviMumbaiProjects.map(projectRow)),
   insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'], unitRows(projects)),
   insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'], unitRows(extraProjects)),
-  insert('project_units', ['project_id', 'bhk', 'label', 'carpet_sqft', 'price'], unitRows(naviMumbaiProjects)),
   insert('listings', LISTING_COLS, listings.map(listingRow)),
   insert('listings', [...LISTING_COLS, 'description'], extraListings.map((l) => [...listingRow(l), l.description])),
-  insert('listings', [...LISTING_COLS, 'description', 'pg_sharing', 'pg_for', 'pg_food'],
-    pgListings.map((l) => [...listingRow(l), l.description, l.pg.sharing, l.pg.for, l.pg.food ? 1 : 0])),
-  insert('listings', [...LISTING_COLS, 'description'], naviMumbaiListings.map((l) => [...listingRow(l), l.description])),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], transactions),
   insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], extraTransactions),
-  insert('transactions', ['project_id', 'registered_on', 'tower', 'floor', 'unit', 'area_sqft', 'price'], naviMumbaiTransactions),
   insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], reviews),
   insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], extraReviews),
-  insert('reviews', ['project_id', 'author', 'rating', 'connectivity', 'amenities', 'construction', 'body', 'resident_type', 'status', 'created_at'], naviMumbaiReviews),
   insert('forum_questions', ['id', 'author', 'city_slug', 'title', 'body', 'created_at'], forum.map(([a, c, t, b], i) => [i + 1, a, c, t, b, iso(40 - i * 7)])),
   insert('forum_answers', ['question_id', 'author', 'body', 'created_at'], forum.flatMap(([, , , , ans], i) => ans.map(([a, b], j) => [i + 1, a, b, iso(38 - i * 7 - j)]))),
 ].join('\n');
 
 writeFileSync(new URL('./seed.sql', import.meta.url), out);
-console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length + extraProjects.length + naviMumbaiProjects.length} projects, ${listings.length + extraListings.length + pgListings.length + naviMumbaiListings.length} listings`);
+console.log(`seed.sql: ${cities.length} cities, ${localities.length} localities, ${builders.length} builders, ${projects.length + extraProjects.length} projects, ${listings.length + extraListings.length} listings`);

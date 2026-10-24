@@ -60,7 +60,7 @@ export async function localityMarket(citySlug: string) {
     .prepare(`SELECT locality_slug, count(*) AS n,
         sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
         avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS sale_rate,
-        avg(CASE WHEN purpose = 'rent' AND segment = 'residential' AND type != 'PG' THEN 1.0 * price / area_sqft END) AS rent_rate, -- PG rent is per bed
+        avg(CASE WHEN purpose = 'rent' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rent_rate,
         min(CASE WHEN purpose = 'buy' THEN price END) AS min_price
       FROM listings WHERE status = 'active' AND closed IS NULL AND city_slug = ? GROUP BY locality_slug`)
     .bind(citySlug)

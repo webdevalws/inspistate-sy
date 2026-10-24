@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { emi } from './EmiCalculator';
 import { formatPrice } from '../../lib/format';
 import { MAX_VALUE, MIN_VALUE, STAMP_DUTY, hasGenderRates, stampDuty, type Buyer } from '../../data/stamp-duty';
 import { AREA_UNITS, POPULAR_CONVERSIONS, REGIONS, convertArea, unitsFor } from '../../data/area-units';
@@ -125,6 +126,31 @@ export function AreaConverter() {
         </table>
         <p className="mt-2 text-xs text-slate-500">Traditional land units differ between districts; confirm with local land records before a transaction.</p>
       </details>
+    </div>
+  );
+}
+
+export function Affordability() {
+  const [income, setIncome] = useState(150000);
+  const [obligations, setObligations] = useState(10000);
+  const [savings, setSavings] = useState(2000000);
+  const [rate, setRate] = useState(8.5);
+  const [years, setYears] = useState(20);
+  // Lenders typically cap total EMIs at ~50% of net monthly income.
+  const maxEmi = Math.max(0, income * 0.5 - obligations);
+  const perLakh = emi(100000, rate, years);
+  const loan = (maxEmi / perLakh) * 100000;
+  const budget = loan + savings;
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Net monthly income (₹)"><input type="number" className="input" value={income} onChange={(e) => setIncome(Number(e.target.value))} /></Field>
+        <Field label="Existing EMIs (₹/month)"><input type="number" className="input" value={obligations} onChange={(e) => setObligations(Number(e.target.value))} /></Field>
+        <Field label="Savings for down payment (₹)"><input type="number" className="input" value={savings} onChange={(e) => setSavings(Number(e.target.value))} /></Field>
+        <Field label="Interest rate (%)"><input type="number" step={0.05} className="input" value={rate} onChange={(e) => setRate(Number(e.target.value))} /></Field>
+        <Field label="Tenure (years)"><input type="number" min={1} max={30} className="input" value={years} onChange={(e) => setYears(Number(e.target.value))} /></Field>
+      </div>
+      <Result items={[['Affordable EMI', inr(maxEmi)], ['Eligible loan (approx.)', formatPrice(loan)], ['Your down payment', formatPrice(savings)], ['Home budget', formatPrice(budget), true]]} />
     </div>
   );
 }

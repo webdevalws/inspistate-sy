@@ -1,11 +1,10 @@
 # InspiState
 
-Real-estate portal for India — buy, rent (incl. PG / co-living), new projects and commercial across 12 cities —
-built with Astro 7 + React 19 islands + TypeScript + Tailwind 4, deployed on Cloudflare Workers (D1, R2).
+Real-estate portal for India — buy, rent, new projects and commercial — built with
+Astro + React islands + TypeScript + Tailwind, deployed on Cloudflare.
 
-**Status: Phase 1 complete** — search with map view, city hubs, listings and projects, accounts and owner
-listings, leads, tools and services, admin with audit trail. See [docs/SPEC.md](docs/SPEC.md) (what is built and
-what is next), [docs/FEATURES.md](docs/FEATURES.md) (feature by feature), [DEPLOY.md](DEPLOY.md) (production) and
+**Status: Phase 2** — data in Cloudflare D1, photos in R2, enquiries and owner listings are saved,
+admin moderation at `/admin`. See [docs/SPEC.md](docs/SPEC.md) for the phase plan and
 [docs/analysis/](docs/analysis/) for the reference-site study.
 
 ## Run locally
@@ -41,26 +40,33 @@ them the login dialog says "Login by SMS is not configured yet". See `docs/funct
 | `npm run db:seed:local` | **local** | Replace all local data with the demo seed (destructive, local only) |
 | `npm run db:reset:local` | **local** | `db:seed:build` + `db:migrate:local` + `db:seed:local` |
 | `npm run db:migrate:remote` | ⚠️ **remote** | Apply new migrations to the production database |
-| `npm run db:reference:build` | files only | Regenerate `db/reference.sql` (cities + localities only) |
-| `npm run db:reference:remote` | ⚠️ **remote** | Load reference data into production — inserts only, never deletes |
-| `npm run db:seed:remote` | ⛔ **remote** | **Never on production.** Deletes production data and loads the demo seed — blocked unless confirmed (below) |
+| `npm run db:seed:remote` | ⚠️ **remote** | **Deletes production data** and loads the demo seed — blocked unless confirmed (below) |
 
-> ⛔ **`db:seed:remote` wipes production.** `db/seed.sql` starts with `DELETE FROM` for leads, listings
+> ⚠️ **`db:seed:remote` wipes production.** `db/seed.sql` starts with `DELETE FROM` for leads, listings
 > (including owner-posted ones), listing photos, shortlists, saved searches, reviews, transactions, the
 > forum and the reference tables. The command runs `db/confirm-remote-seed.ts` first, which prints this
-> warning and stops. Don't use it for production at all: a new production database gets
-> `db:reference:remote` instead (see [DEPLOY.md](DEPLOY.md)). Day to day, use the **local** commands.
+> warning and stops unless `CONFIRM_REMOTE_SEED=inspistate-db` is set for that one command:
+>
+> ```powershell
+> $env:CONFIRM_REMOTE_SEED='inspistate-db'; npm run db:seed:remote; Remove-Item Env:CONFIRM_REMOTE_SEED
+> ```
+> Only do this for a brand-new, empty database. Day to day, use the **local** commands.
 
 Schema: `migrations/0001_init.sql`. New schema changes go in a new numbered migration file.
 
 ## Deploy (Cloudflare)
 
-See **[DEPLOY.md](DEPLOY.md)** for the step-by-step first-time setup (D1, R2, KV, secrets, migrations, reference
-data, deploy, `npm run doctor -- --remote`, verification), plus updating, backups and restoring.
+The API token needs **D1 Edit**, **Workers R2 Storage Edit** and **Workers Scripts Edit** permissions.
 
-Production never gets the demo seed: it gets **reference data only** (`npm run db:reference:build` and
-`npm run db:reference:remote`). Every setting is listed in [`.dev.vars.example`](.dev.vars.example);
-`npm run doctor` checks a local or (`-- --remote`) deployed setup.
+```sh
+npx wrangler d1 create inspistate-db          # copy the database_id into wrangler.jsonc
+npx wrangler r2 bucket create inspistate-media
+npm run db:migrate:remote
+# First deploy only, on the new empty database (see the warning above):
+CONFIRM_REMOTE_SEED=inspistate-db npm run db:seed:remote
+npx wrangler secret put ADMIN_PASSWORD
+npm run build && npx wrangler deploy
+```
 
 ## Routes
 

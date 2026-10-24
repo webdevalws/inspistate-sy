@@ -63,11 +63,6 @@ name, optional email, optional city and (agents) a required agency name.
   role, name (2+ chars), email (optional), city (optional, must be a listed city if given) and, for agents,
   the agency / firm name (required, 2+ chars). Cross-origin POSTs are rejected by middleware.
 
-## Settings
-- All runtime settings, with which are required in production, are listed and explained in
-  `.dev.vars.example` (item 64). For login: `SMS_WEBHOOK_URL` (required in production), `TEST_OTP` and
-  `DEV_SHOW_OTP` (dev server only; ignored by built Workers).
-
 ## Files
 - `src/components/islands/AuthFlow.tsx` — the three steps (shared by dialog and page)
 - `src/components/islands/AuthDialog.tsx` — dialog + `data-auth-open` wiring (mounted in `Header.astro`)

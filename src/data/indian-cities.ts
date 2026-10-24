@@ -5,7 +5,7 @@ export const UNCOVERED_CITIES = [
   'Ahmedabad', 'Agra', 'Allahabad', 'Amritsar', 'Aurangabad', 'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Coimbatore',
   'Dehradun', 'Faridabad', 'Ghaziabad', 'Goa', 'Guwahati', 'Gwalior', 'Indore', 'Jabalpur', 'Jaipur', 'Jalandhar',
   'Jammu', 'Jodhpur', 'Kanpur', 'Kochi', 'Kota', 'Kozhikode', 'Ludhiana', 'Madurai', 'Mangaluru',
-  'Meerut', 'Mohali', 'Mysuru', 'Nagpur', 'Nashik', 'Panchkula', 'Patna', 'Prayagraj', 'Puducherry',
+  'Meerut', 'Mohali', 'Mysuru', 'Nagpur', 'Nashik', 'Navi Mumbai', 'Panchkula', 'Patna', 'Prayagraj', 'Puducherry',
   'Raipur', 'Rajkot', 'Ranchi', 'Shimla', 'Srinagar', 'Surat', 'Thiruvananthapuram', 'Tiruchirappalli', 'Udaipur',
   'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
 ] as const;
@@ -14,7 +14,7 @@ export const UNCOVERED_CITIES = [
 const ALIASES: Record<string, string> = {
   cochin: 'Kochi', ernakulam: 'Kochi', mysore: 'Mysuru', mangalore: 'Mangaluru', trivandrum: 'Thiruvananthapuram',
   vizag: 'Visakhapatnam', baroda: 'Vadodara', benares: 'Varanasi', banaras: 'Varanasi', calicut: 'Kozhikode',
-  trichy: 'Tiruchirappalli', pondicherry: 'Puducherry', panaji: 'Goa',
+  trichy: 'Tiruchirappalli', pondicherry: 'Puducherry', panaji: 'Goa', 'navi-mumbai': 'Navi Mumbai',
 };
 
 /** The uncovered city named in `text` (whole words, any case), or null. */

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FILTER_KEYS, PG_FOR, PG_SHARING, facetPath, typeLabel } from '../../lib/search';
+import { FILTER_KEYS, facetPath } from '../../lib/search';
 
 export interface FilterState {
   locality: string[];
@@ -9,9 +9,6 @@ export interface FilterState {
   postedBy: string[];
   possession: string[];
   amenities: string[];
-  pgSharing: string[];
-  pgFor: string[];
-  pgFood: boolean;
   priceMin?: number;
   priceMax?: number;
   areaMin?: number;
@@ -25,8 +22,6 @@ interface Props {
   basePath: string;
   initial: FilterState;
   isCommercial: boolean;
-  /** Residential rentals: offers the PG / co-living type and its filters. */
-  isRent?: boolean;
   localities: { slug: string; name: string }[];
   budgets: { value: number; label: string }[];
 }
@@ -36,10 +31,8 @@ const COM_TYPES = ['Office', 'Shop'];
 const AMENITIES = ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Lift', 'Covered Parking', 'Power Backup', '24x7 Security', 'Kids Play Area', 'EV Charging', 'Pet Park'];
 const AREAS = [300, 500, 750, 1000, 1500, 2000, 3000, 5000];
 
-export default function FilterPanel({ basePath, initial, isCommercial, isRent = false, localities, budgets }: Props) {
+export default function FilterPanel({ basePath, initial, isCommercial, localities, budgets }: Props) {
   const [f, setF] = useState<FilterState>(initial);
-  const types = isCommercial ? COM_TYPES : isRent ? [...RES_TYPES, 'PG'] : RES_TYPES;
-  const onlyPg = f.type.length === 1 && f.type[0] === 'PG';
 
   function apply(next: FilterState) {
     setF(next);
@@ -51,12 +44,6 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
     setList('postedBy', next.postedBy);
     setList('possession', next.possession);
     setList('amenities', next.amenities);
-    // PG filters only apply while PG is the chosen type.
-    if (next.type.includes('PG')) {
-      setList('sharing', next.pgSharing);
-      setList('pgFor', next.pgFor);
-      if (next.pgFood) q.set('food', '1');
-    }
     if (next.priceMin) q.set('priceMin', String(next.priceMin));
     if (next.priceMax) q.set('priceMax', String(next.priceMax));
     if (next.areaMin) q.set('areaMin', String(next.areaMin));
@@ -67,13 +54,13 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
     window.location.href = facetPath(basePath, next, q);
   }
 
-  const toggle = <K extends 'locality' | 'bhk' | 'type' | 'furnishing' | 'postedBy' | 'possession' | 'amenities' | 'pgSharing' | 'pgFor'>(key: K, v: FilterState[K][number]) => {
+  const toggle = <K extends 'locality' | 'bhk' | 'type' | 'furnishing' | 'postedBy' | 'possession' | 'amenities'>(key: K, v: FilterState[K][number]) => {
     const arr = f[key] as (string | number)[];
     apply({ ...f, [key]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] });
   };
 
   const activeCount =
-    f.locality.length + f.bhk.length + f.type.length + f.furnishing.length + f.postedBy.length + f.possession.length + f.amenities.length + f.pgSharing.length + f.pgFor.length + Number(f.pgFood) +
+    f.locality.length + f.bhk.length + f.type.length + f.furnishing.length + f.postedBy.length + f.possession.length + f.amenities.length +
     Number(!!f.priceMin) + Number(!!f.priceMax) + Number(!!f.areaMin) + Number(!!f.areaMax) + Number(f.verified);
 
   return (
@@ -81,7 +68,7 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold">Filters {activeCount > 0 && <span className="chip ml-1 bg-brand-100 text-brand-700">{activeCount}</span>}</h2>
         {activeCount > 0 && (
-          <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={() => (window.location.href = new URLSearchParams(window.location.search).get('view') === 'map' ? `${basePath}?view=map` : basePath)}>Reset</button>
+          <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={() => (window.location.href = basePath)}>Reset</button>
         )}
       </div>
 
@@ -110,7 +97,7 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
         </div>
       </Group>
 
-      {!isCommercial && !onlyPg && (
+      {!isCommercial && (
         <Group title="BHK">
           <div className="flex flex-wrap gap-2">
             {[1, 2, 3, 4, 5].map((b) => (
@@ -122,23 +109,11 @@ export default function FilterPanel({ basePath, initial, isCommercial, isRent = 
 
       <Group title="Property type">
         <div className="flex flex-wrap gap-2">
-          {types.map((t) => (
-            <Pill key={t} active={f.type.includes(t)} onClick={() => toggle('type', t)}>{typeLabel(t)}</Pill>
+          {(isCommercial ? COM_TYPES : RES_TYPES).map((t) => (
+            <Pill key={t} active={f.type.includes(t)} onClick={() => toggle('type', t)}>{t}</Pill>
           ))}
         </div>
       </Group>
-
-      {isRent && f.type.includes('PG') && (
-        <Group title="PG / Co-living">
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(PG_SHARING).map(([v, l]) => <Pill key={v} active={f.pgSharing.includes(v)} onClick={() => toggle('pgSharing', v)}>{l}</Pill>)}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(PG_FOR).map(([v, l]) => <Pill key={v} active={f.pgFor.includes(v)} onClick={() => toggle('pgFor', v)}>{v === 'any' ? 'Anyone' : `For ${l.toLowerCase()}`}</Pill>)}
-          </div>
-          <Check label="Food included" checked={f.pgFood} onChange={() => apply({ ...f, pgFood: !f.pgFood })} />
-        </Group>
-      )}
 
       <Group title="Locality">
         <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1">

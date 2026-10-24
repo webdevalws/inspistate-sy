@@ -11,7 +11,7 @@ export const GET: APIRoute = async ({ site, url }) => {
   const [refs, data] = await Promise.all([getRefs(), sitemapData()]);
   const paths: { loc: string; lastmod?: string }[] = [
     { loc: '/' }, { loc: '/builders' }, { loc: '/tools' }, { loc: '/services' }, { loc: '/guides' }, { loc: '/post-property' }, { loc: '/compare' }, { loc: '/agents' }, { loc: '/forum' }, { loc: '/glossary' },
-    ...['about', 'contact', 'faq', 'fraud-awareness', 'terms', 'privacy', 'careers', 'press', 'app-download', 'partner-with-us', 'advertise', 'business', 'reviews', 'research', 'women-homebuyers', 'home-loan-interest-rates', 'credit-cards', 'design-ideas', 'refer'].map((p) => ({ loc: `/${p}` })),
+    ...['about', 'contact', 'faq', 'fraud-awareness', 'terms', 'privacy', 'careers', 'press', 'app-download', 'partner-with-us', 'advertise', 'business', 'reviews', 'research', 'women-homebuyers', 'home-loan-interest-rates', 'credit-cards', 'design-ideas'].map((p) => ({ loc: `/${p}` })),
     ...LOAN_PRODUCTS.map((p) => ({ loc: `/loans/${p.slug}` })),
     ...IDEA_CATEGORIES.map((c) => ({ loc: `/design-ideas/${c.slug}` })),
     ...['india-price-index', 'rental-yield-report', 'fastest-growing-localities', 'cost-of-a-2bhk'].map((s) => ({ loc: `/research/${s}` })),

@@ -3,7 +3,6 @@
 Each function has a `desc.md` describing what it does, its inputs/outputs, how it works,
 the files that implement it, and what REA observed on the reference site. Update the
 `desc.md` in the same change as the code. Functions still to build are tracked in [GAPS.md](GAPS.md).
-The product overview is in [../SPEC.md](../SPEC.md) and the feature-by-feature status in [../FEATURES.md](../FEATURES.md).
 
 | Function | Area | Route |
 |---|---|---|
@@ -30,9 +29,6 @@ The product overview is in [../SPEC.md](../SPEC.md) and the feature-by-feature s
 | [Project Detail](project-page/desc.md) | Projects | `/projects/{city}/{slug}` |
 | [Post Property](post-property/desc.md) | Listings | `/post-property` |
 | [Enquiries / leads](leads/desc.md) | Leads | `/api/enquiry` |
-| [Refer a Friend](refer/desc.md) | Leads | `/refer` |
-| [Admin](admin/desc.md) | Operations | `/admin` |
-| [Production setup](production-setup/desc.md) | Operations | scripts, config, `npm run doctor` |
 | [Login / Register (phone OTP + role)](login/desc.md) | Accounts | `/login` + dialog |
 | [Account roles, listing limits & agent plans](account-roles/desc.md) | Accounts | `/account`, `/account/plans` |
 | [Compare Projects](compare/desc.md) | Projects | `/compare` |
