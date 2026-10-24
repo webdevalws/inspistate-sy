@@ -73,6 +73,12 @@ search form puts city + Search on one row under the query field.
   (DM Mono) in `global.css`; helpers `.hero-*`, `.bracket`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
 
+## Header city picker on phones (item 76)
+- Below the `sm` breakpoint the city picker shows only the pin and caret; the city name is kept as screen-reader
+  text (the button is announced as the city, and its tooltip says "Change city (Navi Mumbai)"). This stops long
+  names from running under the shortlist and account buttons when logged in. From `sm` up the name shows, capped
+  at `max-w-40` and truncated (`src/components/islands/CityPicker.tsx`).
+
 ## Ask in plain words (item 75)
 - The "Ask in plain words →" link above the hero search box used to point at `/property-search` (a 404). It now
   jumps to `#home-search` and, with JS, focuses the search box with an example ("Try: 2 BHK in Powai under 3 Cr,

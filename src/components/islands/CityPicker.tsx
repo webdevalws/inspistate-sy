@@ -34,10 +34,12 @@ export default function CityPicker({ cities, current }: Props) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 transition hover:text-sand-50" aria-haspopup="dialog" title="Change city">
-        <svg className="h-4 w-4 text-accent-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 18s6-5.2 6-10A6 6 0 0 0 4 8c0 4.8 6 10 6 10Zm0-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clipRule="evenodd" /></svg>
-        {name}
-        <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2 4l4 4 4-4z" /></svg>
+      {/* Below sm only the pin and caret show (the city name stays for screen readers), so a long name like
+          "Navi Mumbai" can't run under the shortlist and account buttons; from sm up the name is capped and truncated. */}
+      <button type="button" onClick={() => setOpen(true)} className="flex min-w-0 shrink cursor-pointer items-center gap-1.5 whitespace-nowrap nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 transition hover:text-sand-50" aria-haspopup="dialog" title={`Change city (${name})`}>
+        <svg className="h-4 w-4 shrink-0 text-accent-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 18s6-5.2 6-10A6 6 0 0 0 4 8c0 4.8 6 10 6 10Zm0-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" clipRule="evenodd" /></svg>
+        <span className="sr-only sm:not-sr-only sm:max-w-40 sm:truncate">{name}</span>
+        <svg className="h-3 w-3 shrink-0" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2 4l4 4 4-4z" /></svg>
       </button>
       <dialog ref={dialog} onClose={() => setOpen(false)} onClick={(e) => e.target === dialog.current && setOpen(false)}
         className="m-auto w-[min(640px,calc(100vw-2rem))] rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/50" aria-label="Select city">
