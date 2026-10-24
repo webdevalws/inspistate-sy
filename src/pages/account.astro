@@ -5,6 +5,7 @@ import ShortlistView from '../components/islands/ShortlistView';
 import SavedSearchList from '../components/islands/SavedSearchList';
 import AddPhone from '../components/islands/AddPhone';
 import { realPhone } from '../lib/auth';
+import { GOOGLE_ERRORS, googleEnabled } from '../lib/google';
 import { leadsReceived, listingAllowance, myEnquiries, myListings, savedSearches, subscriptionState } from '../lib/accounts';
 import { getRefs } from '../lib/repo';
 import { safeNext } from '../lib/redirect';
@@ -22,6 +23,9 @@ const saved = Astro.url.searchParams.get('saved');
 // Accounts created with Google have no mobile number until they add one (sellers and agents need it to post).
 const phone = realPhone(user.phone);
 const phoneAdded = Astro.url.searchParams.get('phone') === 'added';
+// Linking Google from here: /api/auth/google/callback comes back with ?google=linked or an error code.
+const googleParam = Astro.url.searchParams.get('google') ?? '';
+const googleError = Object.hasOwn(GOOGLE_ERRORS, googleParam) ? GOOGLE_ERRORS[googleParam] : '';
 const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
 const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
 // Result of an owner action (/api/account/listings/[id] redirects back with ?listing=…).
@@ -186,6 +190,20 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
             <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Email<input name="email" type="email" maxlength="200" value={user.email ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
             <button class="ed-btn ed-btn-dark">Save</button>
           </form>
+          {(user.google_email || googleEnabled()) && (
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-[0.5px] border-[#1C1A17]/15 bg-white p-5">
+              {googleParam === 'linked' && user.google_email && <p class="w-full border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Google account linked.</p>}
+              {googleError && <p class="w-full border-[0.5px] border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800">{googleError}</p>}
+              {user.google_email ? (
+                <p class="text-sm">Google account <b>{user.google_email}</b> — you can log in with Google{realPhone(user.phone) ? ' or your mobile number' : ''}.</p>
+              ) : (
+                <>
+                  <p class="text-sm">Link your Google account to log in with Google too.</p>
+                  <a href={`/api/auth/google/start?next=${encodeURIComponent('/account?google=linked#profile')}`} class="ed-btn ed-btn-ghost-dark">Continue with Google</a>
+                </>
+              )}
+            </div>
+          )}
           {user.role && (
             <form method="post" action="/api/account/role" class="mt-4 flex flex-wrap items-end gap-3 border-[0.5px] border-[#1C1A17]/15 bg-white p-5">
               <input type="hidden" name="back" value="/account#profile" />

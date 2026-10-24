@@ -97,6 +97,15 @@ endpoints are 404 and the button is hidden (`googleEnabled()` in `src/lib/google
   contact number, so without listings there is nothing to reach; buyers need no account phone (enquiry forms ask for
   one each time).
 - Same sessions as phone login (`createSession`), redirect through `safeNext`.
+- **UI** (item 100): on the first step of `AuthFlow` (login page and dialog), under **Continue →**, an "or" divider and a
+  **Continue with Google** button (outlined, same type and borders as the form; the official Google "G" as inline SVG).
+  It links to the start endpoint with the safe `next`, else the current page (no-JS fallback: plain link). Shown only
+  when `googleEnabled()`; otherwise the form is exactly as before.
+  - New Google accounts land on `/login`, which opens on **Create your account** with name and email pre-filled from
+    Google. The registration nudge dialog no longer opens on `/login` itself (the page shows the same form).
+  - Account page → Profile: "Google account <email> — you can log in with Google…" when linked; otherwise **Continue
+    with Google** to link (start → callback with the logged-in account). Link results and errors (`google-taken`,
+    `google-other`, …) come back as `/account?google=…` because a logged-in account can't see `/login`.
 - **Dev-only mock** (`/api/dev/google-mock`, `src/lib/google-dev-mock.ts`): on `npm run dev` a code starting
   with `mock.` is exchanged with a local stand-in for Google's token endpoint and keys, so the callback can be
   tested end to end. It sits behind `import.meta.env.DEV`, so production builds answer 404 and don't contain

@@ -3,7 +3,8 @@ import { readShortlist } from './shortlist';
 import { ROLES, type Role } from '../../data/plans';
 import { destinationAfterRegister, safeNext } from '../../lib/redirect';
 
-// Mobile number → one-time code → (new accounts only) "I am a Buyer / Seller / Agent" registration.
+// Mobile number → one-time code → (new accounts only) "I am a Buyer / Seller / Agent" registration, or
+// "Continue with Google" (when configured) → the same registration for new accounts.
 // Used inside the header login dialog and on the /login page.
 type Step = 'phone' | 'code' | 'register';
 interface Props {
@@ -14,7 +15,22 @@ interface Props {
   defaultRole?: Role;
   /** Shown on the first step, e.g. why a Google sign-in was refused (/login?error=…). */
   initialError?: string;
+  /** Show "Continue with Google" (only when GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set). */
+  google?: boolean;
+  /** Register step pre-fill, e.g. the name and email of an account created with Google. */
+  knownName?: string;
+  knownEmail?: string;
 }
+
+// The official Google "G" mark.
+const GOOGLE_G = (
+  <svg viewBox="0 0 48 48" className="h-4 w-4" aria-hidden="true">
+    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+    <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+  </svg>
+);
 
 const ROLE_ICONS: Record<Role, string> = {
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
@@ -33,7 +49,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data;
 }
 
-export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user', initialError = '' }: Props) {
+export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user', initialError = '', google = false, knownName = '', knownEmail = '' }: Props) {
   const [step, setStep] = useState<Step>(startAt);
   const [phone, setPhone] = useState(knownPhone);
   const [code, setCode] = useState('');
@@ -41,8 +57,8 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   const [testCode, setTestCode] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
   const [role, setRole] = useState<Role>(defaultRole);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(knownName);
+  const [email, setEmail] = useState(knownEmail);
   const [city, setCity] = useState('');
   const [company, setCompany] = useState('');
   const [busy, setBusy] = useState(false);
@@ -92,6 +108,9 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   };
 
   const selected = ROLES.find((r) => r.key === role)!;
+  // Google sign-in returns to `next`, else to the page the visitor is on (like phone login). The plain href is the
+  // no-JS fallback; the click handler adds the current page.
+  const googleHref = (to: string | null) => `/api/auth/google/start${to ? `?next=${encodeURIComponent(to)}` : ''}`;
 
   if (step === 'phone') return (
     <form onSubmit={sendCode}>
@@ -106,6 +125,12 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       </label>
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
       <button className={`${primary} mt-5`} disabled={busy || phone.length !== 10}>{busy ? 'Sending code…' : 'Continue →'}</button>
+      {google && (
+        <>
+          <div className="mt-5 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/45" aria-hidden="true"><span className="h-px flex-1 bg-[#1C1A17]/15" />or<span className="h-px flex-1 bg-[#1C1A17]/15" /></div>
+          <a href={googleHref(next)} onClick={(e) => { e.currentTarget.href = googleHref(safeNext(next) ?? `${window.location.pathname}${window.location.search}`); }} className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2.5 border-[0.5px] border-[#1C1A17]/25 bg-white px-5 py-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[#1C1A17] transition hover:border-[#1C1A17]">{GOOGLE_G}Continue with Google</a>
+        </>
+      )}
       <p className="mt-4 text-xs leading-relaxed text-[#1C1A17]/50">We’ll send a one-time code by SMS. By continuing you agree to our <a href="/terms" className="underline">Terms</a> and <a href="/privacy" className="underline">Privacy policy</a>.</p>
     </form>
   );

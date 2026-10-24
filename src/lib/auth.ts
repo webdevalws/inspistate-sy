@@ -5,8 +5,8 @@ import type { AstroCookies } from 'astro';
 import type { Role } from '../data/plans';
 
 /** `role` stays null until the new account completes registration (picks User, Seller or Agent). */
-export interface User { id: number; phone: string; name: string | null; email: string | null; role: Role | null; city_slug: string | null; company: string | null }
-const USER_COLS = 'id, phone, name, email, role, city_slug, company';
+export interface User { id: number; phone: string; name: string | null; email: string | null; role: Role | null; city_slug: string | null; company: string | null; google_email: string | null }
+const USER_COLS = 'id, phone, name, email, role, city_slug, company, google_email';
 
 export const SESSION_COOKIE = 'is_session';
 const SESSION_DAYS = 30;

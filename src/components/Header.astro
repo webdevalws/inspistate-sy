@@ -4,6 +4,7 @@ import AuthDialog from './islands/AuthDialog';
 import CityPicker from './islands/CityPicker';
 import { roleLabel } from '../data/plans';
 import { realPhone } from '../lib/auth';
+import { googleEnabled } from '../lib/google';
 import { cityListingCounts, getRefs } from '../lib/repo';
 import { headerMenus } from '../lib/catalog';
 import { currentCity } from '../lib/city';
@@ -123,4 +124,4 @@ const overlay = Astro.url.pathname === '/';
     document.querySelectorAll('details[data-dropdown][open]').forEach(function (d) { d.open = false; });
   });
 </script>
-<AuthDialog client:idle cities={authCities} needsRegistration={!!user && !user.role} phone={realPhone(user?.phone) ?? ''} />
+<AuthDialog client:idle cities={authCities} needsRegistration={!!user && !user.role} phone={realPhone(user?.phone) ?? ''} google={googleEnabled()} name={user?.name ?? ''} email={user?.email ?? ''} nudge={Astro.url.pathname !== '/login'} />
