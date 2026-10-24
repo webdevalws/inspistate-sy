@@ -24,7 +24,8 @@ Deployment: [../DEPLOY.md](../DEPLOY.md).
   (0013)**.
 - **12 cities**: Mumbai, Bengaluru, Delhi, Gurugram, Noida, Pune, Hyderabad, Chennai, Thane, Kolkata (generated
   demo data) plus Lucknow and Navi Mumbai (hand-written, real locality coordinates). 57 localities.
-- **Local**: `npm run db:reset:local` builds `db/seed.sql` and loads 36 projects and 811 listings. **Production**: reference data only (`db/reference.sql`: cities and
+- **Local**: `npm run db:reset:local` builds `db/seed.sql` (fixed seed date 2026-10-24, so the file is the same
+  on every machine and run) and loads 36 projects and 811 listings. **Production**: reference data only (`db/reference.sql`: cities and
   localities with reference prices); the demo seed is never loaded remotely.
 
 ## What is built (Phase 1 complete)

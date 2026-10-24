@@ -21,7 +21,11 @@ const insert = (table: string, cols: string[], rows: unknown[][]) => {
   return parts.join('');
 };
 
-const now = Date.now();
+// A fixed "today" so db/seed.sql is the same on every machine and every run (it used to change after each
+// reset). Demo dates ("posted 3 days ago", transactions, reviews) are relative to this date, so on the live
+// site they slowly look older; move the date forward and regenerate when that matters.
+const SEED_DATE = '2026-10-24T10:00:00Z';
+const now = Date.parse(SEED_DATE);
 const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
 const LISTING_COLS = ['id', 'purpose', 'segment', 'type', 'bhk', 'bathrooms', 'area_sqft', 'price', 'city_slug', 'locality_slug', 'project_id', 'furnishing', 'posted_by', 'possession', 'floor', 'total_floors', 'facing', 'age_years', 'amenities', 'contact_name', 'verified', 'status', 'hue', 'posted_at', 'managed', 'deposit_months', 'available_from'];

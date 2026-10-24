@@ -60,6 +60,9 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `/localities/…`, `/locality/…`) still returns **404**, but `src/pages/404.astro` shows "We're not in
   Jaipur yet" with links to the same section for our cities (city hub for the locality pages). Any
   other 404 looks as before.
+- **Seed date (item 72):** `db/build-seed.ts` uses a fixed "today" (`SEED_DATE = 2026-10-24`) instead of the
+  clock, so `db/seed.sql` no longer changes after every reset. Demo "posted N days ago" dates, transactions and
+  reviews are relative to that date and will look older over time.
 - **Cities:** 12 — the ten original demo cities plus **Lucknow** and **Navi Mumbai** (hand-written sample
   data, 5 localities each with real coordinates; Lucknow 4 listings and 3 projects, Navi Mumbai — Vashi,
   Nerul, CBD Belapur, Kharghar, Panvel — 4 listings (ids 50808–50811) and 3 projects (ids 1034–1036,
