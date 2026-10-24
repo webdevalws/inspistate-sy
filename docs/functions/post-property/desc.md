@@ -20,6 +20,11 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
   verification step is planned later.)
 - Field rules live in `parseListingFields` (`src/lib/listing-form.ts`), shared by posting and editing.
 
+## PG / co-living columns
+- **Migration 0012** adds `listings.pg_sharing` (`single` | `double` | `triple`), `listings.pg_for`
+  (`men` | `women` | `any`) and `listings.pg_food` (0 | 1). They are NULL for every listing that is not a
+  PG. Nullable columns, so existing rows are unchanged.
+
 ## Owners manage their listings
 - **Lifecycle column** (migration 0011): `listings.closed` = `sold` | `rented` | `deleted` (NULL while open)
   and `closed_at`, kept separate from the moderation `status`. A listing is public only when
