@@ -46,6 +46,9 @@ One page per city that links into everything we have for it: search, localities,
   `/city/{slug}`, from the `cityStats()` result the page already loads; cities without listings show
   "New on InspiState".
 
+- **New cities** appear here automatically (city picker, footer, other-cities grid all read the `cities`
+  table); Navi Mumbai (item 50) is the 12th.
+
 ## Files
 - `src/pages/city/[city].astro`, `src/components/Tabs.astro`, `src/lib/catalog.ts`, `src/data/guides.ts`
 - `src/lib/repo.ts` (`cityFacets`), `src/lib/search.ts` (`BUDGET_BANDS`)

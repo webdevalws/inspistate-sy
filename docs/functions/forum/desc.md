@@ -18,6 +18,13 @@ Q&A for logged-in users.
   U+2029 as `\u` escapes, so a title or name containing `</script>` stays text and cannot close the tag.
   Every `<script type="application/ld+json">` on the site uses this helper (Base, Breadcrumbs, Faq, research).
 
+## Moderation (item 60)
+- `/admin` → **Forum posts** lists the newest 40 questions and answers (published or hidden) with **Hide** /
+  **Unhide** (`/api/admin/forum/{question|answer}/{id}`, `setForumStatus` in `src/lib/forum.ts`).
+- Hidden posts disappear from the site: `listQuestions` and `getQuestion` only read `status = 'published'`, and
+  answer counts only count published answers. A hidden question's page returns 404. Every hide/unhide is in
+  the admin audit (`forum.hide` / `forum.unhide`).
+
 ## Files
 - `src/pages/forum/*`, `src/lib/jsonld.ts`
 - `src/pages/api/forum.ts`

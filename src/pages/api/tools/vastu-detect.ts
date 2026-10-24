@@ -7,6 +7,9 @@ import { ROOMS, ROOM_TYPES } from '../../../data/vastu';
 // Detects rooms on an uploaded floor plan with Claude vision (equivalent of the reference
 // "/generate-node-points" step). Returns room centres as normalised image coordinates.
 const DAILY_LIMIT = 10;
+/** All users combined, per UTC day: caps the AI cost even when many people use it. */
+const SITE_DAILY_LIMIT = 200;
+const ALL_USERS = 'all-users'; // ai_usage client for the site-wide counter (real clients are SHA-256 hashes)
 const MAX_BASE64 = 7_000_000; // ~5 MB image
 
 const SCHEMA = {
@@ -58,10 +61,18 @@ export const POST: APIRoute = async ({ request, url, clientAddress }) => {
   const used = await env.DB.prepare(`INSERT INTO ai_usage (client, feature, day, count) VALUES (?, 'vastu', ?, 1)
     ON CONFLICT(client, feature, day) DO UPDATE SET count = count + 1 RETURNING count`).bind(client, day).first<number>('count');
   if ((used ?? 0) > DAILY_LIMIT) return Response.json({ error: 'Daily limit for automatic detection reached. Mark rooms manually or try tomorrow.' }, { status: 429 });
+  const giveBack = (who: string) => env.DB.prepare("UPDATE ai_usage SET count = count - 1 WHERE client = ? AND feature = 'vastu' AND day = ? AND count > 0").bind(who, day).run();
+  // Site-wide cap on top of the per-client one.
+  const siteUsed = await env.DB.prepare(`INSERT INTO ai_usage (client, feature, day, count) VALUES (?, 'vastu', ?, 1)
+    ON CONFLICT(client, feature, day) DO UPDATE SET count = count + 1 RETURNING count`).bind(ALL_USERS, day).first<number>('count');
+  if ((siteUsed ?? 0) > SITE_DAILY_LIMIT) {
+    await Promise.all([giveBack(client), giveBack(ALL_USERS)]);
+    return Response.json({ error: 'Automatic room detection has reached its daily limit for everyone. You can still mark the rooms yourself on the plan — or try the automatic detection again tomorrow.' }, { status: 429 });
+  }
   // Failures on our side (API errors, a cut-off or unreadable reply) give the use back. Refusals and
   // "not a floor plan" still count: the call was made and paid for.
   const failed = async (error: string, status: number) => {
-    await env.DB.prepare("UPDATE ai_usage SET count = count - 1 WHERE client = ? AND feature = 'vastu' AND day = ? AND count > 0").bind(client, day).run();
+    await Promise.all([giveBack(client), giveBack(ALL_USERS)]);
     return Response.json({ error }, { status });
   };
 

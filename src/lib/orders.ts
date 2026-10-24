@@ -41,3 +41,15 @@ export async function recentOrders(limit = 100) {
   const { results } = await env.DB.prepare('SELECT * FROM service_orders ORDER BY id DESC LIMIT ?').bind(limit).all<{ id: number; kind: OrderKind; name: string; phone: string; email: string | null; details: string; amount: number; coupon: string | null; status: string; created_at: string }>();
   return results;
 }
+
+/** Order statuses (same list as the CHECK constraint in migrations 0005 / 0007), in workflow order. */
+export const ORDER_STATUSES = ['submitted', 'awaiting_payment', 'paid', 'in_progress', 'completed', 'cancelled'] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+/** Admin: changes an order's status. Returns the previous status, or null if the order doesn't exist. */
+export async function setOrderStatus(id: number, status: OrderStatus): Promise<string | null> {
+  const prev = await env.DB.prepare('SELECT status FROM service_orders WHERE id = ?').bind(id).first<string>('status');
+  if (!prev) return null;
+  await env.DB.prepare('UPDATE service_orders SET status = ? WHERE id = ?').bind(status, id).run();
+  return prev;
+}

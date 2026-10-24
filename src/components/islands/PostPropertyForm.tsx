@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PG_FOR, PG_SHARING, typeLabel } from '../../lib/search';
 
 interface Props {
   cities: { slug: string; name: string; localities: { slug: string; name: string }[] }[];
@@ -9,7 +10,7 @@ interface Props {
 const ALL_STEPS = ['Basics', 'Location', 'Details', 'Photos', 'Contact'];
 const MAX_PHOTOS = 8;
 const MAX_BYTES = 5 * 1024 * 1024;
-const BLANK = { purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: '', locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '' };
+const BLANK = { purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: '', locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '', pgSharing: 'double', pgFor: 'any', pgFood: '1' };
 
 export default function PostPropertyForm({ cities, edit }: Props) {
   const STEPS = edit ? ALL_STEPS.filter((s) => s !== 'Photos') : ALL_STEPS;
@@ -46,7 +47,7 @@ export default function PostPropertyForm({ cities, edit }: Props) {
     const fd = new FormData();
     fd.set('purpose', data.purpose === 'Sell' ? 'buy' : 'rent');
     fd.set('segment', data.segment.toLowerCase());
-    for (const k of ['type', 'city', 'locality', 'bhk', 'area', 'price', 'furnishing', 'description', 'name', 'phone'] as const) fd.set(k, data[k]);
+    for (const k of ['type', 'city', 'locality', 'bhk', 'area', 'price', 'furnishing', 'description', 'name', 'phone', 'pgSharing', 'pgFor', 'pgFood'] as const) fd.set(k, data[k]);
     if (edit) fd.set('action', 'edit');
     else photos.forEach((p) => fd.append('photos', p));
     try {
@@ -75,7 +76,7 @@ export default function PostPropertyForm({ cities, edit }: Props) {
   const Choice = ({ field, options }: { field: keyof typeof data; options: string[] }) => (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => (
-        <button key={o} type="button" onClick={() => setData({ ...data, [field]: o, ...(field === 'segment' ? { type: o === 'Residential' ? 'Apartment' : 'Office' } : {}) })} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${data[field] === o ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-700'}`}>{o}</button>
+        <button key={o} type="button" onClick={() => setData({ ...data, [field]: o, ...(field === 'segment' ? { type: o === 'Residential' ? 'Apartment' : 'Office' } : {}), ...(field === 'purpose' && o === 'Sell' && data.type === 'PG' ? { type: 'Apartment' } : {}) })} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${data[field] === o ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-700'}`}>{field === 'type' ? typeLabel(o) : o}</button>
       ))}
     </div>
   );
@@ -103,7 +104,7 @@ export default function PostPropertyForm({ cities, edit }: Props) {
           <>
             <div><p className="mb-2 text-sm font-medium">I want to</p><Choice field="purpose" options={['Sell', 'Rent out']} /></div>
             <div><p className="mb-2 text-sm font-medium">Property category</p><Choice field="segment" options={['Residential', 'Commercial']} /></div>
-            <div><p className="mb-2 text-sm font-medium">Property type</p><Choice field="type" options={data.segment === 'Residential' ? ['Apartment', 'Builder Floor', 'Villa', 'Plot'] : ['Office', 'Shop']} /></div>
+            <div><p className="mb-2 text-sm font-medium">Property type</p><Choice field="type" options={data.segment === 'Residential' ? ['Apartment', 'Builder Floor', 'Villa', 'Plot', ...(data.purpose === 'Rent out' ? ['PG'] : [])] : ['Office', 'Shop']} /></div>
           </>
         )}
         {at === 'Location' && (
@@ -114,11 +115,18 @@ export default function PostPropertyForm({ cities, edit }: Props) {
         )}
         {at === 'Details' && (
           <div className="grid gap-4 sm:grid-cols-2">
-            {data.segment === 'Residential' && data.type !== 'Plot' && (
+            {data.type === 'PG' && (
+              <>
+                <label className="text-sm font-medium">Sharing<select className="input mt-1" value={data.pgSharing} onChange={set('pgSharing')}>{Object.entries(PG_SHARING).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+                <label className="text-sm font-medium">For<select className="input mt-1" value={data.pgFor} onChange={set('pgFor')}>{Object.entries(PG_FOR).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+                <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={data.pgFood === '1'} onChange={(e) => setData({ ...data, pgFood: e.target.checked ? '1' : '0' })} />Food included in the rent</label>
+              </>
+            )}
+            {data.segment === 'Residential' && data.type !== 'Plot' && data.type !== 'PG' && (
               <label className="text-sm font-medium">BHK<select className="input mt-1" value={data.bhk} onChange={set('bhk')}>{['1', '2', '3', '4', '5'].map((b) => <option key={b}>{b}</option>)}</select></label>
             )}
-            <label className="text-sm font-medium">Area (sq.ft)<input required type="number" min={50} className="input mt-1" value={data.area} onChange={set('area')} /></label>
-            <label className="text-sm font-medium">{data.purpose === 'Sell' ? 'Expected price (₹)' : 'Monthly rent (₹)'}<input required type="number" min={data.purpose === 'Sell' ? 100000 : 1000} className="input mt-1" value={data.price} onChange={set('price')} /></label>
+            <label className="text-sm font-medium">{data.type === 'PG' ? 'Room area (sq.ft)' : 'Area (sq.ft)'}<input required type="number" min={50} className="input mt-1" value={data.area} onChange={set('area')} /></label>
+            <label className="text-sm font-medium">{data.purpose === 'Sell' ? 'Expected price (₹)' : data.type === 'PG' ? 'Monthly rent per bed (₹)' : 'Monthly rent (₹)'}<input required type="number" min={data.purpose === 'Sell' ? 100000 : 1000} className="input mt-1" value={data.price} onChange={set('price')} /></label>
             {data.type !== 'Plot' && (
               <label className="text-sm font-medium">Furnishing<select className="input mt-1" value={data.furnishing} onChange={set('furnishing')}>{['Furnished', 'Semi-Furnished', 'Unfurnished'].map((f) => <option key={f}>{f}</option>)}</select></label>
             )}
