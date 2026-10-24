@@ -29,5 +29,17 @@ reference data for an empty production database, Cloudflare bindings, deployment
   `wrangler secret put` command — visible in `npx wrangler tail` and the dashboard logs. Values are never
   logged; nothing runs on the dev server.
 
+## Production reference data (item 67)
+- `npm run db:reference:build` writes `db/reference.sql` from `db/build-reference.ts`: the 12 cities and 57
+  localities with their reference prices (sale rate, rent rate, yearly growth) and coordinates — **nothing
+  else** (no demo listings, projects, builders, people, reviews or leads).
+- Every insert is `ON CONFLICT DO NOTHING` and the file has no DELETE / UPDATE, so it is safe on an empty or a
+  live database and can be run again. Tested on a fresh database after all migrations: 12 cities, 57
+  localities, 0 listings / projects / builders; a second run changes nothing.
+- `npm run db:reference:remote` loads it into the production D1 (run it yourself; see DEPLOY.md). The demo
+  seed (`db/seed.sql`, `db:seed:*`) stays local-only — **never run `db:seed:remote`** (it deletes everything).
+- Note: locality coordinates and rates for the ten original cities are demo estimates (generated around the
+  city centre); Lucknow's and Navi Mumbai's coordinates are real. Review them before relying on them.
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`), `src/lib/startup.ts`
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`
