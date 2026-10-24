@@ -2,7 +2,8 @@
 // See docs/functions/admin/desc.md.
 import { env } from 'cloudflare:workers';
 import type { PlanKey, Role } from '../data/plans';
-import { isRole } from '../data/plans';
+import { isRole, planByKey } from '../data/plans';
+import { subscriptionState } from './accounts';
 
 const db = () => env.DB;
 
@@ -138,4 +139,27 @@ export async function updateUserProfile(id: number, e: ProfileEdit): Promise<{ c
     throw err;
   }
   return { changes, sessionsEnded: phoneChanged };
+}
+
+/**
+ * Sets the account's plan: null cancels the active plan; a plan key starts it today for its length (activating a
+ * waiting request for the same plan, so it leaves the /admin requests list). Any other active plan is cancelled
+ * first. Returns [old, new] plan keys (null = Free), or null when nothing changed.
+ */
+export async function setUserPlan(id: number, plan: PlanKey | null): Promise<[PlanKey | null, PlanKey | null] | null> {
+  const { active, requested } = await subscriptionState(id);
+  const from = active?.plan ?? null;
+  if (from === plan) return null;
+  const stmts = active ? [db().prepare("UPDATE subscriptions SET status = 'cancelled' WHERE id = ?").bind(active.id)] : [];
+  const p = plan ? planByKey(plan) : undefined;
+  if (p) {
+    const start = new Date();
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + p.months);
+    stmts.push(requested?.plan === p.key
+      ? db().prepare("UPDATE subscriptions SET status = 'active', starts_at = ?, ends_at = ? WHERE id = ?").bind(start.toISOString(), end.toISOString(), requested.id)
+      : db().prepare("INSERT INTO subscriptions (user_id, plan, amount, status, starts_at, ends_at) VALUES (?, ?, ?, 'active', ?, ?)").bind(id, p.key, p.price, start.toISOString(), end.toISOString()));
+  }
+  await db().batch(stmts);
+  return [from, plan];
 }

@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
-import { adminUser, updateUserProfile } from '../../../../lib/admin-users';
+import { adminUser, setUserPlan, updateUserProfile } from '../../../../lib/admin-users';
 import { normalizePhone } from '../../../../lib/auth';
 import { getRefs } from '../../../../lib/repo';
 import { logAdmin } from '../../../../lib/audit';
-import { isRole } from '../../../../data/plans';
+import { isRole, planByKey } from '../../../../data/plans';
 
 // Admin edits to one account (protected by middleware: admin Basic auth + same-origin). Plain form posts from
 // /admin/users/{id}; every change is audited as user.<field> with old → new. See docs/functions/admin/desc.md.
@@ -40,6 +40,17 @@ export const POST: APIRoute = async (ctx) => {
       await logAdmin(ctx, `user.${field}`, `user #${id}: ${short(from)} → ${short(to)}${field === 'phone' && res.sessionsEnded ? ' (logged out)' : ''}`);
     }
     return back(`done=${res.changes.length ? 'profile' : 'unchanged'}`);
+  }
+
+  if (action === 'plan') {
+    const raw = str('plan', 20);
+    const plan = raw === 'free' ? null : planByKey(raw)?.key;
+    if (plan === undefined) return back('error=plan');
+    const res = await setUserPlan(id, plan);
+    if (!res) return back('done=unchanged');
+    const label = (k: string | null) => (k ? planByKey(k)?.name ?? k : 'Free');
+    await logAdmin(ctx, 'user.plan', `user #${id}: ${label(res[0])} → ${label(res[1])}`);
+    return back('done=plan');
   }
   return new Response('Bad action', { status: 400 });
 };

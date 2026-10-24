@@ -5,7 +5,7 @@ import { adminUser, adminUserListings, adminUserPlans, listingStateLabel } from 
 import { leadsReceived, myEnquiries } from '../../../lib/accounts';
 import { formatPrice, formatRent } from '../../../lib/format';
 import { safeNext } from '../../../lib/redirect';
-import { planByKey, ROLES, roleLabel } from '../../../data/plans';
+import { PLANS, planByKey, ROLES, roleLabel } from '../../../data/plans';
 
 // One account: details, listings (every state), enquiries sent and leads received. Protected by the admin middleware.
 const id = Number(Astro.params.id);
@@ -26,7 +26,7 @@ const details: [string, string][] = [
   ['Enquiries sent', String(user.enquiries)],
 ];
 // Result of the last edit (/api/admin/users/{id} redirects back with ?done= or ?error=).
-const done = ({ profile: 'Changes saved.', unchanged: 'Nothing changed.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+const done = ({ profile: 'Changes saved.', plan: 'Plan saved.', unchanged: 'Nothing changed.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
 const error = ({
   phone: 'Enter a valid 10-digit mobile number.',
   'phone-taken': 'Another account already uses that phone number. Nothing was changed.',
@@ -34,6 +34,7 @@ const error = ({
   role: 'Choose Buyer, Seller or Agent.',
   company: 'Agents need an agency name (at least 2 characters).',
   city: 'Choose a city from the list.',
+  plan: 'Choose a plan from the list.',
 } as Record<string, string>)[Astro.url.searchParams.get('error') ?? ''];
 ---
 <Base title={`${user.name ?? `User #${user.id}`} · Admin`}>
@@ -70,6 +71,17 @@ const error = ({
         <label class="block"><span class="text-sm text-slate-500">Agency (agents only)</span><input name="company" value={user.company ?? ''} maxlength="120" class="input mt-1" /></label>
         <div class="flex items-end"><button class="btn-primary py-2">Save changes</button></div>
         <p class="text-xs text-slate-500 sm:col-span-2 lg:col-span-3">Changing the phone number changes their login and logs them out everywhere.</p>
+      </form>
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card mt-4 flex flex-wrap items-end gap-4 p-5">
+        <input type="hidden" name="action" value="plan" />
+        <label class="block"><span class="text-sm text-slate-500">Plan</span>
+          <select name="plan" class="input mt-1">
+            <option value="free" selected={!user.plan}>Free</option>
+            {PLANS.map((p) => <option value={p.key} selected={p.key === user.plan}>{p.name}</option>)}
+          </select>
+        </label>
+        <button class="btn-primary py-2">Save plan</button>
+        <p class="w-full text-xs text-slate-500">A plan starts today and runs for its full length; Free cancels the active plan.</p>
       </form>
     </section>
 

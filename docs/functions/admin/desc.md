@@ -43,6 +43,10 @@ branch) audit admin actions.
     can't keep old sessions) and drops any pending code for the old number.
   - Each changed field is audited separately: `user.name|phone|role|city|agency`, target
     `user #12: old → new` (phone changes add "(logged out)").
+- **Plan** (item 96, `action=plan`): Free / Half-Yearly / Yearly (`setUserPlan`). A plan starts today and runs for
+  its full length (`PLANS[].months`); a waiting request for the same plan is activated (it leaves **Agent plan
+  requests**), otherwise a new active subscription is added. Any other active plan is cancelled first; Free
+  cancels the active plan. Audited as `user.plan` (`user #12: Free → Yearly Plan`).
 
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).
