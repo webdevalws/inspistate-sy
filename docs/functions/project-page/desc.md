@@ -13,6 +13,10 @@ Full project dossier.
 
 ## How it works
 - Loads project + units, transactions, reviews, similar projects in parallel.
+- **Ranges** (price range, carpet area) use `formatRange(min, max, fmt)` from `src/lib/format.ts`, which
+  shows one value when both ends are equal ("₹98 L", not "₹98 L – ₹98 L"). The same helper is used by
+  project cards, the brochure, compare, the affordability tool and the home page's locality and project
+  cards.
 - **Images:** the project page's gallery and the listing pages use the generated SVG illustrations
   (`Cover.astro`: `public/images/project-1…6.svg` chosen by `hue`, plus villa/plot illustrations). Project
   **cards** (`ProjectCard.astro`) use a set of six stock `.jpg` photos chosen by `id % 6`.

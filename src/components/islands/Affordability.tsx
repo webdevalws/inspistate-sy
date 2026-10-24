@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatPrice } from '../../lib/format';
+import { formatPrice, formatRange } from '../../lib/format';
 
 // Affordability calculator — algorithm documented in docs/functions/affordability/desc.md.
 type City = { slug: string; name: string; localities: { slug: string; name: string }[] };
@@ -152,7 +152,7 @@ export default function Affordability({ cities }: { cities: City[] }) {
                       <div className="p-4">
                         <p className="font-semibold text-brand-900">{p.name}</p>
                         <p className="text-xs text-neutral-500">{p.localityName} · {p.builder}</p>
-                        <p className="mt-2 font-bold">{formatPrice(p.priceMin)} – {formatPrice(p.priceMax)}</p>
+                        <p className="mt-2 font-bold">{formatRange(p.priceMin, p.priceMax)}</p>
                         <p className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                           {bhkMatch === 'adjacent' && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">Nearby BHK option</span>}
                           {areaMatch === 'nearest' && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">Closest size</span>}

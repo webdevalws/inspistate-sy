@@ -25,8 +25,10 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   1. Empty box → the chosen tab and city (`/buy/mumbai`).
   2. An autocomplete match (locality, project, builder) → its page, e.g. "powai" → `/buy/mumbai/powai`.
   3. A major Indian city we don't cover (`src/data/indian-cities.ts`, e.g. Jaipur, Kanpur, "mysore") →
-     **no navigation**; the note under the box says "We're not in Jaipur yet. Pick one of our cities:" with
-     links to all our cities (same box as the near-me note). It never quietly shows another city.
+     **no navigation**; the note under the box says "We're not in Jaipur yet." followed by one label,
+     "Our cities:", with links to all our cities (same box and label as the near-me note). It never quietly
+     shows another city. The 404 page for an unknown city also uses a single label ("InspiState covers these
+     N cities for now:").
   4. Otherwise the text is read with the Ask AI parser (`parseQuery`, using the chosen city and tab as
      defaults). If it understood something (`matched`: one of our cities or localities, buy/rent/office/new
      project words, or a filter) → that URL, e.g. "3 bhk ready to move under 2 cr" →

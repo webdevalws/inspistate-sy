@@ -1,27 +1,8 @@
-# Appliance Rental
+# Appliance Rental (retired)
 
-**Area:** Home services · **Route:** `/services/appliance-rental` · **Status:** built
+**Area:** Home services · **Route:** `/services/appliance-rental` · **Status:** retired — 301 to `/services/furniture-appliances-rental`
 
-## What it does
-Browse rental appliances by category, build a cart and request delivery.
-
-## Inputs
-- Category tab, items, tenure
-- Contact details
-
-## Outputs
-- Monthly rent for the cart; lead
-
-## How it works
-- Same as furniture rental, with the `APPLIANCES` catalogue.
-
-## Files
-- `src/data/home-services.ts (APPLIANCES)`
-- `src/components/islands/HomeServices.tsx (RentalCatalogue)`
-
-## Reference behaviour (Square Yards)
-Reference page: https://www.squareyards.com/rent-appliances — category tabs (refrigerators, AC, washing machine, air purifier, microwave, TV, cooler, RO) with starting prices; same lead flow as furniture.
-
-## Gaps vs reference
-- **Matched:** category tabs, starting prices, show interest.
-- **Not built:** item photos, KYC and checkout.
+This page was merged into [Furniture & Appliances on Rent](../furniture-appliances-rental/desc.md) (item 48).
+The old URL returns a **301** to the combined page (`MERGED` in `src/pages/services/[slug].astro`), and it is
+no longer listed in `SERVICES`, the header menus, the sitemap or any internal link. Its item catalogue,
+features and FAQs now live on the combined page.

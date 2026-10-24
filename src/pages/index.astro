@@ -11,7 +11,7 @@ import ShortlistButton from '../components/islands/ShortlistButton';
 import { cityStats, getProjects, getRefs, platformTotals } from '../lib/repo';
 import { homeInsights, homeMarket } from '../lib/community';
 import { searchBoxProps } from '../lib/searchProps';
-import { formatNumber, formatPrice } from '../lib/format';
+import { formatNumber, formatPrice, formatRange } from '../lib/format';
 import { builderUrl, projectUrl, searchUrl } from '../lib/urls';
 import { currentCity } from '../lib/city';
 
@@ -88,7 +88,7 @@ const moreCollections = [discover[0].cards[4], discover[1].cards[1], discover[2]
 const hotProjects = projects.slice(0, 5).map((p, i) => ({
   id: p.id, name: p.name, href: projectUrl(p), img: photos[(i + 2) % photos.length], status: p.status,
   locality: refs.locality(p.citySlug, p.localitySlug)?.name ?? '', city: refs.city(p.citySlug)?.name ?? '',
-  price: `${formatPrice(p.priceMin)} – ${formatPrice(p.priceMax)}`, meta: `${p.bhkLabel} · ${p.possession}`,
+  price: formatRange(p.priceMin, p.priceMax), meta: `${p.bhkLabel} · ${p.possession}`,
 }));
 
 const toolTiles = [
@@ -368,7 +368,7 @@ const toolTiles = [
                     <p class="absolute inset-x-3 bottom-3 font-display text-lg font-bold leading-tight text-sand-50">{l.name}</p>
                   </div>
                   <div class="flex items-center justify-between border-b-[0.5px] border-[#1C1A17]/15 py-3">
-                    <p class="text-[13px] font-medium">{m ? `${formatPrice(m.mn)} – ${formatPrice(m.mx)}` : `₹${formatNumber(l.ratePerSqft)}/sq.ft`}</p>
+                    <p class="text-[13px] font-medium">{m ? formatRange(m.mn, m.mx) : `₹${formatNumber(l.ratePerSqft)}/sq.ft`}</p>
                     <span class="transition group-hover:translate-x-1" aria-hidden="true">→</span>
                   </div>
                 </a>

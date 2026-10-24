@@ -21,7 +21,7 @@ import { env } from 'cloudflare:workers';
 import { amenityGroups } from '../../../data/amenities';
 import { countProjectsByBuilder, getProject, getProjectListings, getProjects, getRefs } from '../../../lib/repo';
 import { projectReviews, projectTransactions } from '../../../lib/community';
-import { formatNumber, formatPrice, formatRate } from '../../../lib/format';
+import { formatNumber, formatPrice, formatRange, formatRate } from '../../../lib/format';
 import { builderUrl, projectUrl, searchUrl } from '../../../lib/urls';
 
 const p = await getProject(Astro.params.city!, Astro.params.slug!);
@@ -48,10 +48,10 @@ const whatsapp = (env as unknown as { PUBLIC_WHATSAPP?: string }).PUBLIC_WHATSAP
 const user = Astro.locals.user;
 
 const keyFacts = [
-  ['Price range', `${formatPrice(min)} – ${formatPrice(max)}`],
+  ['Price range', formatRange(min, max)],
   ['Avg. rate', formatRate(p.ratePerSqft)],
   ['Configuration', `${p.bhkLabel} Apartments`],
-  ['Carpet area', `${formatNumber(Math.min(...sizes))} – ${formatNumber(Math.max(...sizes))} sq.ft`],
+  ['Carpet area', `${formatRange(Math.min(...sizes), Math.max(...sizes), formatNumber)} sq.ft`],
   ['Project status', p.status],
   ['Possession from', p.possession],
   ['Land area', `${p.landAcres} acres`],
@@ -112,7 +112,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
         </div>
       </div>
       <div class="text-left lg:text-right">
-        <p class="text-2xl font-extrabold">{formatPrice(min)} – {formatPrice(max)}</p>
+        <p class="text-2xl font-extrabold">{formatRange(min, max)}</p>
         <p class="text-sm text-slate-500">{formatRate(p.ratePerSqft)} · + applicable charges</p>
       </div>
     </div>
@@ -180,7 +180,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
                   <table class="w-full min-w-[520px] text-sm">
                     <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="py-2">Project</th><th>Locality</th><th>Rate</th><th>Status</th><th class="text-right">Price range</th></tr></thead>
                     <tbody class="divide-y divide-slate-100">
-                      {[p, ...similar].map((x) => <tr class:list={[x.id === p.id && 'bg-brand-50/60 font-semibold']}><td class="py-2"><a href={projectUrl(x)} class="text-brand-700 hover:underline">{x.name}</a></td><td>{refs.locality(x.citySlug, x.localitySlug)?.name}</td><td>{formatRate(x.ratePerSqft)}</td><td>{x.status}</td><td class="text-right">{formatPrice(x.priceMin)} – {formatPrice(x.priceMax)}</td></tr>)}
+                      {[p, ...similar].map((x) => <tr class:list={[x.id === p.id && 'bg-brand-50/60 font-semibold']}><td class="py-2"><a href={projectUrl(x)} class="text-brand-700 hover:underline">{x.name}</a></td><td>{refs.locality(x.citySlug, x.localitySlug)?.name}</td><td>{formatRate(x.ratePerSqft)}</td><td>{x.status}</td><td class="text-right">{formatRange(x.priceMin, x.priceMax)}</td></tr>)}
                     </tbody>
                   </table>
                 </div>

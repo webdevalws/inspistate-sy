@@ -12,7 +12,7 @@ import SaveSearch from '../../../components/islands/SaveSearch';
 import ChatWidget from '../../../components/islands/ChatWidget';
 import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
-import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
 import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
 import { parseQuery } from '../../../lib/nlsearch';
@@ -69,11 +69,9 @@ items.forEach((_, i) => {
 
 const statusTabs = (['New Launch', 'Under Construction', 'Ready to Move'] as const).map((s) => ({ label: s, list: projects.filter((p) => p.status === s).slice(0, 3) }));
 const developers = [...new Set(projects.map((p) => p.builderSlug))].map((s) => refs.builder(s)!).filter(Boolean);
-const budgetLinks = isRentish
-  ? [[0, 15000], [15000, 30000], [30000, 50000], [50000, 100000], [100000, 0]]
-  : [[0, 5000000], [5000000, 10000000], [10000000, 20000000], [20000000, 50000000], [50000000, 0]];
-const budgetLabel = ([lo, hi]: number[]) => (lo === 0 ? `Under ${fmtBudget(hi)}` : hi === 0 ? `Above ${fmtBudget(lo)}` : `${fmtBudget(lo)} – ${fmtBudget(hi)}`);
-const budgetHref = ([lo, hi]: number[]) => `${searchUrl(m, city.slug)}?${lo ? `priceMin=${lo}` : ''}${lo && hi ? '&' : ''}${hi ? `priceMax=${hi}` : ''}`;
+const budgetLinks = BUDGET_BANDS[isRentish ? 'rent' : 'buy'];
+const budgetLabel = ([lo, hi]: readonly number[]) => (lo === 0 ? `Under ${fmtBudget(hi)}` : hi === 0 ? `Above ${fmtBudget(lo)}` : `${fmtBudget(lo)} – ${fmtBudget(hi)}`);
+const budgetHref = ([lo, hi]: readonly number[]) => `${searchUrl(m, city.slug)}?${lo ? `priceMin=${lo}` : ''}${lo && hi ? '&' : ''}${hi ? `priceMax=${hi}` : ''}`;
 
 const faq = [
   { q: `How many properties are available ${m === 'rent' ? 'for rent' : 'for sale'} in ${city.name}?`, a: `InspiState currently lists ${plural(stats.count, 'property')} ${m === 'rent' ? 'for rent' : m === 'commercial' ? 'in the commercial segment' : 'for sale'} in ${city.name}, across ${localities.length} localities.` },

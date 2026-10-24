@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   APPLIANCES, FURNITURE, INSPECTION_PRICES, MOVE_BANDS, MOVE_RATES, PAINT_CARPET, PAINT_FINISHES, PM_CITIES, PM_NO_BHK, PM_TYPES,
-  RENTAL_TENURES, moveEstimate, paintEstimate, solarEstimate, type RentalItem,
+  RENT_ADDONS, RENT_PACKAGES, RENT_PLANS, RENTAL_TENURES, moveEstimate, paintEstimate, rentPackageEstimate, solarEstimate, type RentalItem,
 } from '../../data/home-services';
 
 // Estimators and request forms for home services. Each request is saved as a 'service' lead whose subject
@@ -137,8 +137,9 @@ export function SolarEstimator() {
 }
 
 // ---------- Furniture & appliance rental ----------
-export function RentalCatalogue({ kind }: { kind: 'furniture' | 'appliances' }) {
-  const data = kind === 'furniture' ? FURNITURE : APPLIANCES;
+/** Single-item cart for furniture and appliances (rooms, then appliance categories). */
+export function RentalCatalogue() {
+  const data = { ...FURNITURE, ...APPLIANCES };
   const tabs = Object.keys(data);
   const [tab, setTab] = useState(tabs[0]);
   const [tenure, setTenure] = useState(12);
@@ -170,8 +171,30 @@ export function RentalCatalogue({ kind }: { kind: 'furniture' | 'appliances' }) 
         {items.length === 0 ? <p className="text-sm text-neutral-500">Add items to see your monthly rent, or just tell us what you need.</p> : (
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm text-neutral-600">{items.map(([n, q]) => `${q} × ${n}`).join(', ')}</p><p className="text-2xl font-extrabold text-brand-900">{inr(monthly)}<span className="text-sm font-normal text-neutral-500">/month · {tenure} months</span></p></div>
         )}
-        <ServiceLead service={kind === 'furniture' ? 'Furniture rental' : 'Appliance rental'} summary={items.length ? `${items.map(([n, q]) => `${q}×${n}`).join(', ')}; ${tenure} mo; ${inr(monthly)}/mo` : `catalogue enquiry, ${tenure} mo`} cta="Show interest" />
+        <ServiceLead service="Furniture & appliances on rent" summary={items.length ? `${items.map(([n, q]) => `${q}×${n}`).join(', ')}; ${tenure} mo; ${inr(monthly)}/mo` : `catalogue enquiry, ${tenure} mo`} cta="Show interest" />
       </div>
+    </div>
+  );
+}
+
+// ---------- Furniture & appliances on rent (package + tenure) ----------
+export function RentPackageEstimator() {
+  const [pkg, setPkg] = useState<string>('2 BHK');
+  const [addons, setAddons] = useState<string[]>(['Fridge', 'Washing machine']);
+  const [months, setMonths] = useState(12);
+  const e = rentPackageEstimate(pkg === 'No furniture' ? null : pkg, addons, months);
+  const toggle = (n: string) => setAddons((a) => (a.includes(n) ? a.filter((x) => x !== n) : [...a, n]));
+  const what = [pkg !== 'No furniture' && `${pkg} furniture`, ...addons].filter(Boolean).join(' + ');
+  return (
+    <div className="space-y-5">
+      <L label="Furniture package"><Chips options={[...RENT_PACKAGES.map((p) => p.name), 'No furniture']} value={pkg} set={setPkg} label="Furniture package" /></L>
+      <div role="group" aria-label="Appliances" className="text-sm">
+        <span className="mb-1 block font-medium text-neutral-600">Appliances</span>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">{RENT_ADDONS.map((a) => <label key={a.name} className="flex items-center gap-2"><input type="checkbox" checked={addons.includes(a.name)} onChange={() => toggle(a.name)} className="accent-brand-900" />{a.name}</label>)}</div>
+      </div>
+      <L label="Plan"><Chips options={RENT_PLANS.map((t) => `${t.months} months`)} value={`${months} months`} set={(v) => setMonths(parseInt(v))} label="Plan" /></L>
+      <Estimate title="Estimated monthly rent · demo prices" value={what ? `${inr(e.monthly)}/month` : '—'} sub={what ? `${what} · ${months} months · refundable deposit about ${inr(e.deposit)}` : 'Pick a package or at least one appliance.'} />
+      <ServiceLead service="Furniture & appliances on rent" summary={`${what || 'nothing selected'}; ${months} mo; est ${inr(e.monthly)}/mo (demo)`} cta="Get a callback" note="Demo prices for illustration. Our partner confirms the final rent for your city." />
     </div>
   );
 }

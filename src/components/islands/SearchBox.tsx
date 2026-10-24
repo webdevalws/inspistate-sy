@@ -264,7 +264,7 @@ export default function SearchBox({ cities, localities, projects, builders, init
               <a href={target(tab, cover.slug)} className="font-semibold underline">View homes in {cover.name} →</a>
             </p>
           ) : (
-            <p><span>ℹ </span>We’re not in {cover.name} yet. Pick one of our cities:</p>
+            <p><span>ℹ </span>We’re not in {cover.name} yet.</p>
           )}
           <p className="mt-1">Our cities: {cities.map((c, i) => <span key={c.slug}>{i > 0 && ' · '}<a href={target(tab, c.slug)} className="underline">{c.name}</a></span>)}</p>
         </div>
