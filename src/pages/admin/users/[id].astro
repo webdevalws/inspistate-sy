@@ -5,7 +5,7 @@ import { adminUser, adminUserListings, adminUserPlans, listingStateLabel } from 
 import { leadsReceived, myEnquiries } from '../../../lib/accounts';
 import { formatPrice, formatRent } from '../../../lib/format';
 import { safeNext } from '../../../lib/redirect';
-import { planByKey, roleLabel } from '../../../data/plans';
+import { planByKey, ROLES, roleLabel } from '../../../data/plans';
 
 // One account: details, listings (every state), enquiries sent and leads received. Protected by the admin middleware.
 const id = Number(Astro.params.id);
@@ -25,6 +25,16 @@ const details: [string, string][] = [
   ['Listings', String(user.listings)],
   ['Enquiries sent', String(user.enquiries)],
 ];
+// Result of the last edit (/api/admin/users/{id} redirects back with ?done= or ?error=).
+const done = ({ profile: 'Changes saved.', unchanged: 'Nothing changed.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+const error = ({
+  phone: 'Enter a valid 10-digit mobile number.',
+  'phone-taken': 'Another account already uses that phone number. Nothing was changed.',
+  name: 'A name needs at least 2 characters (or leave it empty).',
+  role: 'Choose Buyer, Seller or Agent.',
+  company: 'Agents need an agency name (at least 2 characters).',
+  city: 'Choose a city from the list.',
+} as Record<string, string>)[Astro.url.searchParams.get('error') ?? ''];
 ---
 <Base title={`${user.name ?? `User #${user.id}`} · Admin`}>
   <div class="container-x py-8">
@@ -36,6 +46,32 @@ const details: [string, string][] = [
         <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="font-semibold">{k === 'Phone' ? <a href={`tel:+91${user.phone}`} class="text-brand-700 hover:underline">{v}</a> : v}</dd></div>
       ))}
     </dl>
+
+    <section id="edit" class="mt-10 scroll-mt-28">
+      <h2 class="section-title mb-4">Edit account</h2>
+      {done && <p class="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">{done}</p>}
+      {error && <p class="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+      <form method="post" action={`/api/admin/users/${user.id}`} class="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+        <input type="hidden" name="action" value="profile" />
+        <label class="block"><span class="text-sm text-slate-500">Name</span><input name="name" value={user.name ?? ''} maxlength="100" class="input mt-1" /></label>
+        <label class="block"><span class="text-sm text-slate-500">Phone (login)</span><input name="phone" value={user.phone} inputmode="numeric" maxlength="14" required class="input mt-1" /></label>
+        <label class="block"><span class="text-sm text-slate-500">Role</span>
+          <select name="role" class="input mt-1">
+            {!user.role && <option value="" selected>Not registered</option>}
+            {ROLES.map((r) => <option value={r.key} selected={r.key === user.role}>{r.label}</option>)}
+          </select>
+        </label>
+        <label class="block"><span class="text-sm text-slate-500">City</span>
+          <select name="city" class="input mt-1">
+            <option value="" selected={!user.city_slug}>—</option>
+            {refs.cities.map((c) => <option value={c.slug} selected={c.slug === user.city_slug}>{c.name}</option>)}
+          </select>
+        </label>
+        <label class="block"><span class="text-sm text-slate-500">Agency (agents only)</span><input name="company" value={user.company ?? ''} maxlength="120" class="input mt-1" /></label>
+        <div class="flex items-end"><button class="btn-primary py-2">Save changes</button></div>
+        <p class="text-xs text-slate-500 sm:col-span-2 lg:col-span-3">Changing the phone number changes their login and logs them out everywhere.</p>
+      </form>
+    </section>
 
     <section id="listings" class="mt-10">
       <h2 class="section-title mb-4">Listings ({listings.length})</h2>

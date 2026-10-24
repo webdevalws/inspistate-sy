@@ -33,6 +33,16 @@ branch) audit admin actions.
   Rejected, Sold, Rented, Deleted — non-live ones open with the edit token, deleted ones are not linked);
   **Enquiries sent**; **Leads on their listings**; and **Plans** (every request and plan with dates).
   Unknown ids are 404.
+- **Edit account** (item 95), a plain form posting to `/api/admin/users/{id}` (`action=profile`): name, phone,
+  role (Buyer / Seller / Agent; "Not registered" is only offered while the account has no role), city and
+  agency. Same rules as registration: name 2+ characters (or empty), agents need an agency name (cleared for
+  other roles), city from the list, phone a valid 10-digit mobile (`normalizePhone`).
+  - **Phone** is the login (phone + OTP; there are no passwords). A number another account already has is
+    refused ("Another account already uses that phone number"), also if it is taken at the same moment (UNIQUE).
+    Changing it **ends all of the account's sessions** (logged out everywhere, so a lost phone or misused account
+    can't keep old sessions) and drops any pending code for the old number.
+  - Each changed field is audited separately: `user.name|phone|role|city|agency`, target
+    `user #12: old → new` (phone changes add "(logged out)").
 
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).

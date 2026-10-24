@@ -100,3 +100,42 @@ export async function adminUserPlans(userId: number) {
     .all<{ id: number; plan: PlanKey; amount: number; status: 'requested' | 'active' | 'cancelled'; starts_at: string | null; ends_at: string | null; created_at: string }>();
   return results;
 }
+
+// ---------- admin edits (every change is written to the admin audit log by the endpoint) ----------
+
+export interface ProfileEdit { name: string | null; phone: string; role: Role | null; citySlug: string | null; company: string | null }
+/** One changed field: [field, old value, new value]. */
+export type Change = [string, string | null, string | null];
+
+/**
+ * Saves the admin's edits to an account and returns what changed. A new phone number becomes the login, so all
+ * of the account's sessions are ended (a lost phone or misuse must not keep old sessions working) and any
+ * pending code for the old number is dropped. Returns 'phone-taken' when another account has that number.
+ */
+export async function updateUserProfile(id: number, e: ProfileEdit): Promise<{ changes: Change[]; sessionsEnded: boolean } | 'not-found' | 'phone-taken'> {
+  const cur = await db().prepare('SELECT phone, name, role, city_slug, company FROM users WHERE id = ?').bind(id)
+    .first<{ phone: string; name: string | null; role: Role | null; city_slug: string | null; company: string | null }>();
+  if (!cur) return 'not-found';
+  // Agency is kept for agents only, as at registration.
+  const company = e.role === 'agent' ? e.company : null;
+  const changes: Change[] = (
+    [['name', cur.name, e.name], ['phone', cur.phone, e.phone], ['role', cur.role, e.role], ['city', cur.city_slug, e.citySlug], ['agency', cur.company, company]] as Change[]
+  ).filter(([, a, b]) => (a ?? null) !== (b ?? null));
+  if (!changes.length) return { changes, sessionsEnded: false };
+  const phoneChanged = cur.phone !== e.phone;
+  if (phoneChanged && (await db().prepare('SELECT 1 FROM users WHERE phone = ? AND id != ?').bind(e.phone, id).first())) return 'phone-taken';
+  try {
+    await db().batch([
+      db().prepare('UPDATE users SET name = ?, phone = ?, role = ?, city_slug = ?, company = ? WHERE id = ?').bind(e.name, e.phone, e.role, e.citySlug, company, id),
+      ...(phoneChanged ? [
+        db().prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
+        db().prepare('DELETE FROM otp_codes WHERE phone = ?').bind(cur.phone),
+      ] : []),
+    ]);
+  } catch (err) {
+    // Another account took the number between the check and the update (UNIQUE on users.phone).
+    if (String(err).includes('UNIQUE')) return 'phone-taken';
+    throw err;
+  }
+  return { changes, sessionsEnded: phoneChanged };
+}
