@@ -114,6 +114,16 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   are unchanged. **Counts and averages can lag up to 5 minutes** after a listing is approved, edited or closed;
   the listings themselves (search results, detail pages) are always read live.
 
+## Search box data (item 81)
+- The page only sends the search box **cities and localities** (`searchBoxProps`), which it needs in the browser for
+  near-me and plain-language search. Locality suggestions are still instant.
+- **Projects and builders** are suggested on demand: from 2 characters, after a 150 ms pause, the box calls
+  `GET /api/suggest?q=…&city=…` (`src/pages/api/suggest.ts`), which filters a cached in-memory list (5 minutes) and
+  returns at most 8 matches, the chosen city's projects first. Answers are remembered per query on the page.
+- Pressing Enter before the server suggestions arrive waits for them, so "ganga gomti" + Enter still opens the
+  project. `/api/suggest` has the same-site check and a per-IP daily limit of 2,000 (`guard()`), generous for
+  normal typing.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
