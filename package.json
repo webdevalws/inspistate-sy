@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "generate-types": "wrangler types",
+    "doctor": "node scripts/doctor.ts",
     "db:seed:build": "node db/build-seed.ts",
     "db:migrate:local": "wrangler d1 migrations apply inspistate-db --local",
     "db:seed:local": "wrangler d1 execute inspistate-db --local --file db/seed.sql",

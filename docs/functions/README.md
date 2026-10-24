@@ -31,6 +31,7 @@ the files that implement it, and what REA observed on the reference site. Update
 | [Enquiries / leads](leads/desc.md) | Leads | `/api/enquiry` |
 | [Refer a Friend](refer/desc.md) | Leads | `/refer` |
 | [Admin](admin/desc.md) | Operations | `/admin` |
+| [Production setup](production-setup/desc.md) | Operations | scripts, config, `npm run doctor` |
 | [Login / Register (phone OTP + role)](login/desc.md) | Accounts | `/login` + dialog |
 | [Account roles, listing limits & agent plans](account-roles/desc.md) | Accounts | `/account`, `/account/plans` |
 | [Compare Projects](compare/desc.md) | Projects | `/compare` |
