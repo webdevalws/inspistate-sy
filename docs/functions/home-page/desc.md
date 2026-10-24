@@ -73,6 +73,14 @@ search form puts city + Search on one row under the query field.
   (DM Mono) in `global.css`; helpers `.hero-*`, `.bracket`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
 
+## Data loading (item 79)
+- The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one
+  grouped query for 6 equal-width buckets, one window-function query for the median) — about 75 rows instead of
+  one row per live sale listing (411 in the demo data). Results are identical to the old JS calculation.
+- Projects are loaded once through `allProjects()` (`src/lib/repo.ts`, newest first, cached for 5 minutes) and
+  shared by the home page and the search box (they used to query all projects twice).
+- `homeInsights` is cached for 5 minutes with the shared `cached(key, load)` helper in `src/lib/repo.ts`.
+
 ## Footer newsletter without JS (item 78)
 - The footer signup is a real form (`method="post" action="/api/newsletter"`, input `name="email"`, hidden
   `back` = current page). With JS it still posts JSON and shows the result in place. If it is submitted before

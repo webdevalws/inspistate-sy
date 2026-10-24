@@ -1,6 +1,7 @@
 // Reviews, registered transactions and locality insights.
 import { env } from 'cloudflare:workers';
 import type { Locality } from '../data/types';
+import { cached } from './repo';
 
 const db = () => env.DB;
 
@@ -78,32 +79,46 @@ export const GUIDE_THEMES = {
 export type GuideTheme = keyof typeof GUIDE_THEMES;
 
 /** Everything the home page "insights" and "reviews" panels need, in one round trip. */
-export async function homeInsights() {
-  const [rates, tx, latest, overall] = await db().batch([
-    db().prepare("SELECT city_slug, 1.0 * price / area_sqft AS rate FROM listings WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' AND segment = 'residential'"),
+// Asking rates of live residential sale listings, used by the home page histogram.
+const BUY_RATES = `SELECT city_slug, 1.0 * price / area_sqft AS rate FROM listings
+  WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' AND segment = 'residential'`;
+
+/** Home page insights, cached for 5 minutes. The histogram is computed in SQL: a few rows per city, not one per listing. */
+export const homeInsights = () => cached('homeInsights', loadHomeInsights);
+
+async function loadHomeInsights() {
+  const [hist, medians, tx, latest, overall] = await db().batch([
+    // 6 equal-width rate buckets per city between its min and max rate (bucket 5 includes the max).
+    db().prepare(`WITH r AS (${BUY_RATES}),
+        s AS (SELECT city_slug, min(rate) AS lo, max(rate) AS hi, count(*) AS n FROM r GROUP BY city_slug)
+      SELECT r.city_slug, s.lo, s.hi, s.n, min(5, CAST((r.rate - s.lo) / (CASE WHEN s.hi > s.lo THEN (s.hi - s.lo) / 6.0 ELSE 1 END) AS INTEGER)) AS b, count(*) AS c
+      FROM r JOIN s USING (city_slug) GROUP BY r.city_slug, b`),
+    // Median = the value at position floor(n / 2) (0-based) of the sorted rates, as before.
+    db().prepare(`SELECT city_slug, rate FROM (SELECT city_slug, rate, row_number() OVER (PARTITION BY city_slug ORDER BY rate) AS rn,
+        count(*) OVER (PARTITION BY city_slug) AS n FROM (${BUY_RATES})) WHERE rn = n / 2 + 1`),
     db().prepare(`SELECT p.city_slug, count(*) AS n, sum(t.price) AS value, 1.0 * sum(t.price) / sum(t.area_sqft) AS rate, min(t.registered_on) AS first, max(t.registered_on) AS last
       FROM transactions t JOIN projects p ON p.id = t.project_id GROUP BY p.city_slug`),
     db().prepare(`SELECT r.author, r.rating, r.body, r.created_at, r.resident_type, p.name AS project, p.slug, p.city_slug
       FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'published' ORDER BY r.created_at DESC LIMIT 6`),
     db().prepare("SELECT avg(rating) AS rating, count(*) AS n FROM reviews WHERE status = 'published'"),
   ]);
-  const ratesByCity = new Map<string, number[]>();
-  for (const row of rates.results as { city_slug: string; rate: number }[]) {
-    (ratesByCity.get(row.city_slug) ?? ratesByCity.set(row.city_slug, []).get(row.city_slug)!).push(row.rate);
+  const histByCity = new Map<string, { lo: number; hi: number; n: number; counts: number[] }>();
+  for (const row of hist.results as { city_slug: string; lo: number; hi: number; n: number; b: number; c: number }[]) {
+    const h = histByCity.get(row.city_slug) ?? histByCity.set(row.city_slug, { lo: row.lo, hi: row.hi, n: row.n, counts: [0, 0, 0, 0, 0, 0] }).get(row.city_slug)!;
+    h.counts[row.b] += row.c;
   }
+  const medianByCity = new Map((medians.results as { city_slug: string; rate: number }[]).map((m) => [m.city_slug, m.rate]));
   const txByCity = new Map((tx.results as { city_slug: string; n: number; value: number; rate: number; first: string; last: string }[]).map((t) => [t.city_slug, t]));
   const o = (overall.results as { rating: number; n: number }[])[0];
   return {
     /** Listing counts in 6 equal-width rate buckets for the asking-price histogram. */
     histogram(city: string) {
-      const vals = ratesByCity.get(city) ?? [];
-      if (!vals.length) return { buckets: [] as { label: string; n: number }[], median: 0, count: 0 };
-      const sorted = [...vals].sort((a, b) => a - b);
-      const lo = sorted[0], hi = sorted.at(-1)!, step = (hi - lo) / 6 || 1;
+      const h = histByCity.get(city);
+      if (!h) return { buckets: [] as { label: string; n: number }[], median: 0, count: 0 };
+      const step = (h.hi - h.lo) / 6 || 1;
       const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(0)}K` : n.toFixed(0));
-      const buckets = Array.from({ length: 6 }, (_, i) => ({ label: `${k(lo + i * step)}–${k(lo + (i + 1) * step)}`, n: 0 }));
-      for (const v of vals) buckets[Math.min(5, Math.floor((v - lo) / step))].n++;
-      return { buckets, median: sorted[Math.floor(sorted.length / 2)], count: vals.length };
+      const buckets = h.counts.map((n, i) => ({ label: `${k(h.lo + i * step)}–${k(h.lo + (i + 1) * step)}`, n }));
+      return { buckets, median: medianByCity.get(city) ?? 0, count: h.n };
     },
     registrations: (city: string) => txByCity.get(city),
     reviews: latest.results as { author: string; rating: number; body: string; created_at: string; resident_type: string | null; project: string; slug: string; city_slug: string }[],

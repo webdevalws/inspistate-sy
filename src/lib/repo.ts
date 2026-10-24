@@ -27,6 +27,22 @@ export interface Refs {
 }
 
 const REFS_TTL_MS = 5 * 60 * 1000;
+
+const statsCache = new Map<string, { at: number; value: Promise<unknown> }>();
+/**
+ * Per-isolate cache with the same 5-minute lifetime as reference data, for whole-table stats and summaries
+ * (home page, city and search page stats). Counts can lag up to 5 minutes after a change; a failed load is
+ * not kept. Listings themselves are always read live.
+ */
+export function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = statsCache.get(key);
+  if (hit && Date.now() - hit.at < REFS_TTL_MS) return hit.value as Promise<T>;
+  const value = load();
+  statsCache.set(key, { at: Date.now(), value });
+  value.catch(() => statsCache.delete(key));
+  return value;
+}
+
 let refsCache: { at: number; value: Promise<Refs> } | null = null;
 
 export function getRefs(): Promise<Refs> {
@@ -93,6 +109,9 @@ export async function getProjects(
   const { results } = await db().prepare(sql).bind(...args).all<Row>();
   return results.map(toProject);
 }
+
+/** All projects, newest first, cached for 5 minutes: the home page and the search box share this one query. */
+export const allProjects = () => cached('projects:newest', () => getProjects({}, { orderBy: 'newest' }));
 
 export async function getProject(citySlug: string, slug: string): Promise<ProjectDetail | undefined> {
   const r = await db().prepare('SELECT * FROM projects WHERE city_slug = ? AND slug = ?').bind(citySlug, slug).first<Row>();
