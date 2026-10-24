@@ -29,6 +29,10 @@ branch) audit admin actions.
   or phone (3+ digits, contains); filter by role. Columns: name (→ detail page), full phone, role, city, agency
   (agents), plan (active plan, else Free; "requested" when a plan request waits), joined date, listings (not
   counting owner-deleted ones) and enquiries (leads the user sent). Queries in `src/lib/admin-users.ts`.
+- `/admin/users/{id}` (item 94): the account's details; **Listings** in every state (Live, Under review,
+  Rejected, Sold, Rented, Deleted — non-live ones open with the edit token, deleted ones are not linked);
+  **Enquiries sent**; **Leads on their listings**; and **Plans** (every request and plan with dates).
+  Unknown ids are 404.
 
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).

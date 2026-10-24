@@ -68,3 +68,35 @@ export async function userCounts(): Promise<Record<RoleFilter | 'all', number>> 
   for (const r of results) { out[r.role ?? 'none'] += r.n; out.all += r.n; }
   return out;
 }
+
+/** One account with the same summary columns as the list, or null. */
+export async function adminUser(id: number): Promise<AdminUserRow | null> {
+  return db().prepare(`${ROW_SELECT} WHERE u.id = ?`).bind(id).first<AdminUserRow>();
+}
+
+export interface AdminUserListing {
+  id: number; purpose: 'buy' | 'rent'; type: string; bhk: number; area_sqft: number; price: number; city_slug: string;
+  locality_slug: string; status: 'active' | 'pending' | 'rejected'; closed: 'sold' | 'rented' | 'deleted' | null; edit_token: string; posted_at: string;
+}
+
+/** All of the user's listings, owner-deleted ones included (the admin sees everything), newest first. */
+export async function adminUserListings(userId: number): Promise<AdminUserListing[]> {
+  const { results } = await db()
+    .prepare('SELECT id, purpose, type, bhk, area_sqft, price, city_slug, locality_slug, status, closed, edit_token, posted_at FROM listings WHERE user_id = ? ORDER BY id DESC')
+    .bind(userId)
+    .all<AdminUserListing>();
+  return results;
+}
+
+/** Listing state as one label: owner lifecycle (sold / rented / deleted) first, then moderation status. */
+export const listingStateLabel = (l: Pick<AdminUserListing, 'status' | 'closed'>) =>
+  l.closed ? l.closed[0].toUpperCase() + l.closed.slice(1) : ({ active: 'Live', pending: 'Under review', rejected: 'Rejected' } as const)[l.status];
+
+/** Every plan request and plan of the account, newest first. */
+export async function adminUserPlans(userId: number) {
+  const { results } = await db()
+    .prepare('SELECT id, plan, amount, status, starts_at, ends_at, created_at FROM subscriptions WHERE user_id = ? ORDER BY id DESC')
+    .bind(userId)
+    .all<{ id: number; plan: PlanKey; amount: number; status: 'requested' | 'active' | 'cancelled'; starts_at: string | null; ends_at: string | null; created_at: string }>();
+  return results;
+}
