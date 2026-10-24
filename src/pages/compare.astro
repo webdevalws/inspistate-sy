@@ -13,6 +13,8 @@ const ids = [...new Set((Astro.url.searchParams.get('ids') ?? '').split(',').map
 const refs = await getRefs();
 const found = await getProjectsByIds(ids);
 const projects = ids.map((id) => found.find((p) => p.id === id)).filter((p) => !!p);
+// Links (Remove, + Add) use only ids that exist, so an unknown id in the URL is dropped from them.
+const known = projects.map((p) => p.id);
 const [ratings, suggestions] = await Promise.all([ratingsFor(projects.map((p) => p.id)), projects.length < 3 ? getProjects({}, { limit: 9, orderBy: 'newest' }) : Promise.resolve([])]);
 const best = (vals: number[], lower = true) => (lower ? Math.min(...vals) : Math.max(...vals));
 
@@ -49,7 +51,7 @@ const rows: { label: string; value: (p: (typeof projects)[number]) => string; nu
                   <Cover hue={p.hue} class="h-24 rounded-xl" />
                   <a href={projectUrl(p)} class="mt-2 block font-bold text-slate-900 hover:text-brand-700">{p.name}</a>
                   {ratings.get(p.id) && <Stars value={ratings.get(p.id)!.rating} />}
-                  <a href={`/compare?ids=${ids.filter((x) => x !== p.id).join(',')}`} class="mt-1 block text-xs font-normal text-rose-600 hover:underline">Remove</a>
+                  <a href={`/compare?ids=${known.filter((x) => x !== p.id).join(',')}`} class="mt-1 block text-xs font-normal text-rose-600 hover:underline">Remove</a>
                 </th>
               ))}
             </tr>
@@ -79,8 +81,8 @@ const rows: { label: string; value: (p: (typeof projects)[number]) => string; nu
       <section class="mt-10">
         <h2 class="section-title mb-4">Add a project</h2>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {suggestions.filter((s) => !ids.includes(s.id)).slice(0, 6).map((s) => (
-            <a href={`/compare?ids=${[...ids, s.id].join(',')}`} class="card flex items-center justify-between gap-3 p-4 hover:border-brand-300">
+          {suggestions.filter((s) => !known.includes(s.id)).slice(0, 6).map((s) => (
+            <a href={`/compare?ids=${[...known, s.id].join(',')}`} class="card flex items-center justify-between gap-3 p-4 hover:border-brand-300">
               <span><span class="block font-semibold">{s.name}</span><span class="text-xs text-slate-500">{refs.locality(s.citySlug, s.localitySlug)?.name}, {refs.city(s.citySlug)?.name}</span></span>
               <span class="text-sm font-semibold text-brand-700">+ Add</span>
             </a>
