@@ -168,7 +168,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
                         {transactions.map((t) => <tr><td class="py-2">{fmtDate(t.registered_on)}</td><td>{t.tower} · {t.unit}</td><td>{t.floor}</td><td>{formatNumber(t.area_sqft)} sq.ft</td><td class="font-semibold">{formatPrice(t.price)}</td><td class="text-right">{formatRate(t.price / t.area_sqft)}</td></tr>)}
                       </tbody>
                     </table>
-                    <p class="mt-2 text-xs text-slate-400">Demo data. In production these come from state registration records.</p>
+                    <p class="mt-2 text-xs text-slate-400">Demo data.</p>
                   </div>
                 ) : <p class="text-sm text-slate-500">No registered transactions yet — this project recently launched.</p>}
               </div>
