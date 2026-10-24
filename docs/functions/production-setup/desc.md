@@ -49,5 +49,12 @@ reference data for an empty production database, Cloudflare bindings, deployment
   `000…0` in the repo). The R2 bucket is referenced by name; IMAGES needs no id.
 - `npm run doctor` checks that all four bindings are declared; with `--remote` it also flags placeholder ids.
 
+## Deployment guide (item 69)
+- `DEPLOY.md`: first-time setup (create D1 / R2 / KV, put the ids in `wrangler.jsonc`, set secrets, migrate,
+  deploy, load reference data, `npm run doctor -- --remote`, a 5-minute browser check), updating (back up,
+  migrate, deploy, doctor; `wrangler rollback`), backups (D1 Time Travel and exports, R2 copies) and restoring
+  (Time Travel restore, or an export into a new database). The README's Deploy section points to it and no
+  longer suggests the remote demo seed.
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`
