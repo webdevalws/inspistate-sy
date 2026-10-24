@@ -2,6 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { userFromCookies } from './lib/auth';
 import { clientIp, dailyCount, overDailyLimit } from './lib/limits';
+import { checkRequiredSettings } from './lib/startup';
 
 const encoder = new TextEncoder();
 /** Wrong admin passwords per IP per day: slow down from the 5th, lock out at 20. */
@@ -21,6 +22,7 @@ const unauthorized = () =>
   new Response('Authentication required', { status: 401, headers: { 'www-authenticate': 'Basic realm="InspiState admin", charset="UTF-8"' } });
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
+  checkRequiredSettings(); // production only, once per Worker instance
   const { pathname } = ctx.url;
   const isAsset = pathname.startsWith('/_astro/') || pathname.startsWith('/media/') || /\.(svg|ico|png|txt|xml)$/.test(pathname);
   ctx.locals.user = isAsset ? null : await userFromCookies(ctx.cookies);

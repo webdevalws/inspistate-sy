@@ -22,5 +22,12 @@ reference data for an empty production database, Cloudflare bindings, deployment
 - wrangler runs through `node_modules/wrangler/bin/wrangler.js` with the current Node (no shell), so SQL
   arguments stay intact on Windows.
 
+## Startup check (item 66)
+- In production builds, the first request each Worker instance handles runs `checkRequiredSettings()`
+  (`src/lib/startup.ts`, called from the middleware). If `ADMIN_PASSWORD` or `SMS_WEBHOOK_URL` is missing it logs
+  **one** clear `console.error` naming each missing setting, what breaks without it and the
+  `wrangler secret put` command — visible in `npx wrangler tail` and the dashboard logs. Values are never
+  logged; nothing runs on the dev server.
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`)
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`), `src/lib/startup.ts`
