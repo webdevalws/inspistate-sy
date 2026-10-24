@@ -35,7 +35,7 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
       <AccountNav user={user} active="overview" />
 
       <div class="min-w-0 space-y-12">
-        <!-- Overview -->
+        {/* Overview */}
         <section>
           <p class="ed-label text-[#1C1A17]/60">{user.role ? `${roleLabel(user.role)} account` : 'Welcome'}</p>
           <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Hello{user.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1>
@@ -105,7 +105,7 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
                     <div class="min-w-0">
                       {l.closed ? <span class="font-semibold">{title}</span> : <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">{title}</a>}
                       <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
-                      <!-- Owner actions; edits go back to review. Plain form posts, so they work without JavaScript. -->
+                      {/* Owner actions; edits go back to review. Plain form posts, so they work without JavaScript. */}
                       {!l.closed && (
                         <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                           <a href={`/post-property?edit=${l.id}`} class="ed-link">Edit</a>

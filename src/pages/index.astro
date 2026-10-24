@@ -100,7 +100,7 @@ const toolTiles = [
 ];
 ---
 <Base title="InspiState — Search, Compare & Own Your Next Home" description="Search verified homes for sale and rent, new launch projects and commercial spaces across India. Property rates, price trends, valuation, home loans and free tools.">
-  <!-- Hero: layered depth — photo, giant wordmark, then the building cut-out in front of it -->
+  {/* Hero: layered depth — photo, giant wordmark, then the building cut-out in front of it */}
   <section id="hero" class="hero relative min-h-[100svh] overflow-hidden bg-[#2b231d] text-sand-50">
     <picture>
       <source media="(orientation: portrait)" srcset="/images/hero-towers-portrait-bg.webp" />
@@ -156,7 +156,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Cream editorial run: search dock → city marquee → about → collections ===== -->
+  {/* ===== Cream editorial run: search dock → city marquee → about → collections ===== */}
   <div class="bg-sand-100 text-[#1C1A17]">
     <div class="container-x relative z-10 -mt-16 sm:-mt-20" id="home-search">
       <div class="mx-auto max-w-5xl bg-[#1C1A17] p-4 shadow-[0_30px_60px_-20px_rgba(28,26,23,0.5)] sm:p-6">
@@ -181,7 +181,7 @@ const toolTiles = [
       </div>
     </div>
 
-    <!-- City marquee -->
+    {/* City marquee */}
     <div class="ed-marquee mt-12 overflow-hidden border-y-[0.5px] border-[#1C1A17]/15 py-4 sm:mt-16" aria-label="Cities on InspiState">
       <div class="ed-marquee-track">
         {[0, 1].map((dup) => (
@@ -200,7 +200,7 @@ const toolTiles = [
       </div>
     </div>
 
-    <!-- About -->
+    {/* About */}
     <section class="container-x grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-12 lg:gap-16 lg:py-24">
       <div class="relative pb-[14%] lg:col-span-5">
         <img src="/images/project-luxury-villa.jpg" alt="Contemporary villa with an infinity pool at dusk" loading="lazy" class="warm-tone aspect-[4/5] w-[80%] object-cover" />
@@ -231,7 +231,7 @@ const toolTiles = [
       </div>
     </section>
 
-    <!-- Collections bento -->
+    {/* Collections bento */}
     <section id="collections" class="container-x pb-16 sm:pb-20 lg:pb-24">
       <EdHead label="Curated collections" title="Spaces Worth<br />Coming Home To" sub="From sea-facing sky residences to waterfront villas and Grade-A offices — browse curated categories across India's prime markets." href="/buy/mumbai" linkLabel="View all properties" />
       <div class="grid grid-flow-dense auto-rows-[170px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:gap-4 lg:auto-rows-[230px] lg:grid-cols-4">
@@ -257,7 +257,7 @@ const toolTiles = [
     </section>
   </div>
 
-  <!-- ===== Featured developments (espresso band) ===== -->
+  {/* ===== Featured developments (espresso band) ===== */}
   <section class="bg-[#1C1A17] py-16 text-sand-50 sm:py-20 lg:py-24">
     <div class="container-x">
       <EdHead dark label="Hot deals" title="Hot Selling Projects<br />Across India" sub="The most sought-after residential launches right now — high demand, verified developers and transparent pricing." href="/new-projects/mumbai" linkLabel="View all projects" />
@@ -283,7 +283,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Market insights ===== -->
+  {/* ===== Market insights ===== */}
   <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
     <div class="container-x">
       <EdHead label="Market insights" title="Property Price<br />Insights in India" sub="Market data, price trends and locality insights from live InspiState listings." href="/property-rates/mumbai" linkLabel="All property rates" />
@@ -325,7 +325,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Owner / seller band ===== -->
+  {/* ===== Owner / seller band ===== */}
   <section class="relative overflow-hidden bg-[#1C1A17] text-sand-50">
     <img src="/images/interior-luxury-living.jpg" alt="" loading="lazy" class="warm-tone absolute inset-0 h-full w-full object-cover object-[70%_100%]" />
     <div class="absolute inset-0 bg-[#1C1A17]/75 sm:bg-transparent sm:bg-gradient-to-r sm:from-[#1C1A17]/95 sm:via-[#1C1A17]/60 sm:to-transparent"></div>
@@ -350,7 +350,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Localities + developers ===== -->
+  {/* ===== Localities + developers ===== */}
   <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
     <div class="container-x">
       <EdHead label="Neighbourhoods" title="Top Localities<br />in India" sub="The best localities with high growth potential, great connectivity and modern amenities." href="/property-rates/mumbai" linkLabel="View all localities" />
@@ -399,7 +399,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Residents' voices + guides ===== -->
+  {/* ===== Residents' voices + guides ===== */}
   <section class="border-t-[0.5px] border-[#1C1A17]/10 bg-sand-50 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
     <div class="container-x grid gap-14 lg:grid-cols-2 lg:gap-20">
       <div>
@@ -452,7 +452,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Tools (espresso band) ===== -->
+  {/* ===== Tools (espresso band) ===== */}
   <section class="bg-[#1C1A17] py-16 text-sand-50 sm:py-20 lg:py-24">
     <div class="container-x">
       <EdHead dark label="Research, guides & tools" title="Calculators for Every<br />Property Decision" sub="Expert insights, calculators and tools to make better property decisions." href="/tools" linkLabel="View all tools" />
@@ -471,7 +471,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== City directory ===== -->
+  {/* ===== City directory ===== */}
   <section class="bg-sand-100 py-16 text-[#1C1A17] sm:py-20 lg:py-24">
     <div class="container-x">
       <EdHead label="Popular cities" title="Explore Real Estate in<br />India's Prime Cities" sub="Detailed listings, prices and locality insights for every major market." href={`/city/${cities[0].slug}`} linkLabel="View all cities" />
@@ -489,7 +489,7 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- ===== Expert strip (compact closing band) ===== -->
+  {/* ===== Expert strip (compact closing band) ===== */}
   <section id="expert" class="relative overflow-hidden bg-[#1C1A17] text-sand-50">
     <img src="/images/hero-towers-bg.webp" alt="" loading="lazy" class="hero-photo absolute inset-0 h-full w-full object-cover opacity-50" />
     <div class="absolute inset-0 bg-gradient-to-r from-[#1C1A17] via-[#1C1A17]/85 to-[#1C1A17]/60"></div>
@@ -519,10 +519,10 @@ const toolTiles = [
     </div>
   </section>
 
-  <!-- Video Walkthrough Modal Dialog with Multi-Tour Switcher -->
+  {/* Video Walkthrough Modal Dialog with Multi-Tour Switcher */}
   <dialog id="video-modal" class="rounded-3xl bg-brand-950 p-0 text-white shadow-2xl backdrop:bg-black/85 backdrop:backdrop-blur-lg max-w-4xl w-[95%] border border-white/20">
     <div class="relative overflow-hidden rounded-3xl">
-      <!-- Header -->
+      {/* Header */}
       <div class="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-brand-900/80">
         <div class="flex items-center gap-3">
           <svg class="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
@@ -536,7 +536,7 @@ const toolTiles = [
         </form>
       </div>
 
-      <!-- Video Player -->
+      {/* Video Player */}
       <div class="relative aspect-video w-full bg-black">
         <video id="modal-tour-video" controls loop playsinline preload="none" class="h-full w-full object-cover">
           <source id="modal-video-src" src="/videos/luxury_tower.mp4" type="video/mp4" />
@@ -544,7 +544,7 @@ const toolTiles = [
         </video>
       </div>
 
-      <!-- Multi-Property Tour Selector Dock -->
+      {/* Multi-Property Tour Selector Dock */}
       <div class="p-4 bg-brand-900/40 border-t border-white/10">
         <p class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 mb-2.5">Switch Ultra-Luxury Tour:</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -600,9 +600,9 @@ const toolTiles = [
     </div>
   </dialog>
 
-  <!-- Tour modal + hero parallax -->
+  {/* Tour modal + hero parallax */}
   <script is:inline>
-    // "Ask in plain words →": the search box below reads plain-language queries (Ask AI parser), so focus it with an
+    // "Ask in plain words →": the search box below reads plain-language queries, so focus it with an
     // example. Without JS the link still jumps to #home-search.
     document.querySelector('[data-ask-plain]')?.addEventListener('click', function (e) {
       var input = document.querySelector('#home-search input[aria-label="Search by locality, project or builder"]');

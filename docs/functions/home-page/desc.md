@@ -74,6 +74,8 @@ search form puts city + Search on one row under the query field.
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
 - **Site icon:** `public/favicon.svg` (linked from `Base.astro`); `public/favicon.ico` is the same house mark at
   32 and 16 px for browsers and crawlers that ask for `/favicon.ico` directly.
+- **Comments:** template notes use Astro comments (`{/* … */}`), which are not sent to the browser; HTML comments
+  (`<!-- … -->`) would be.
 
 ## Data loading (item 79)
 - The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one
