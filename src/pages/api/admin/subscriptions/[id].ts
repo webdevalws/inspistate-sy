@@ -1,9 +1,11 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { planByKey } from '../../../../data/plans';
+import { logAdmin } from '../../../../lib/audit';
 
 // Activate (after payment is collected) or cancel an agent plan request (protected by middleware).
-export const POST: APIRoute = async ({ params, request, redirect }) => {
+export const POST: APIRoute = async (ctx) => {
+  const { params, request, redirect } = ctx;
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) return new Response('Bad id', { status: 400 });
   const action = String((await request.formData()).get('action') ?? '');
@@ -18,5 +20,6 @@ export const POST: APIRoute = async ({ params, request, redirect }) => {
     end.setMonth(end.getMonth() + (planByKey(sub.plan)?.months ?? 12));
     await env.DB.prepare("UPDATE subscriptions SET status = 'active', starts_at = ?, ends_at = ? WHERE id = ?").bind(start.toISOString(), end.toISOString(), id).run();
   }
+  await logAdmin(ctx, `plan.${action}`, `plan request #${id} (${sub.plan})`);
   return redirect(`/admin?done=sub-${action}#subscriptions`, 303);
 };

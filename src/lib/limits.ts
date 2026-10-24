@@ -19,6 +19,14 @@ export async function overDailyLimit(feature: string, key: string, limit: number
   return (count ?? 0) > limit;
 }
 
+/** Today's count of `feature` for `key`, without counting a use (e.g. wrong admin passwords so far). */
+export async function dailyCount(feature: string, key: string): Promise<number> {
+  const day = new Date().toISOString().slice(0, 10);
+  return (await env.DB.prepare('SELECT count FROM ai_usage WHERE client = ? AND feature = ? AND day = ?')
+    .bind(await sha256(key), feature, day)
+    .first<number>('count')) ?? 0;
+}
+
 export const tooManyToday = () => Response.json({ error: 'Too many requests today. Please try again tomorrow.' }, { status: 429 });
 
 /**
