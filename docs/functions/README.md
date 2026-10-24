@@ -30,6 +30,7 @@ the files that implement it, and what REA observed on the reference site. Update
 | [Post Property](post-property/desc.md) | Listings | `/post-property` |
 | [Enquiries / leads](leads/desc.md) | Leads | `/api/enquiry` |
 | [Refer a Friend](refer/desc.md) | Leads | `/refer` |
+| [Admin](admin/desc.md) | Operations | `/admin` |
 | [Login / Register (phone OTP + role)](login/desc.md) | Accounts | `/login` + dialog |
 | [Account roles, listing limits & agent plans](account-roles/desc.md) | Accounts | `/account`, `/account/plans` |
 | [Compare Projects](compare/desc.md) | Projects | `/compare` |
