@@ -8,7 +8,7 @@ import MiniBars from '../components/MiniBars.astro';
 import SearchBox from '../components/islands/SearchBox';
 import LeadDialog from '../components/islands/LeadDialog';
 import ShortlistButton from '../components/islands/ShortlistButton';
-import { cityStats, getProjects, getRefs, platformTotals } from '../lib/repo';
+import { allProjects, cityStats, getRefs, platformTotals } from '../lib/repo';
 import { homeInsights, homeMarket } from '../lib/community';
 import { searchBoxProps } from '../lib/searchProps';
 import { formatNumber, formatPrice, formatRange } from '../lib/format';
@@ -18,7 +18,7 @@ import { currentCity } from '../lib/city';
 const refs = await getRefs();
 const { cities, builders } = refs;
 const [projects, statsFor, sb, totals, ins, mkt] = await Promise.all([
-  getProjects({}, { orderBy: 'newest' }), cityStats(), searchBoxProps(), platformTotals(), homeInsights(), homeMarket(),
+  allProjects(), cityStats(), searchBoxProps(), platformTotals(), homeInsights(), homeMarket(),
 ]);
 // Cities for the market-insight and locality tabs: the first 8, plus every city added after the original ten
 // demo cities (Lucknow, Navi Mumbai…) that has projects, since the insight charts need them.

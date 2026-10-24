@@ -27,6 +27,22 @@ export interface Refs {
 }
 
 const REFS_TTL_MS = 5 * 60 * 1000;
+
+const statsCache = new Map<string, { at: number; value: Promise<unknown> }>();
+/**
+ * Per-isolate cache with the same 5-minute lifetime as reference data, for whole-table stats and summaries
+ * (home page, city and search page stats). Counts can lag up to 5 minutes after a change; a failed load is
+ * not kept. Listings themselves are always read live.
+ */
+export function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = statsCache.get(key);
+  if (hit && Date.now() - hit.at < REFS_TTL_MS) return hit.value as Promise<T>;
+  const value = load();
+  statsCache.set(key, { at: Date.now(), value });
+  value.catch(() => statsCache.delete(key));
+  return value;
+}
+
 let refsCache: { at: number; value: Promise<Refs> } | null = null;
 
 export function getRefs(): Promise<Refs> {
@@ -93,6 +109,9 @@ export async function getProjects(
   const { results } = await db().prepare(sql).bind(...args).all<Row>();
   return results.map(toProject);
 }
+
+/** All projects, newest first, cached for 5 minutes: the home page and the search box share this one query. */
+export const allProjects = () => cached('projects:newest', () => getProjects({}, { orderBy: 'newest' }));
 
 export async function getProject(citySlug: string, slug: string): Promise<ProjectDetail | undefined> {
   const r = await db().prepare('SELECT * FROM projects WHERE city_slug = ? AND slug = ?').bind(citySlug, slug).first<Row>();
@@ -209,8 +228,9 @@ export async function searchLocalityPins(mode: Mode, citySlug: string, f: Filter
   return results;
 }
 
-/** Market snapshot for a search scope, computed on the unfiltered inventory. */
-export async function marketStats(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
+/** Market snapshot for a search scope, computed on the unfiltered inventory. Cached for 5 minutes (counts can lag that long). */
+export const marketStats = (mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') => cached(`marketStats:${mode}:${citySlug}:${commercialPurpose ?? ""}`, () => loadMarketStats(mode, citySlug, commercialPurpose));
+async function loadMarketStats(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
   const { where, args } = scope(mode, citySlug, commercialPurpose);
   const w = where.join(' AND ');
   const [overall, byBhk, byType, byFurnishing] = await db().batch([
@@ -264,7 +284,9 @@ export async function getProjectListings(projectId: number, limit = 3): Promise<
 
 // ---------- stats ----------
 
-export async function cityStats() {
+/** Listing and project counts and the average sale rate per city. Cached for 5 minutes (counts can lag that long). */
+export const cityStats = () => cached('cityStats', () => loadCityStats());
+async function loadCityStats() {
   const [l, p] = await db().batch([
     db().prepare(`SELECT city_slug, count(*) AS total, sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
       avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rate
@@ -345,7 +367,9 @@ export function cityFacets(citySlug: string): Promise<CityFacets> {
   return value;
 }
 
-export async function platformTotals() {
+/** Site-wide totals for the home page. Cached for 5 minutes (counts can lag that long). */
+export const platformTotals = () => cached('platformTotals', () => loadPlatformTotals());
+async function loadPlatformTotals() {
   const r = await db()
     .prepare(`SELECT (SELECT count(*) FROM listings WHERE status = 'active' AND closed IS NULL) AS listings, (SELECT count(*) FROM projects) AS projects,
       (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities) AS localities`)
@@ -353,7 +377,9 @@ export async function platformTotals() {
   return r!;
 }
 
-export async function countProjectsByBuilder(): Promise<Map<string, number>> {
+/** Number of projects per builder (/builders). Cached for 5 minutes (counts can lag that long). */
+export const countProjectsByBuilder = () => cached('projectsByBuilder', () => loadCountProjectsByBuilder());
+async function loadCountProjectsByBuilder(): Promise<Map<string, number>> {
   const { results } = await db().prepare('SELECT builder_slug, count(*) AS n FROM projects GROUP BY builder_slug').all<Row>();
   return new Map(results.map((r) => [r.builder_slug as string, r.n as number]));
 }

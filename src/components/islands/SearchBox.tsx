@@ -8,8 +8,6 @@ type Suggestion = { label: string; sub: string; href: string };
 interface Props {
   cities: Option[];
   localities: (Option & { citySlug: string })[];
-  projects: { name: string; href: string; citySlug: string; locality: string }[];
-  builders: { name: string; slug: string }[];
   initialCity?: string;
   initialTab?: Tab;
   variant?: 'hero' | 'bar';
@@ -38,7 +36,22 @@ const distKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
-export default function SearchBox({ cities, localities, projects, builders, initialCity, initialTab = 'buy', variant = 'hero' }: Props) {
+/** Project and builder suggestions from /api/suggest (fetched as you type; remembered per query for this page). */
+const remoteCache = new Map<string, Promise<Suggestion[]>>();
+function fetchSuggestions(q: string, city: string): Promise<Suggestion[]> {
+  const key = `${city}|${q}`;
+  if (!remoteCache.has(key)) {
+    const p = fetch(`/api/suggest?q=${encodeURIComponent(q)}&city=${encodeURIComponent(city)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ items?: Suggestion[] }>) : { items: [] }))
+      .then((b) => b.items ?? [])
+      .catch(() => [] as Suggestion[]);
+    remoteCache.set(key, p);
+    p.then((items) => { if (!items.length) remoteCache.delete(key); }); // retry later if it failed or was empty
+  }
+  return remoteCache.get(key)!;
+}
+
+export default function SearchBox({ cities, localities, initialCity, initialTab = 'buy', variant = 'hero' }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [city, setCity] = useState(initialCity ?? cities[0].slug);
   const [query, setQuery] = useState('');
@@ -60,19 +73,27 @@ export default function SearchBox({ cities, localities, projects, builders, init
   }, [cover, note]);
   const input = useRef<HTMLInputElement>(null);
 
+  // Localities are matched in the browser (instantly); projects and builders come from /api/suggest after a short
+  // pause in typing, from 2 characters.
+  const [remote, setRemote] = useState<{ q: string; items: Suggestion[] }>({ q: '', items: [] });
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return;
+    let live = true;
+    const t = setTimeout(() => { fetchSuggestions(q, city).then((items) => live && setRemote({ q, items })); }, 150);
+    return () => { live = false; clearTimeout(t); };
+  }, [query, city]);
+  const localMatches = (q: string) => localities
+    .filter((l) => l.name.toLowerCase().includes(q))
+    .sort((a, b) => Number(b.citySlug === city) - Number(a.citySlug === city))
+    .map((l) => ({ label: l.name, sub: `Locality · ${cities.find((c) => c.slug === l.citySlug)?.name}`, href: target(tab, l.citySlug, l.slug) }));
   const suggestions = useMemo<Suggestion[]>(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    const locs = localities
-      .filter((l) => l.name.toLowerCase().includes(q))
-      .sort((a, b) => Number(b.citySlug === city) - Number(a.citySlug === city))
-      .map((l) => ({ label: l.name, sub: `Locality · ${cities.find((c) => c.slug === l.citySlug)?.name}`, href: target(tab, l.citySlug, l.slug) }));
-    const projs = projects.filter((p) => p.name.toLowerCase().includes(q)).map((p) => ({ label: p.name, sub: `Project · ${p.locality}`, href: p.href }));
-    const blds = builders.filter((b) => b.name.toLowerCase().includes(q)).map((b) => ({ label: b.name, sub: 'Builder', href: `/builders/${b.slug}` }));
-    return [...locs, ...projs, ...blds].slice(0, 8);
-  }, [query, city, tab, localities, projects, builders, cities]);
+    return [...localMatches(q), ...(remote.q === q ? remote.items : [])].slice(0, 8);
+  }, [query, city, tab, localities, cities, remote]);
 
-  function submit(e: React.SyntheticEvent) {
+  async function submit(e: React.SyntheticEvent) {
     e.preventDefault();
     const q = query.trim();
     setNote('');
@@ -81,8 +102,9 @@ export default function SearchBox({ cities, localities, projects, builders, init
       window.location.href = target(tab, city);
       return;
     }
-    if (suggestions.length > 0) {
-      window.location.href = suggestions[0].href;
+    const first = suggestions[0] ?? (q.length >= 2 ? [...localMatches(q.toLowerCase()), ...(await fetchSuggestions(q.toLowerCase(), city))][0] : undefined);
+    if (first) {
+      window.location.href = first.href;
       return;
     }
     // Never quietly search another city: a city we don't cover gets "We're not in … yet", and text we

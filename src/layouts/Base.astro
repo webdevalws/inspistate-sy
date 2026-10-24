@@ -10,10 +10,13 @@ interface Props {
   description?: string;
   jsonLd?: Record<string, unknown>;
   noindex?: boolean;
+  /** Current page of a paginated list: page 2+ is its own canonical URL (?page=N); page 1 is the plain path. */
+  page?: number;
 }
-const { title, description = 'InspiState — buy, rent and discover new projects across India.', jsonLd, noindex = false } = Astro.props;
+const { title, description = 'InspiState — buy, rent and discover new projects across India.', jsonLd, noindex = false, page = 1 } = Astro.props;
 const fullTitle = title.includes('InspiState') ? title : `${title} | InspiState`;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+// Canonical = the path without query filters; paginated lists keep their page number from page 2 on.
+const canonical = new URL(`${Astro.url.pathname}${page > 1 ? `?page=${page}` : ''}`, Astro.site);
 ---
 <!doctype html>
 <html lang="en-IN">

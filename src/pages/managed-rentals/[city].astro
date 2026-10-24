@@ -26,7 +26,7 @@ const faq = [
   { q: 'I own a flat — can you manage it?', a: 'Yes. See property management to list your home with us.' },
 ];
 ---
-<Base title={`Managed Rental Homes in ${city.name} — Zero Brokerage, Low Deposit`} description={`${res.total} owner-managed rental homes in ${city.name} with zero brokerage, one-month deposit and maintenance support.`}>
+<Base page={res.page} title={`Managed Rental Homes in ${city.name} — Zero Brokerage, Low Deposit`} description={`${res.total} owner-managed rental homes in ${city.name} with zero brokerage, one-month deposit and maintenance support.`}>
   <section class="bg-brand-900 text-white">
     <div class="container-x py-10">
       <Breadcrumbs items={[{ label: 'Rent', href: `/rent/${city.slug}` }, { label: 'Managed rentals' }]} />

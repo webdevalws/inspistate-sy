@@ -49,6 +49,9 @@ One page per city that links into everything we have for it: search, localities,
 - **New cities** appear here automatically (city picker, footer, other-cities grid all read the `cities`
   table); Navi Mumbai (item 50) is the 12th.
 
+- **Caching (item 80):** `cityStats()` (hero numbers, other-cities grid) and `cityFacets` are cached for 5 minutes,
+  so the hub's counts can lag that long after a change.
+
 ## Files
 - `src/pages/city/[city].astro`, `src/components/Tabs.astro`, `src/lib/catalog.ts`, `src/data/guides.ts`
 - `src/lib/repo.ts` (`cityFacets`), `src/lib/search.ts` (`BUDGET_BANDS`)

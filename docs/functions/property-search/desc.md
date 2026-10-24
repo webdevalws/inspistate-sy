@@ -107,6 +107,49 @@ Filtered, sorted, paginated listings with SEO facet URLs.
 - No results → the normal empty state. Map view hides pagination and shows "Pins show localities, not
   exact addresses." Listings have no coordinates of their own; exact pins would need a migration.
 
+## Cached stats (item 80)
+- Whole-table and whole-city stats are cached per isolate for 5 minutes with `cached(key, load)` (`src/lib/repo.ts`):
+  `cityStats`, `platformTotals`, `countProjectsByBuilder`, `marketStats(mode, city, purpose)` (the snapshot below
+  search results) and, in `src/lib/community.ts`, `homeMarket`, `homeInsights` and `localityMarket(city)`. Callers
+  are unchanged. **Counts and averages can lag up to 5 minutes** after a listing is approved, edited or closed;
+  the listings themselves (search results, detail pages) are always read live.
+
+## Search box data (item 81)
+- The page only sends the search box **cities and localities** (`searchBoxProps`), which it needs in the browser for
+  near-me and plain-language search. Locality suggestions are still instant.
+- **Projects and builders** are suggested on demand: from 2 characters, after a 150 ms pause, the box calls
+  `GET /api/suggest?q=…&city=…` (`src/pages/api/suggest.ts`), which filters a cached in-memory list (5 minutes) and
+  returns at most 8 matches, the chosen city's projects first. Answers are remembered per query on the page.
+- Pressing Enter before the server suggestions arrive waits for them, so "ganga gomti" + Enter still opens the
+  project. `/api/suggest` has the same-site check and a per-IP daily limit of 2,000 (`guard()`), generous for
+  normal typing.
+
+## Canonical URLs (item 82)
+- `Base.astro` sets the canonical to the page path without query filters. Paginated lists pass their current page
+  (`<Base page={…}>`): search results, managed rentals and reviews — so page 2+ points at itself
+  (`/buy/mumbai?page=2`) instead of page 1. Listing, project, city and locality pages use their own path.
+
+## One URL per facet combination (item 83)
+- Path facets have a fixed order — locality, then BHK, then type — each once (`canonicalFacets` in
+  `src/lib/search.ts`). Any other order or repeated segment gets a **301**, keeping the query string:
+  `/buy/mumbai/2-bhk/powai` and `/buy/mumbai/powai/powai/2-bhk` → `/buy/mumbai/powai/2-bhk`;
+  `/buy/mumbai/apartment/2-bhk/powai?sort=newest` → `/buy/mumbai/powai/2-bhk/apartment?sort=newest`. Two different
+  localities in the path move to `?locality=a,b` (merged with any already there), as the filter panel does.
+
+## Empty filter pages (item 84)
+- A facet or filter combination with **0 results** answers **404** with the normal "No listings match these filters"
+  message and `noindex` (e.g. `/buy/lucknow/5-bhk/villa`, `/buy/mumbai?priceMax=1`). A city's plain search page
+  (`/rent/navi-mumbai`) stays **200** even when empty; `sort`, `view` and `page` are not filters.
+
+## Sitemap (item 85)
+- `/sitemap.xml` is a **sitemap index** of five parts served at `/sitemap-{part}.xml` (`src/lib/sitemap.ts`):
+  `static` (home, hubs, tools, services, guides, loans, design ideas, research), `places` (city pages, locality
+  pages and guides), `search`, `listings` (active, open listings only, with lastmod) and `projects` (projects and
+  builders). Unknown parts are 404. `robots.txt` still points at `/sitemap.xml`.
+- The `search` part lists each mode per city and single facets (locality, BHK, type incl. PG and commercial types)
+  **only when they have results** (cached `cityFacets` counts), so empty filter pages — which answer 404 — are
+  never submitted. Demo data: 350 search URLs, all 200.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
