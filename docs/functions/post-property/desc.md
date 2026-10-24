@@ -29,6 +29,9 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
   `/admin` sets `verified = 1` (`setListingStatus` in `src/lib/repo.ts`); no separate document check exists
   yet. The search FAQ, the company FAQ and the About page say exactly this. (A separate document
   verification step is planned later.)
+- **Same-site check (item 63):** `/api/listings` now rejects cross-site posts with 403 (`sameSite()` from
+  `src/lib/limits.ts`, like the other public APIs). Before this it relied on the login cookie only. (`/api/forum`
+  and `/api/tools/vastu-detect` already checked Origin; account, auth and admin APIs are checked in middleware.)
 - Field rules live in `parseListingFields` (`src/lib/listing-form.ts`), shared by posting and editing.
 
 ## PG / co-living columns

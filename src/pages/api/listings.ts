@@ -4,6 +4,7 @@ import { addListingPhotos, createListing, getRefs } from '../../lib/repo';
 import { listingAllowance } from '../../lib/accounts';
 import { parseListingFields } from '../../lib/listing-form';
 import { stripMetadata, type ImageMime } from '../../lib/strip-metadata';
+import { sameSite } from '../../lib/limits';
 
 const MAX_PHOTOS = 8;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -18,7 +19,9 @@ function sniffImage(b: Uint8Array): { ext: string; mime: ImageMime } | null {
 
 const bad = (error: string, status = 422) => Response.json({ error }, { status });
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request, locals, url }) => {
+  // Posting must come from our own pages (same check as the other public APIs).
+  if (!sameSite(request, url)) return new Response('Forbidden', { status: 403 });
   // Posting needs an account, and each role has its own listing allowance.
   const allowance = await listingAllowance(locals.user);
   if (!allowance.canPost) {
