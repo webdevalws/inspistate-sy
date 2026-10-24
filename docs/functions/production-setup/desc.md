@@ -60,5 +60,15 @@ reference data for an empty production database, Cloudflare bindings, deployment
 - `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`, `npm run build`,
   `npx astro check` on Node 24 (read-only permissions, no secrets, older runs on the same branch cancelled).
 
+## Repository cleanup (item 73)
+- Removed (all checked unreferenced): four one-off Python scripts (`check_candidates.py`, `download_videos.py`,
+  `find_landscape.py`, `find_videos.py`), an unused 14 MB root `.mp4`, 24 unused SVGs in `public/images`
+  (`apt-*`, `builder-floor`, `city-*`, `expert-villa`, `hero`, `house-icon`, `living-room`, `locality-1…6`), and the
+  old `Affordability()` in `Calculators.tsx` (the live calculator is `islands/Affordability.tsx`).
+  `project-1…6.svg` stay (picked by number in `Cover.astro` and the calculator API).
+- `public/videos/` (41 MB, 4 files) is used by the home page video tour and was left as is. Workers static
+  assets are limited to 25 MiB per file and `modern_building.mp4` is 20.4 MB; consider serving the videos from
+  R2 or Cloudflare Stream, or compressing them.
+
 ## Files
 - `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`, `.github/workflows/ci.yml`
