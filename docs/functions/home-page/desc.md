@@ -21,7 +21,7 @@ espresso bands, hairline borders, mono uppercase labels, wide display headings):
 12. Footer (site-wide, `Footer.astro`) — opens with the signature full-width INSPISTATE wordmark
     behind the tower cut-out (`.ft-art`, dusk glow; image rendered at 210vw on phones); on every
     page the tagline "Search smarter. Live better." sits centred under the wordmark in
-    the same mono style as the bottom-bar tagline; below that the options: blurb, Explore/Post buttons (`.ed-pair-tight`), newsletter, socials and the hairline link
+    the same mono style as the bottom-bar tagline; below that the options: blurb, Explore/Post buttons (`.ed-pair-tight`), newsletter, social icons (hidden until profile URLs are set in `socialUrls`) and the hairline link
     directory (2 columns on phones, 4 from sm); then a mono bottom bar.
 
 **Phones:** every button pair uses `.ed-pair` (two equal halves side by side, inline from `sm`); the
