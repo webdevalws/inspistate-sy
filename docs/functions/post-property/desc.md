@@ -44,6 +44,9 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
   `parseListingFields` rejects a PG for sale and requires valid sharing and "for" values; the edit form
   pre-fills them.
 
+- **Previews are not indexed (item 84):** a pending listing's preview (`/property/{id}?token=…`) has `noindex`;
+  closed (sold / rented / deleted) listings already return 404.
+
 ## Owners manage their listings
 - **Lifecycle column** (migration 0011): `listings.closed` = `sold` | `rented` | `deleted` (NULL while open)
   and `closed_at`, kept separate from the moderation `status`. A listing is public only when

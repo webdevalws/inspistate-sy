@@ -44,7 +44,7 @@ const facts = [
 const description = l.description ?? `This ${l.bhk ? `${l.bhk} BHK ` : ''}${l.pg ? 'PG / co-living' : l.type.toLowerCase()} in ${loc.name}, ${city.name} offers ${formatNumber(l.areaSqft)} sq.ft${l.type !== 'Plot' ? ` of ${l.furnishing.toLowerCase()} space` : ''} with ${l.facing.toLowerCase()} facing${l.totalFloors ? ` on floor ${l.floor} of ${l.totalFloors}` : ''}. ${l.possession === 'Ready to Move' ? 'It is ready to move in.' : 'It is under construction.'} ${loc.name} has seen ${loc.yoyGrowthPct}% price growth over the last year.`;
 const [main, ...rest] = l.photos;
 ---
-<Base title={`${title} — ${listingPrice(l)}`} description={description.slice(0, 300)}>
+<Base title={`${title} — ${listingPrice(l)}`} description={description.slice(0, 300)} noindex={isPending}>
   {isPending && (
     <div class="bg-accent-500 text-white">
       <p class="container-x py-2.5 text-sm font-semibold">This listing is pending review and is only visible to you. Keep this link to check its status.</p>

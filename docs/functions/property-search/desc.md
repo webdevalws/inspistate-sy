@@ -136,6 +136,11 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   `/buy/mumbai/apartment/2-bhk/powai?sort=newest` → `/buy/mumbai/powai/2-bhk/apartment?sort=newest`. Two different
   localities in the path move to `?locality=a,b` (merged with any already there), as the filter panel does.
 
+## Empty filter pages (item 84)
+- A facet or filter combination with **0 results** answers **404** with the normal "No listings match these filters"
+  message and `noindex` (e.g. `/buy/lucknow/5-bhk/villa`, `/buy/mumbai?priceMax=1`). A city's plain search page
+  (`/rent/navi-mumbai`) stays **200** even when empty; `sort`, `view` and `page` are not filters.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
