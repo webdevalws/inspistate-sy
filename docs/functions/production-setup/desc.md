@@ -70,5 +70,12 @@ reference data for an empty production database, Cloudflare bindings, deployment
   assets are limited to 25 MiB per file and `modern_building.mp4` is 20.4 MB; consider serving the videos from
   R2 or Cloudflare Stream, or compressing them.
 
+## Dev cache (item 74)
+- `astro.config.mjs`: only `astro dev` uses `node_modules/.vite`; build / check / sync use `node_modules/.vite-build`,
+  so a build can't overwrite or mix the dev server's pre-bundled dependencies (that broke islands in dev with
+  `_jsxDEV is not a function` and 404s on `.vite/deps/leaflet.js`). `optimizeDeps.include: ['leaflet']` pre-bundles
+  Leaflet, which the map islands load with a dynamic `import()` the start-up scan can't see. README and DEPLOY.md say
+  what to do if islands still break: stop dev, delete `node_modules/.vite`, restart.
+
 ## Files
-- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`, `.github/workflows/ci.yml`
+- `.dev.vars.example`, `scripts/doctor.ts`, `package.json` (`doctor`, `db:reference:*`), `src/lib/startup.ts`, `db/build-reference.ts`, `db/reference.sql`, `wrangler.jsonc`, `DEPLOY.md`, `.github/workflows/ci.yml`, `astro.config.mjs`

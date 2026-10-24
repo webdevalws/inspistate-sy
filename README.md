@@ -32,6 +32,11 @@ DEV_SHOW_OTP=1
 Phone login needs one of `TEST_OTP`, `DEV_SHOW_OTP` (local) or `SMS_WEBHOOK_URL` (production); without
 them the login dialog says "Login by SMS is not configured yet". See `docs/functions/login/desc.md`.
 
+> **Dev server tips.** Don't run `npm run build` (or `astro check`) while `npm run dev` is running. Builds now use
+> their own Vite cache (`node_modules/.vite-build`), but if islands ever break in dev — a form or map that doesn't
+> appear, or console errors like `_jsxDEV is not a function` / `Failed to fetch dynamically imported module …/.vite/deps/…`
+> — stop the dev server, delete `node_modules/.vite` and run `npm run dev` again.
+
 ## Database
 
 | Command | Where | What it does |

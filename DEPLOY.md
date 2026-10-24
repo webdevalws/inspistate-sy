@@ -82,6 +82,12 @@ no placeholder ids. Fix anything marked ❌ (each line says how).
 
 ---
 
+> **Local dev note:** don't run `npm run build` while `npm run dev` is running. If islands break in dev (missing forms or
+> maps, `_jsxDEV is not a function`, 404s on `/node_modules/.vite/deps/…`), stop the dev server, delete
+> `node_modules/.vite` and start it again. Production builds are not affected.
+
+---
+
 ## Updating
 
 ```sh
