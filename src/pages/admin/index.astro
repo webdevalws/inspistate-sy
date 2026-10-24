@@ -8,6 +8,7 @@ import { ORDER_STATUSES, recentOrders } from '../../lib/orders';
 import { safeNext } from '../../lib/redirect';
 import { recentAdminActions } from '../../lib/audit';
 import { recentForumPosts } from '../../lib/forum';
+import { subscribers } from '../../lib/newsletter';
 
 // ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
 const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
@@ -16,7 +17,7 @@ const done = Astro.url.searchParams.get('done');
 const { results: pendingPlatform } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
 const { results: pendingReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
 const orders = await recentOrders(100);
-const [audit, forumPosts] = await Promise.all([recentAdminActions(30), recentForumPosts(40)]);
+const [audit, forumPosts, news] = await Promise.all([recentAdminActions(30), recentForumPosts(40), subscribers(50)]);
 const { results: planRequests } = await env.DB.prepare(`SELECT s.id, s.plan, s.amount, s.created_at, u.name, u.phone, u.company FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'requested' ORDER BY s.id`).all<{ id: number; plan: string; amount: number; created_at: string; name: string | null; phone: string; company: string | null }>();
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 ---
@@ -175,6 +176,22 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
           </div>
         ))}
       </div>
+    </section>
+
+    <section id="newsletter" class="mt-12">
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <h2 class="section-title">Newsletter subscribers ({news.total})</h2>
+        {news.total > 0 && <a href="/api/admin/newsletter.csv" class="btn-ghost py-2" download>Export CSV</a>}
+      </div>
+      {news.total === 0 ? <p class="text-slate-500">No subscribers yet.</p> : (
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table class="w-full min-w-[420px] text-sm">
+            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Email</th><th class="px-4 py-3">Subscribed</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">{news.list.map((n) => <tr><td class="px-4 py-3">{n.email}</td><td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(n.created_at)}</td></tr>)}</tbody>
+          </table>
+          {news.total > news.list.length && <p class="px-4 py-2 text-xs text-slate-500">Showing the newest {news.list.length}; the CSV has all {news.total}.</p>}
+        </div>
+      )}
     </section>
 
     <section id="audit" class="mt-12">

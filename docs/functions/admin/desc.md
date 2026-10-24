@@ -31,6 +31,11 @@ branch) audit admin actions.
   the table's CHECK constraint; `/api/admin/orders/{id}`). Changes are audited as `order.status`
   ("order #12: awaiting_payment → in_progress").
 
+## Newsletter (item 62)
+- **Newsletter subscribers** section: total, the newest 50, and **Export CSV** (`/api/admin/newsletter.csv`,
+  all subscribers, `email,subscribed_at`). Cells that start with = + - @ are prefixed with ' so spreadsheets
+  don't run them as formulas. Exports are audited (`newsletter.export`).
+
 ## Files
 - `src/pages/admin/index.astro`, `src/pages/api/admin/*`, `src/middleware.ts`
 - `migrations/0013_admin_audit.sql`
