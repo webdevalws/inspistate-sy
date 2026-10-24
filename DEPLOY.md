@@ -40,8 +40,26 @@ npx wrangler secret put SMS_WEBHOOK_URL    # required — your SMS gateway (logi
 npx wrangler secret put ANTHROPIC_API_KEY  # optional — Vastu automatic room detection
 npx wrangler secret put PUBLIC_HELPLINE    # optional
 npx wrangler secret put PUBLIC_WHATSAPP    # optional
+npx wrangler secret put GOOGLE_CLIENT_ID      # optional — "Continue with Google" (step 2b)
+npx wrangler secret put GOOGLE_CLIENT_SECRET  # optional — set both or neither
 ```
 Do **not** set `TEST_OTP` or `DEV_SHOW_OTP` in production (built Workers ignore them anyway).
+
+### 2b. "Continue with Google" (optional)
+Without `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` the button is hidden and phone login works as before.
+1. Google Cloud Console → **APIs & Services → Credentials → Create credentials → OAuth client ID**, type
+   **Web application**, in the company's Google Cloud project (not a personal test client).
+2. **Authorised redirect URI:** `https://<your domain>/api/auth/google/callback` — exactly, with https and no trailing
+   slash (add one per domain, e.g. also `https://www.<your domain>/…` if both serve the site). Authorised JavaScript
+   origins aren't needed (the flow is server-side).
+3. **OAuth consent screen:** app name InspiState, support email, logo, links to `/privacy` and `/terms`, authorised
+   domain = your domain; scopes **openid, email, profile** only (no sensitive scopes, so no Google review is needed
+   for them). Then **Publish app** (Testing → In production). In Testing mode only listed test users can sign in and
+   their logins expire after 7 days.
+4. Set the two secrets (step 2) and deploy. Check: the login page shows **Continue with Google**; sign in with a
+   Google account; `/admin/users` shows it with login method **Google**.
+5. Rotating the secret: create a new secret in the console, `npx wrangler secret put GOOGLE_CLIENT_SECRET`, deploy,
+   then delete the old one. Logins in progress at that moment (10 minutes) fail once and can simply be retried.
 
 ### 3. Create the tables
 ```sh
@@ -74,7 +92,7 @@ no placeholder ids. Fix anything marked ❌ (each line says how).
 ### 7. Verify in the browser (5 minutes)
 1. Open the site: home page, a city page (`/city/mumbai`), a search (`/buy/mumbai`, also `?view=map`).
    With reference data only, searches show the normal "no listings" state — that is expected.
-2. Log in with your phone: the SMS code arrives.
+2. Log in with your phone: the SMS code arrives. If Google login is set up, also try **Continue with Google**.
 3. Post a test property with a photo; it shows "submitted for review".
 4. Open `/admin` (any username + `ADMIN_PASSWORD`): approve the test listing, then check it appears in search and
    under **Recent admin actions**. Delete it from your account afterwards.

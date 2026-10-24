@@ -126,6 +126,9 @@ endpoints are 404 and the button is hidden (`googleEnabled()` in `src/lib/google
 - All runtime settings, with which are required in production, are listed and explained in
   `.dev.vars.example` (item 64). For login: `SMS_WEBHOOK_URL` (required in production), `TEST_OTP` and
   `DEV_SHOW_OTP` (dev server only; ignored by built Workers).
+- Google login (optional, item 102): `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (both or neither). Local redirect URI
+  `http://localhost:4321/api/auth/google/callback`; production setup (redirect URI, `wrangler secret put`, publishing
+  the consent screen) is in DEPLOY.md step 2b.
 
 ## Files
 - `src/components/islands/AuthFlow.tsx` — the three steps (shared by dialog and page)
