@@ -68,8 +68,9 @@ Filtered, sorted, paginated listings with SEO facet URLs.
   Navi Mumbai, not Mumbai. Every city list (city picker, header menus, footer,
   home city strip and "Popular cities", search box city menu, "Our cities" links, the 404 page, near me)
   reads the `cities` table, so a new city appears everywhere automatically. The home page's market-insight
-  and locality tabs show the first 8 cities plus **every** later city that has projects — today
-  Mumbai…Chennai plus Lucknow and Navi Mumbai (10 tabs).
+  and locality tabs show the first 8 cities plus every city added **after the original ten** demo cities
+  that has projects (`ORIGINAL_CITIES = 10` in `src/pages/index.astro`) — today Mumbai…Chennai plus Lucknow
+  and Navi Mumbai (10 tabs; Thane and Kolkata are not tabs).
 
 ## PG / co-living (item 49)
 - **Type:** `PG` (shown as "PG / Co-living", `typeLabel` in `src/lib/search.ts`), residential and **rent only**; BHK 0,
