@@ -9,6 +9,7 @@ import { safeNext } from '../../lib/redirect';
 import { recentAdminActions } from '../../lib/audit';
 import { recentForumPosts } from '../../lib/forum';
 import { subscribers } from '../../lib/newsletter';
+import { userCounts } from '../../lib/admin-users';
 
 // ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
 const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
@@ -17,7 +18,7 @@ const done = Astro.url.searchParams.get('done');
 const { results: pendingPlatform } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
 const { results: pendingReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
 const orders = await recentOrders(100);
-const [audit, forumPosts, news] = await Promise.all([recentAdminActions(30), recentForumPosts(40), subscribers(50)]);
+const [audit, forumPosts, news, users] = await Promise.all([recentAdminActions(30), recentForumPosts(40), subscribers(50), userCounts()]);
 const { results: planRequests } = await env.DB.prepare(`SELECT s.id, s.plan, s.amount, s.created_at, u.name, u.phone, u.company FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'requested' ORDER BY s.id`).all<{ id: number; plan: string; amount: number; created_at: string; name: string | null; phone: string; company: string | null }>();
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 ---
@@ -31,6 +32,18 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
         <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="text-3xl font-extrabold">{v}</dd></div>
       ))}
     </dl>
+
+    <section id="users" class="mt-10">
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <h2 class="section-title">Users ({users.all})</h2>
+        <a href="/admin/users" class="btn-ghost py-2">Manage users</a>
+      </div>
+      <div class="flex flex-wrap gap-2" aria-label="Users by role">
+        {([['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']] as const).map(([k, l]) => (
+          <a href={`/admin/users?role=${k}`} class="pill border border-slate-200 bg-white">{l} · {users[k]}</a>
+        ))}
+      </div>
+    </section>
 
     <section id="subscriptions" class="mt-10">
       <h2 class="section-title mb-4">Agent plan requests</h2>

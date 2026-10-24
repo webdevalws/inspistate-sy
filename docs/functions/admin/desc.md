@@ -22,6 +22,14 @@ branch) audit admin actions.
   `plan.activate|cancel` (and, below, order status and forum moderation).
 - `/admin` → **Recent admin actions**: the last 30 (time, action, target, IP).
 
+## Users (items 93–97)
+- `/admin` → **Users**: total accounts, counts by role (Buyers, Sellers, Agents, Not registered) linking to the
+  filtered list, and **Manage users**.
+- `/admin/users` (item 93): every account, newest first, 25 per page (`Pagination`). Search by name (contains)
+  or phone (3+ digits, contains); filter by role. Columns: name (→ detail page), full phone, role, city, agency
+  (agents), plan (active plan, else Free; "requested" when a plan request waits), joined date, listings (not
+  counting owner-deleted ones) and enquiries (leads the user sent). Queries in `src/lib/admin-users.ts`.
+
 ## Forum moderation
 - **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).
 
