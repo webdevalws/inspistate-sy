@@ -4,6 +4,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Photo from '../../components/Photo.astro';
 import ListingCard from '../../components/ListingCard.astro';
 import EnquiryForm from '../../components/islands/EnquiryForm';
+import LeadDialog from '../../components/islands/LeadDialog';
 import EmiCalculator from '../../components/islands/EmiCalculator';
 import ShortlistButton from '../../components/islands/ShortlistButton';
 import { getListing, getRefs, getSimilarListings } from '../../lib/repo';
@@ -131,6 +132,12 @@ const [main, ...rest] = l.photos;
             </div>
           </div>
           {isPending ? <p class="text-sm text-slate-500">Buyers can contact you once the listing is approved.</p> : <EnquiryForm client:visible subject={title} listingId={l.id} contactName={l.contactName} compact />}
+          {!isPending && l.purpose === 'buy' && (
+            <div class="mt-3 border-t border-slate-100 pt-3">
+              <LeadDialog client:visible kind="booking" label="Request to book" subject={title} listingId={l.id} className="btn-ghost w-full" />
+              <p class="mt-1.5 text-xs text-slate-500">A request, not a payment — our team calls to confirm.</p>
+            </div>
+          )}
         </div>
       </aside>
     </div>

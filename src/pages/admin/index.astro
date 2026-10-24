@@ -1,13 +1,15 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Photo from '../../components/Photo.astro';
-import { adminCounts, getRefs, listingsByStatus, recentLeads } from '../../lib/repo';
+import { adminCounts, getRefs, LEAD_KINDS, listingsByStatus, recentLeads, type LeadKind } from '../../lib/repo';
 import { listingPrice, listingTitle } from '../../lib/listing';
 import { env } from 'cloudflare:workers';
 import { recentOrders } from '../../lib/orders';
 import { safeNext } from '../../lib/redirect';
 
-const [refs, counts, pending, leads] = await Promise.all([getRefs(), adminCounts(), listingsByStatus('pending', 50), recentLeads(100)]);
+// ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
+const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
+const [refs, counts, pending, leads] = await Promise.all([getRefs(), adminCounts(), listingsByStatus('pending', 50), recentLeads(100, leadKind)]);
 const done = Astro.url.searchParams.get('done');
 const { results: pendingPlatform } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
 const { results: pendingReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
@@ -119,7 +121,12 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
     </section>
 
     <section class="mt-12">
-      <h2 class="section-title mb-4">Recent enquiries</h2>
+      <h2 id="leads" class="section-title mb-4 scroll-mt-28">Recent enquiries</h2>
+      <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by type">
+        {[['', 'All'], ...LEAD_KINDS.map((k) => [k, k.replace('-', ' ')])].map(([k, l]) => (
+          <a href={k ? `/admin?leads=${k}#leads` : '/admin#leads'} class:list={['pill border border-slate-200 bg-white capitalize', (leadKind ?? '') === k && 'pill-active']} aria-current={(leadKind ?? '') === k ? 'true' : undefined}>{l}</a>
+        ))}
+      </div>
       <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table class="w-full min-w-[720px] text-sm">
           <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">

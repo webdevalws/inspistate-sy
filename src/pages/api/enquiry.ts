@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { createLead, getRefs, LEAD_KINDS, listingContact, REFERRAL_NEEDS, type LeadKind } from '../../lib/repo';
+import { createLead, getListing, getRefs, LEAD_KINDS, listingContact, REFERRAL_NEEDS, type LeadKind } from '../../lib/repo';
 import { guard, overDailyLimit, tooManyToday } from '../../lib/limits';
 import { safeNext } from '../../lib/redirect';
 import { rememberBrochureLead } from '../../lib/brochure';
@@ -53,6 +53,18 @@ export const POST: APIRoute = async (ctx) => {
     if (await overDailyLimit('view-number', `user:${locals.user.id}`, VIEW_NUMBER_PER_USER_PER_DAY)) return tooManyToday();
   }
   const projectId = optId(body.projectId);
+  // Request to book: a request for a call and a visit, never a payment. Needs a project or a sale listing
+  // and a visit date from today to 90 days ahead; the preferred unit / budget and the date go in the subject.
+  if (kind === 'booking') {
+    if (!projectId && !listingId) return Response.json({ error: 'Choose a project or property.' }, { status: 422 });
+    if (listingId && (await getListing(listingId))?.purpose !== 'buy') return Response.json({ error: 'Only properties for sale can be booked.' }, { status: 422 });
+    const visit = String(body.visitDate ?? '');
+    const today = new Date().toISOString().slice(0, 10);
+    const last = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(visit) || visit < today || visit > last) return Response.json({ error: 'Choose a visit date within the next 90 days.' }, { status: 422 });
+    const unit = String(body.unit ?? '').trim().slice(0, 80);
+    subject = `Booking request: ${subject}${unit ? ` · ${unit}` : ''} · visit ${visit}`.slice(0, 200);
+  }
   const id = await createLead({
     name, phone, email: email || null, subject, page, listingId, projectId, kind, userId: locals.user?.id ?? null,
   });

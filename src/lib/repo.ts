@@ -346,7 +346,7 @@ export async function countProjectsByBuilder(): Promise<Map<string, number>> {
 
 // ---------- writes ----------
 
-export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat', 'referral'] as const;
+export const LEAD_KINDS = ['enquiry', 'callback', 'view-number', 'brochure', 'service', 'chat', 'referral', 'booking'] as const;
 /** What a referred friend wants to do (/refer). */
 export const REFERRAL_NEEDS = { buy: 'buy a home', sell: 'sell a property', rent: 'rent a home', 'let-out': 'rent out a property' } as const;
 export type LeadKind = (typeof LEAD_KINDS)[number];
@@ -439,12 +439,13 @@ export async function closeListing(id: number, as: ClosedAs): Promise<boolean> {
 
 // ---------- admin ----------
 
-export async function recentLeads(limit = 100): Promise<(Lead & { listingTitle: string | null; projectName: string | null; kind: string })[]> {
+/** Newest leads, optionally of one kind (admin filter). */
+export async function recentLeads(limit = 100, kind?: LeadKind): Promise<(Lead & { listingTitle: string | null; projectName: string | null; kind: string })[]> {
   const { results } = await db()
     .prepare(`SELECT ld.*, p.name AS project_name, l.type AS l_type, l.bhk AS l_bhk, l.locality_slug AS l_loc
       FROM leads ld LEFT JOIN projects p ON p.id = ld.project_id LEFT JOIN listings l ON l.id = ld.listing_id
-      ORDER BY ld.id DESC LIMIT ?`)
-    .bind(limit)
+      ${kind ? 'WHERE ld.kind = ?' : ''} ORDER BY ld.id DESC LIMIT ?`)
+    .bind(...(kind ? [kind] : []), limit)
     .all<Row>();
   return results.map((r) => ({
     id: r.id as number, name: r.name as string, phone: r.phone as string, email: (r.email as string) ?? null,
