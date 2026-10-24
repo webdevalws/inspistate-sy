@@ -43,7 +43,7 @@ const socials: [string, string][] = [
         <a href={`/buy/${c0}`} class="ed-btn ed-btn-sand">Explore homes <span aria-hidden="true">→</span></a>
         <a href="/post-property" class="ed-btn ed-btn-ghost-light">Post property free</a>
       </div>
-      <p class="ed-label mt-10 text-sand-50/55"><span class="bracket"></span>Market notes · monthly</p>
+      <p class="ed-label mt-10 text-sand-50/55">Market notes · monthly</p>
       <div class="mt-3"><Newsletter client:visible back={newsletterBack} result={newsletterResult} /></div>
       <ul class="mt-6 flex gap-2">
         {socials.map(([n, d]) => (
@@ -59,12 +59,12 @@ const socials: [string, string][] = [
     <nav class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:col-span-8" aria-label="Footer">
       {cols.map(([title, links]) => (
         <div>
-          <h3 class="ed-label !text-sand-50/55"><span class="bracket"></span>{title}</h3>
+          <h3 class="ed-label !text-sand-50/55">{title}</h3>
           <ul class="mt-5 space-y-2.5 text-[13px]">{links.map(([l, h]) => <li><a href={h} class="nav-line text-sand-50/70 transition hover:text-sand-50">{l}</a></li>)}</ul>
         </div>
       ))}
       <div>
-        <h3 class="ed-label !text-sand-50/55"><span class="bracket"></span>Popular Cities</h3>
+        <h3 class="ed-label !text-sand-50/55">Popular Cities</h3>
         <ul class="mt-5 space-y-2.5 text-[13px]">{cities.map((c) => <li><a href={`/city/${c.slug}`} class="nav-line text-sand-50/70 transition hover:text-sand-50">{c.name}</a></li>)}</ul>
       </div>
     </nav>

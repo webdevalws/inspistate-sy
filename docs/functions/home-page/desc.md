@@ -6,7 +6,7 @@
 The landing page. A full-screen "layered depth" hero shows a giant INSPISTATE wordmark sitting
 *behind* a cut-out of a residential tower, with live platform stats, the headline, CTAs and a
 short excerpt overlaid. Below it the whole page uses one editorial system (sand bands alternating with
-espresso bands, hairline borders, mono bracket labels, wide display headings):
+espresso bands, hairline borders, mono uppercase labels, wide display headings):
 1. Search dock overlapping the hero, then a scrolling city marquee (pauses on hover).
 2. About — photo collage + statement heading + 4 live stats + CTAs.
 3. Curated collections — 6-tile bento (exactly fills 4×3 / 2×N) + "Also explore" chips.
@@ -70,7 +70,7 @@ search form puts city + Search on one row under the query field.
   `violet`/`purple` = clay, `blue`/`sky`/`indigo` = olive-taupe; `canvas` = #F7F4EE. Emerald/rose are
   untouched (price up/down). Inline chart colours were moved to the same palette.
 - **Tokens:** `--color-sand-50/100/200`, `--font-display` (Archivo, wide axis), `--font-mono`
-  (DM Mono) in `global.css`; helpers `.hero-*`, `.bracket`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
+  (DM Mono) in `global.css`; helpers `.hero-*`, `.warm-tone`, `.nav-line`, `.ed-label`, `.ed-link`,
   `.ed-btn(-sand|-dark|-ghost-light|-ghost-dark)`, `.ed-rail` (snap rail → grid at lg, `--cols`), `.ed-marquee`.
 
 ## Data loading (item 79)
