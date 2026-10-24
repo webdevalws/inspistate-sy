@@ -35,3 +35,31 @@ export async function createQuestion(userId: number, author: string, citySlug: s
 export async function createAnswer(questionId: number, userId: number, author: string, body: string) {
   await db().prepare('INSERT INTO forum_answers (question_id, user_id, author, body) VALUES (?, ?, ?, ?)').bind(questionId, userId, author, body).run();
 }
+
+// ---------- moderation (admin) ----------
+
+export type ForumKind = 'question' | 'answer';
+export interface ForumPost { kind: ForumKind; id: number; questionId: number; title: string; body: string; author: string; status: 'published' | 'hidden'; createdAt: string }
+
+/** Newest questions and answers, published or hidden, for /admin. */
+export async function recentForumPosts(limit = 40): Promise<ForumPost[]> {
+  const { results } = await db()
+    .prepare(`SELECT * FROM (
+        SELECT 'question' AS kind, id, id AS question_id, title, body, author, status, created_at FROM forum_questions
+        UNION ALL
+        SELECT 'answer', fa.id, fa.question_id, fq.title, fa.body, fa.author, fa.status, fa.created_at FROM forum_answers fa JOIN forum_questions fq ON fq.id = fa.question_id
+      ) ORDER BY created_at DESC LIMIT ?`)
+    .bind(limit)
+    .all<Record<string, unknown>>();
+  return results.map((r) => ({
+    kind: r.kind as ForumKind, id: r.id as number, questionId: r.question_id as number, title: r.title as string, body: r.body as string,
+    author: r.author as string, status: r.status as ForumPost['status'], createdAt: r.created_at as string,
+  }));
+}
+
+/** Hides or shows a question or an answer. Hidden posts disappear from every public page. */
+export async function setForumStatus(kind: ForumKind, id: number, status: 'published' | 'hidden'): Promise<boolean> {
+  const table = kind === 'question' ? 'forum_questions' : 'forum_answers';
+  const r = await db().prepare(`UPDATE ${table} SET status = ? WHERE id = ?`).bind(status, id).run();
+  return (r.meta.changes ?? 0) > 0;
+}

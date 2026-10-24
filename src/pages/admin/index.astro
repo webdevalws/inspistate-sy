@@ -7,6 +7,7 @@ import { env } from 'cloudflare:workers';
 import { recentOrders } from '../../lib/orders';
 import { safeNext } from '../../lib/redirect';
 import { recentAdminActions } from '../../lib/audit';
+import { recentForumPosts } from '../../lib/forum';
 
 // ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
 const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
@@ -15,7 +16,7 @@ const done = Astro.url.searchParams.get('done');
 const { results: pendingPlatform } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
 const { results: pendingReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
 const orders = await recentOrders(100);
-const audit = await recentAdminActions(30);
+const [audit, forumPosts] = await Promise.all([recentAdminActions(30), recentForumPosts(40)]);
 const { results: planRequests } = await env.DB.prepare(`SELECT s.id, s.plan, s.amount, s.created_at, u.name, u.phone, u.company FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'requested' ORDER BY s.id`).all<{ id: number; plan: string; amount: number; created_at: string; name: string | null; phone: string; company: string | null }>();
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 ---
@@ -147,6 +148,25 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
             {leads.length === 0 && <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No enquiries yet.</td></tr>}
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="forum" class="mt-12">
+      <h2 class="section-title mb-4">Forum posts</h2>
+      {forumPosts.length === 0 && <p class="text-slate-500">No forum posts yet.</p>}
+      <div class="space-y-3">
+        {forumPosts.map((p) => (
+          <div class:list={['card flex flex-col gap-3 p-4 sm:flex-row sm:items-start', p.status === 'hidden' && 'opacity-60']}>
+            <div class="flex-1">
+              <p class="font-semibold"><span class="chip mr-1">{p.kind}</span>{p.status === 'hidden' && <span class="chip mr-1">hidden</span>}{p.kind === 'question' ? p.title : `Re: ${p.title}`} <span class="font-normal text-slate-500">by {p.author}, {fmtTime(p.createdAt)}</span></p>
+              <p class="mt-1 line-clamp-2 text-sm text-slate-700">{p.body}</p>
+              {p.status === 'published' && <a href={`/forum/${p.questionId}`} class="text-xs text-brand-700 hover:underline">View on site</a>}
+            </div>
+            <form method="post" action={`/api/admin/forum/${p.kind}/${p.id}`}>
+              {p.status === 'published' ? <button name="action" value="hide" class="btn-ghost py-2">Hide</button> : <button name="action" value="unhide" class="btn-primary py-2">Unhide</button>}
+            </form>
+          </div>
+        ))}
       </div>
     </section>
 

@@ -22,6 +22,9 @@ branch) audit admin actions.
   `plan.activate|cancel` (and, below, order status and forum moderation).
 - `/admin` → **Recent admin actions**: the last 30 (time, action, target, IP).
 
+## Forum moderation
+- **Forum posts** section: Hide / Unhide questions and answers (see [forum](../forum/desc.md)).
+
 ## Files
 - `src/pages/admin/index.astro`, `src/pages/api/admin/*`, `src/middleware.ts`
 - `migrations/0013_admin_audit.sql`
