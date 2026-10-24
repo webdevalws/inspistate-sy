@@ -23,8 +23,13 @@ Full project dossier.
 - **Demo data:** 30 generated projects (ids 1001–1030) plus 3 hand-written Lucknow projects (ids
   1031–1033: Ganga Gomti Heights in Gomti Nagar, under construction; Meridian Golf Vista in Sushant Golf
   City, new launch; Vistaar Awadh Residency in Indira Nagar, ready to move), with existing fictional
-  builders and RERA numbers marked `UPRERA-DEMO-…`. Their transactions and reviews are generated after
-  all the others, so the rest of the seed is unchanged.
+  builders and RERA numbers marked `UPRERA-DEMO-…`, plus 3 hand-written Navi Mumbai projects (ids
+  1034–1036: Sahyadri Skyline in Kharghar, under construction; Meridian Bayview in Vashi, ready to move;
+  Aravalli Greens in Panvel, new launch; `MAHARERA-DEMO-NM-…`). Their transactions and reviews are
+  generated after all the others (Navi Mumbai after Lucknow), so the rest of the seed is unchanged.
+- **Request to book:** a "Request to book" button in the action row and the contact card opens the lead
+  dialog with the project's units, a visit date and a "request, not a payment" note; saved as a `booking`
+  lead (see [leads](../leads/desc.md)). Sale listing pages have the same button in their contact card.
 - **Brochure (lead-gated on the server):** "Download Brochure" opens the lead dialog; after a successful
   `brochure` enquiry, `/api/enquiry` sets the HttpOnly `is_brochures` cookie (`<leadId>.<sig>`, sig =
   SHA-256 of the lead id and the visitor's phone; last 20 kept, 30 days) and the dialog opens

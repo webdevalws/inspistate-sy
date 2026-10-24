@@ -10,10 +10,11 @@ import FilterPanel from '../../../components/islands/FilterPanel';
 import SearchBox from '../../../components/islands/SearchBox';
 import SaveSearch from '../../../components/islands/SaveSearch';
 import ChatWidget from '../../../components/islands/ChatWidget';
-import { getProjects, getRefs, marketStats, searchListings } from '../../../lib/repo';
+import SearchMap from '../../../components/islands/SearchMap';
+import { getProjects, getRefs, marketStats, searchListings, searchLocalityPins } from '../../../lib/repo';
 import { searchBoxProps } from '../../../lib/searchProps';
-import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, foldBhkSegments, parseFacets, parseFilters, type Mode } from '../../../lib/search';
-import { formatNumber, formatPrice, formatRate, formatRent, plural } from '../../../lib/format';
+import { MODES, SORTS, BUY_BUDGETS, RENT_BUDGETS, BUDGET_BANDS, facetPath, foldBhkSegments, parseFacets, parseFilters, typeLabel, type Mode } from '../../../lib/search';
+import { formatNumber, formatPrice, formatRange, formatRate, formatRent, plural } from '../../../lib/format';
 import { builderUrl, searchUrl } from '../../../lib/urls';
 import { parseQuery } from '../../../lib/nlsearch';
 
@@ -34,15 +35,20 @@ if (q) return Astro.redirect(parseQuery(`${q.slice(0, 300)} ${segments.join(' ')
 // 6–9 BHK URLs have no option of their own: send them (301) to the "5+ BHK" URL, keeping everything else.
 const folded = foldBhkSegments(segments);
 if (folded) return Astro.redirect(`${searchUrl(m, city.slug, ...folded)}${Astro.url.search}`, 301);
+// PGs are rent-only: /buy/{city}/pg (or /commercial/…/pg) moves to the same facets under /rent.
+if (m !== 'rent' && segments.includes('pg')) return Astro.redirect(`${searchUrl('rent', city.slug, ...segments)}${Astro.url.search}`, 301);
 const facetFilters = parseFacets(segments, localities);
 if (!facetFilters) return new Response(null, { status: 404 });
 const filters = parseFilters(Astro.url, facetFilters);
+// List or Map view (?view=map). Not a filter key, so the filter panel, sort and pagination keep it.
+const view = Astro.url.searchParams.get('view') === 'map' ? 'map' : 'list';
 
-const [{ items, total, page, pages }, stats, projects, sb] = await Promise.all([
+const [{ items, total, page, pages }, stats, projects, sb, pinRows] = await Promise.all([
   searchListings(m, city.slug, filters),
   marketStats(m, city.slug, filters.commercialPurpose),
   m === 'commercial' ? Promise.resolve([]) : getProjects({ citySlug: city.slug }),
   searchBoxProps(),
+  view === 'map' ? searchLocalityPins(m, city.slug, filters) : Promise.resolve([]),
 ]);
 
 const isRentish = m === 'rent' || (m === 'commercial' && filters.commercialPurpose === 'rent');
@@ -53,11 +59,23 @@ const budgets = (isRentish ? RENT_BUDGETS : BUY_BUDGETS).map((v) => ({ value: v,
 const singleLoc = filters.locality.length === 1 ? refs.locality(city.slug, filters.locality[0]) : undefined;
 const place = singleLoc ? `${singleLoc.name}, ${city.name}` : city.name;
 const bhkPrefix = filters.bhk.length === 1 ? `${filters.bhk[0]} BHK ` : '';
-const typePrefix = filters.type.length === 1 ? `${filters.type[0]}s ` : '';
+const typePrefix = filters.type.length === 1 ? (filters.type[0] === 'PG' ? 'PG / Co-living ' : `${filters.type[0]}s `) : '';
 const heading = bhkPrefix || typePrefix
   ? `${bhkPrefix}${typePrefix || 'Flats '}for ${m === 'rent' ? 'Rent' : 'Sale'} in ${place}`
   : MODES[m].heading(place);
-const isFiltered = Astro.url.search.replace(/[?&]page=\d+/, '').length > 0 || !!facets;
+const isFiltered = [...Astro.url.searchParams.keys()].some((k) => k !== 'page' && k !== 'view') || !!facets;
+
+// Map pins: one per locality with results; each links to that locality with the same filters (list view).
+const pinQuery = [...Astro.url.searchParams].filter(([k]) => !['locality', 'bhk', 'type', 'page', 'view'].includes(k));
+const noun = (n: number) => (m === 'commercial' ? (n === 1 ? '1 property' : `${formatNumber(n)} properties`) : plural(n, 'home'));
+const pins = pinRows.flatMap((r) => {
+  const l = refs.locality(city.slug, r.locality);
+  if (!l) return [];
+  const href = facetPath(searchUrl(m, city.slug), { locality: [l.slug], bhk: filters.bhk, type: filters.type }, new URLSearchParams(pinQuery));
+  return [{ name: l.name, lat: l.lat, lng: l.lng, count: r.n, range: formatRange(r.lo, r.hi, fmtBudget), href, cta: `View ${noun(r.n)} in ${l.name}` }];
+});
+// The List / Map toggle resubmits the current search (minus view and page) with or without view=map.
+const toggleParams = [...Astro.url.searchParams].filter(([k]) => k !== 'view' && k !== 'page');
 
 // Project cards are interleaved after every 4th listing on the first page, like a portal feed.
 const featuredProjects = page === 1 ? projects.filter((p) => !singleLoc || p.localitySlug === singleLoc.slug).slice(0, 2) : [];
@@ -76,7 +94,7 @@ const budgetHref = ([lo, hi]: readonly number[]) => `${searchUrl(m, city.slug)}?
 const faq = [
   { q: `How many properties are available ${m === 'rent' ? 'for rent' : 'for sale'} in ${city.name}?`, a: `InspiState currently lists ${plural(stats.count, 'property')} ${m === 'rent' ? 'for rent' : m === 'commercial' ? 'in the commercial segment' : 'for sale'} in ${city.name}, across ${localities.length} localities.` },
   { q: `What is the average ${isRentish ? 'rent' : 'price'} in ${city.name}?`, a: stats.count ? `The average works out to ${formatRate(stats.avgRate)}${isRentish ? ' per month' : ''}, with listings ranging from ${fmtBudget(stats.min)} to ${fmtBudget(stats.max)}.` : 'There are no listings yet.' },
-  { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${t.key} (${t.count})`).join(', ') + '.' },
+  { q: `What types of property are available in ${city.name}?`, a: stats.byType.map((t) => `${typeLabel(t.key)} (${t.count})`).join(', ') + '.' },
   { q: `Which are the top localities in ${city.name}?`, a: `${[...localities].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 4).map((l) => l.name).join(', ')} have seen the strongest price growth on InspiState.` },
   { q: `Which developers have projects in ${city.name}?`, a: developers.length ? `${developers.map((d) => d.name).join(', ')}.` : 'No developer projects are listed yet.' },
   { q: 'Are the listings verified?', a: 'Listings marked “Verified” have been reviewed and approved by our team before going live. Use the “Verified listings only” filter to see just those.' },
@@ -101,6 +119,11 @@ const faq = [
         <p class="text-sm text-slate-500">Showing {formatNumber(total)} of {formatNumber(stats.count)} listings</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+        <form method="get" class="inline-flex rounded-xl border border-slate-200 bg-white p-1 text-sm" aria-label="Results view">
+          {toggleParams.map(([k, v]) => <input type="hidden" name={k} value={v} />)}
+          <button type="submit" class:list={['pill py-1.5', view === 'list' && 'pill-active']} aria-pressed={view === 'list' ? 'true' : 'false'}>List</button>
+          <button type="submit" name="view" value="map" class:list={['pill py-1.5', view === 'map' && 'pill-active']} aria-pressed={view === 'map' ? 'true' : 'false'}>Map</button>
+        </form>
         <SaveSearch client:idle label={heading} loggedIn={!!Astro.locals.user} />
         <form method="get" class="flex items-center gap-2 text-sm" id="sort-form">
           {[...Astro.url.searchParams.entries()].filter(([k]) => k !== 'sort' && k !== 'page').map(([k, v]) => <input type="hidden" name={k} value={v} />)}
@@ -123,15 +146,20 @@ const faq = [
       <aside>
         <details class="card p-4 lg:hidden">
           <summary class="cursor-pointer font-semibold">Show filters</summary>
-          <div class="mt-4"><FilterPanel client:idle basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} /></div>
+          <div class="mt-4"><FilterPanel client:idle basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} isRent={m === 'rent'} localities={localities} budgets={budgets} /></div>
         </details>
         <div class="card sticky top-20 hidden max-h-[calc(100vh-6rem)] overflow-y-auto p-5 lg:block">
-          <FilterPanel client:load basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} localities={localities} budgets={budgets} />
+          <FilterPanel client:load basePath={searchUrl(m, city.slug)} initial={filters} isCommercial={m === 'commercial'} isRent={m === 'rent'} localities={localities} budgets={budgets} />
         </div>
       </aside>
 
       <div class="min-w-0">
-        {items.length ? (
+        {items.length && view === 'map' ? (
+          <div id="results">
+            <SearchMap client:only="react" pins={pins} center={[city.lat, city.lng]} />
+            <p class="mt-2 text-xs text-slate-500">Pins show localities, not exact addresses. Click a pin to see its homes.</p>
+          </div>
+        ) : items.length ? (
           <div class="space-y-4" id="results">
             {feed.map((f) => f.kind === 'listing' ? <ListingCard listing={items[f.i]} /> : (
               <div class="rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/50 p-3">
@@ -144,10 +172,10 @@ const faq = [
           <div class="card p-10 text-center">
             <p class="text-lg font-semibold">No listings match these filters</p>
             <p class="mt-1 text-sm text-slate-500">Try widening your budget or removing a filter.</p>
-            <a href={searchUrl(m, city.slug)} class="btn-primary mt-4">Clear all filters</a>
+            <a href={`${searchUrl(m, city.slug)}${view === 'map' ? '?view=map' : ''}`} class="btn-primary mt-4">Clear all filters</a>
           </div>
         )}
-        <Pagination page={page} pages={pages} url={Astro.url} />
+        {view === 'list' && <Pagination page={page} pages={pages} url={Astro.url} />}
       </div>
     </div>
 
@@ -166,7 +194,7 @@ const faq = [
           <div class="card p-6">
             <h2 class="text-lg font-bold">Types of property</h2>
             <ul class="mt-3 divide-y divide-slate-100 text-sm">
-              {stats.byType.map((t) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?type=${encodeURIComponent(t.key)}`} class="font-semibold text-brand-700 hover:underline">{t.key}</a><span class="text-slate-500">{t.count} · avg {fmtBudget(t.avg)}</span></li>)}
+              {stats.byType.map((t) => <li class="flex justify-between py-2"><a href={`${searchUrl(m, city.slug)}?type=${encodeURIComponent(t.key)}`} class="font-semibold text-brand-700 hover:underline">{typeLabel(t.key)}</a><span class="text-slate-500">{t.count} · avg {fmtBudget(t.avg)}</span></li>)}
             </ul>
           </div>
           {stats.byBhk.length > 0 && (

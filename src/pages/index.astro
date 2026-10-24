@@ -20,10 +20,10 @@ const { cities, builders } = refs;
 const [projects, statsFor, sb, totals, ins, mkt] = await Promise.all([
   getProjects({}, { orderBy: 'newest' }), cityStats(), searchBoxProps(), platformTotals(), homeInsights(), homeMarket(),
 ]);
-// Cities for the market-insight and locality tabs: the first 8, plus the most recently added city (last in
-// sort order — Lucknow today) when it has projects, since the insight charts need them.
-const newestCity = cities.length > 8 ? cities[cities.length - 1] : undefined;
-const topCities = [...cities.slice(0, 8), ...(newestCity && projects.some((p) => p.citySlug === newestCity.slug) ? [newestCity] : [])];
+// Cities for the market-insight and locality tabs: the first 8, plus every city added after the original ten
+// demo cities (Lucknow, Navi Mumbai…) that has projects, since the insight charts need them.
+const ORIGINAL_CITIES = 10;
+const topCities = [...cities.slice(0, 8), ...cities.slice(ORIGINAL_CITIES).filter((c) => projects.some((p) => p.citySlug === c.slug))];
 const pct = (a: number, b: number) => (a ? ((b - a) / a) * 100 : 0);
 
 // Market-insight series per city, all from our own data.

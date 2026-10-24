@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-type Kind = 'view-number' | 'callback' | 'brochure' | 'enquiry';
+type Kind = 'view-number' | 'callback' | 'brochure' | 'enquiry' | 'booking';
 type Contact = { name: string; phone: string | null; postedBy: string; helpline: string | null } | null;
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   /** Opened in a new tab after a successful brochure request. */
   successHref?: string;
   className?: string;
+  /** Request to book: unit choices for a project (a listing asks for a budget instead). */
+  units?: string[];
 }
 
 const TITLES: Record<Kind, string> = {
@@ -19,9 +21,13 @@ const TITLES: Record<Kind, string> = {
   callback: 'Request a call back',
   brochure: 'Download brochure',
   enquiry: 'Enquire now',
+  booking: 'Request to book',
 };
 
-export default function LeadDialog({ kind, label, subject, listingId, projectId, successHref, className = 'btn-ghost' }: Props) {
+/** Earliest and latest visit dates offered (today … 90 days), as YYYY-MM-DD. */
+const day = (plus: number) => new Date(Date.now() + plus * 86400000).toISOString().slice(0, 10);
+
+export default function LeadDialog({ kind, label, subject, listingId, projectId, successHref, className = 'btn-ghost', units }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<'form' | 'sending' | 'done'>('form');
@@ -78,6 +84,7 @@ export default function LeadDialog({ kind, label, subject, listingId, projectId,
               )}
               {kind === 'brochure' && <p className="rounded-xl bg-brand-50 p-4 text-brand-800">Your brochure has opened in a new tab. {successHref && <a href={successHref} target="_blank" rel="noopener" className="font-semibold underline">Open it again</a>}</p>}
               {(kind === 'callback' || kind === 'enquiry') && <p className="rounded-xl bg-brand-50 p-4 text-brand-800">Thanks! An advisor will call you shortly about <b>{subject}</b>.</p>}
+              {kind === 'booking' && <p className="rounded-xl bg-brand-50 p-4 text-brand-800">Booking request received for <b>{subject}</b>. Our team will call to confirm the details and your visit. No payment has been taken.</p>}
               <button onClick={() => setOpen(false)} className="btn-ghost w-full">Close</button>
             </div>
           ) : (
@@ -89,6 +96,17 @@ export default function LeadDialog({ kind, label, subject, listingId, projectId,
                 <input name="phone" required pattern="[6-9][0-9]{9}" title="10-digit Indian mobile number" className="input" placeholder="Mobile number" inputMode="tel" autoComplete="tel" />
               </div>
               <input name="email" type="email" className="input" placeholder="Email (optional)" autoComplete="email" />
+              {kind === 'booking' && (
+                <>
+                  {units?.length ? (
+                    <label className="block text-xs font-medium text-slate-600">Preferred unit<select name="unit" className="input mt-1" defaultValue=""><option value="">Any unit</option>{units.map((u) => <option key={u}>{u}</option>)}</select></label>
+                  ) : (
+                    <label className="block text-xs font-medium text-slate-600">Your budget<input name="unit" maxLength={60} className="input mt-1" placeholder="e.g. ₹1.2 Cr, or as listed" /></label>
+                  )}
+                  <label className="block text-xs font-medium text-slate-600">Preferred visit date<input name="visitDate" type="date" required min={day(0)} max={day(90)} className="input mt-1" /></label>
+                  <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">This is a request, not a booking. Our team will call to confirm; no payment is taken online.</p>
+                </>
+              )}
               <label className="flex items-start gap-2 text-xs text-slate-500">
                 <input type="checkbox" required defaultChecked className="mt-0.5 accent-brand-600" />I agree to be contacted by phone, SMS or WhatsApp.
               </label>
