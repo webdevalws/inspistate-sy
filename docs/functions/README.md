@@ -3,6 +3,7 @@
 Each function has a `desc.md` describing what it does, its inputs/outputs, how it works,
 the files that implement it, and what REA observed on the reference site. Update the
 `desc.md` in the same change as the code. Functions still to build are tracked in [GAPS.md](GAPS.md).
+The product overview is in [../SPEC.md](../SPEC.md) and the feature-by-feature status in [../FEATURES.md](../FEATURES.md).
 
 | Function | Area | Route |
 |---|---|---|

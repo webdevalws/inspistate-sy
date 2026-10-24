@@ -1,10 +1,11 @@
 # InspiState
 
-Real-estate portal for India — buy, rent, new projects and commercial — built with
-Astro + React islands + TypeScript + Tailwind, deployed on Cloudflare.
+Real-estate portal for India — buy, rent (incl. PG / co-living), new projects and commercial across 12 cities —
+built with Astro 7 + React 19 islands + TypeScript + Tailwind 4, deployed on Cloudflare Workers (D1, R2).
 
-**Status: Phase 2** — data in Cloudflare D1, photos in R2, enquiries and owner listings are saved,
-admin moderation at `/admin`. See [docs/SPEC.md](docs/SPEC.md) for the phase plan and
+**Status: Phase 1 complete** — search with map view, city hubs, listings and projects, accounts and owner
+listings, leads, tools and services, admin with audit trail. See [docs/SPEC.md](docs/SPEC.md) (what is built and
+what is next), [docs/FEATURES.md](docs/FEATURES.md) (feature by feature), [DEPLOY.md](DEPLOY.md) (production) and
 [docs/analysis/](docs/analysis/) for the reference-site study.
 
 ## Run locally
