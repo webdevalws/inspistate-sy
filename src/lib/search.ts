@@ -29,6 +29,10 @@ export interface Filters {
   areaMin?: number;
   areaMax?: number;
   commercialPurpose?: 'buy' | 'rent';
+  /** PG / co-living only (type PG): sharing, who it is for, food included. */
+  pgSharing: string[];
+  pgFor: string[];
+  pgFood: boolean;
   verified: boolean;
   managed?: boolean;
   sort: Sort;
@@ -41,14 +45,21 @@ const list = (v: string | null) => (v ? v.split(',').filter(Boolean).slice(0, 20
 const num = (v: string | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : undefined);
 
 const TYPE_SLUGS: Record<string, PropertyType> = {
-  apartment: 'Apartment', 'builder-floor': 'Builder Floor', villa: 'Villa', plot: 'Plot', office: 'Office', shop: 'Shop',
+  apartment: 'Apartment', 'builder-floor': 'Builder Floor', villa: 'Villa', plot: 'Plot', pg: 'PG', office: 'Office', shop: 'Shop',
 };
+
+/** Display name of a property type ("PG" is stored short and shown as "PG / Co-living"). */
+export const typeLabel = (type: string) => (type === 'PG' ? 'PG / Co-living' : type);
+
+/** PG / co-living options, stored values → labels. PGs are rent-only and residential. */
+export const PG_SHARING = { single: 'Single sharing', double: 'Double sharing', triple: 'Triple sharing' } as const;
+export const PG_FOR = { men: 'Men', women: 'Women', any: 'Anyone' } as const;
 
 /** Path slug for a property type ("Builder Floor" → "builder-floor"), the reverse of TYPE_SLUGS. */
 export const typeSlug = (type: string) => Object.keys(TYPE_SLUGS).find((s) => TYPE_SLUGS[s] === type);
 
 /** Query keys the filter panel owns; any others on the page (e.g. managed=1) are kept when filters change. */
-export const FILTER_KEYS = ['locality', 'bhk', 'type', 'furnishing', 'postedBy', 'possession', 'amenities', 'priceMin', 'priceMax', 'areaMin', 'areaMax', 'for', 'verified', 'sort', 'page', 'q'];
+export const FILTER_KEYS = ['locality', 'bhk', 'type', 'furnishing', 'postedBy', 'possession', 'amenities', 'sharing', 'pgFor', 'food', 'priceMin', 'priceMax', 'areaMin', 'areaMax', 'for', 'verified', 'sort', 'page', 'q'];
 
 /**
  * The URL for a set of filters: a single locality, BHK or type goes in the path (crawlable facet URLs such as
@@ -107,6 +118,9 @@ export function parseFilters(url: URL, facets: Partial<Filters>): Filters {
     areaMin: num(q.get('areaMin')),
     areaMax: num(q.get('areaMax')),
     commercialPurpose: purpose === 'buy' || purpose === 'rent' ? purpose : undefined,
+    pgSharing: list(q.get('sharing')).filter((v) => Object.hasOwn(PG_SHARING, v)),
+    pgFor: list(q.get('pgFor')).filter((v) => Object.hasOwn(PG_FOR, v)),
+    pgFood: q.get('food') === '1',
     verified: q.get('verified') === '1',
     managed: q.get('managed') === '1',
     sort: SORTS.some((s) => s.value === sort) ? sort : 'relevance',

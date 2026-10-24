@@ -4,12 +4,14 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Photo from '../../components/Photo.astro';
 import ListingCard from '../../components/ListingCard.astro';
 import EnquiryForm from '../../components/islands/EnquiryForm';
+import LeadDialog from '../../components/islands/LeadDialog';
 import EmiCalculator from '../../components/islands/EmiCalculator';
 import ShortlistButton from '../../components/islands/ShortlistButton';
 import { getListing, getRefs, getSimilarListings } from '../../lib/repo';
-import { daysSince, listingPrice, listingTitle } from '../../lib/listing';
+import { daysSince, listingPrice, listingTitle, pgFacts } from '../../lib/listing';
 import { formatNumber, formatRate, postedAgo } from '../../lib/format';
 import { searchUrl } from '../../lib/urls';
+import { typeLabel } from '../../lib/search';
 
 const id = Number(Astro.params.id);
 const l = Number.isInteger(id) ? await getListing(id, Astro.url.searchParams.get('token')) : undefined;
@@ -28,17 +30,18 @@ const similar = isPending ? [] : await getSimilarListings(l, 3);
 
 const facts = [
   ['Price', listingPrice(l)],
-  [l.purpose === 'buy' ? 'Rate' : 'Rent / sq.ft', l.purpose === 'buy' ? formatRate(rate) : `₹${rate.toFixed(1)}/sq.ft`],
-  ['Area', `${formatNumber(l.areaSqft)} sq.ft`],
+  ...(l.pg ? [] : [[l.purpose === 'buy' ? 'Rate' : 'Rent / sq.ft', l.purpose === 'buy' ? formatRate(rate) : `₹${rate.toFixed(1)}/sq.ft`]]),
+  ...(l.pg ? [['Sharing', pgFacts(l)[0]], ['For', pgFacts(l)[1].replace(/^For /, '').replace(/^./, (c) => c.toUpperCase())], ['Food', l.pg.food ? 'Included' : 'Not included']] : []),
+  [l.pg ? 'Room area' : 'Area', `${formatNumber(l.areaSqft)} sq.ft`],
   ...(l.bhk ? [['Configuration', `${l.bhk} BHK · ${l.bathrooms} bath`]] : []),
-  ['Type', l.type],
+  ['Type', typeLabel(l.type)],
   ...(l.type !== 'Plot' ? [['Furnishing', l.furnishing], ['Floor', l.totalFloors ? `${l.floor} of ${l.totalFloors}` : '—']] : []),
   ['Facing', l.facing],
   ['Possession', l.possession],
   ...(l.possession === 'Ready to Move' && l.type !== 'Plot' ? [['Age', l.ageYears ? `${l.ageYears} years` : 'New']] : []),
   ['Posted by', l.postedBy],
 ];
-const description = l.description ?? `This ${l.bhk ? `${l.bhk} BHK ` : ''}${l.type.toLowerCase()} in ${loc.name}, ${city.name} offers ${formatNumber(l.areaSqft)} sq.ft${l.type !== 'Plot' ? ` of ${l.furnishing.toLowerCase()} space` : ''} with ${l.facing.toLowerCase()} facing${l.totalFloors ? ` on floor ${l.floor} of ${l.totalFloors}` : ''}. ${l.possession === 'Ready to Move' ? 'It is ready to move in.' : 'It is under construction.'} ${loc.name} has seen ${loc.yoyGrowthPct}% price growth over the last year.`;
+const description = l.description ?? `This ${l.bhk ? `${l.bhk} BHK ` : ''}${l.pg ? 'PG / co-living' : l.type.toLowerCase()} in ${loc.name}, ${city.name} offers ${formatNumber(l.areaSqft)} sq.ft${l.type !== 'Plot' ? ` of ${l.furnishing.toLowerCase()} space` : ''} with ${l.facing.toLowerCase()} facing${l.totalFloors ? ` on floor ${l.floor} of ${l.totalFloors}` : ''}. ${l.possession === 'Ready to Move' ? 'It is ready to move in.' : 'It is under construction.'} ${loc.name} has seen ${loc.yoyGrowthPct}% price growth over the last year.`;
 const [main, ...rest] = l.photos;
 ---
 <Base title={`${title} — ${listingPrice(l)}`} description={description.slice(0, 300)}>
@@ -91,7 +94,7 @@ const [main, ...rest] = l.photos;
           </section>
         )}
 
-        <section class="card p-5">
+        {!l.pg && (<section class="card p-5">
           <h2 class="text-lg font-bold">Is this a fair price?</h2>
           <p class="mt-2 text-sm text-slate-600">
             This property is listed at {l.purpose === 'buy' ? formatRate(rate) : `₹${rate.toFixed(1)}/sq.ft per month`}, which is
@@ -102,7 +105,7 @@ const [main, ...rest] = l.photos;
             <div class="relative h-2" style={`left:${Math.max(2, Math.min(98, 50 + vs))}%`}><span class="absolute -top-1.5 h-5 w-1.5 -translate-x-1/2 rounded bg-slate-900"></span></div>
           </div>
           <div class="mt-1 flex justify-between text-xs text-slate-500"><span>Below market</span><span>Locality average</span><span>Above market</span></div>
-        </section>
+        </section>)}
 
         {l.purpose === 'buy' && (
           <section>
@@ -129,6 +132,12 @@ const [main, ...rest] = l.photos;
             </div>
           </div>
           {isPending ? <p class="text-sm text-slate-500">Buyers can contact you once the listing is approved.</p> : <EnquiryForm client:visible subject={title} listingId={l.id} contactName={l.contactName} compact />}
+          {!isPending && l.purpose === 'buy' && (
+            <div class="mt-3 border-t border-slate-100 pt-3">
+              <LeadDialog client:visible kind="booking" label="Request to book" subject={title} listingId={l.id} className="btn-ghost w-full" />
+              <p class="mt-1.5 text-xs text-slate-500">A request, not a payment — our team calls to confirm.</p>
+            </div>
+          )}
         </div>
       </aside>
     </div>

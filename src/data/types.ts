@@ -1,6 +1,8 @@
 export type Purpose = 'buy' | 'rent';
 export type Segment = 'residential' | 'commercial';
-export type PropertyType = 'Apartment' | 'Builder Floor' | 'Villa' | 'Plot' | 'Office' | 'Shop';
+export type PropertyType = 'Apartment' | 'Builder Floor' | 'Villa' | 'Plot' | 'PG' | 'Office' | 'Shop';
+export type PgSharing = 'single' | 'double' | 'triple';
+export type PgFor = 'men' | 'women' | 'any';
 export type Furnishing = 'Furnished' | 'Semi-Furnished' | 'Unfurnished';
 export type PostedBy = 'Owner' | 'Agent' | 'Builder';
 export type Possession = 'Ready to Move' | 'Under Construction';
@@ -114,6 +116,8 @@ export interface Listing {
   managed: boolean;
   depositMonths: number;
   availableFrom: string | null;
+  /** PG / co-living details (migration 0012); null for every other type. Price is the monthly rent per bed. */
+  pg: { sharing: PgSharing; for: PgFor; food: boolean } | null;
 }
 
 export interface Lead {

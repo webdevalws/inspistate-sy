@@ -32,6 +32,8 @@ const loc = refs.locality(p.citySlug, p.localitySlug)!;
 const builder = refs.builder(p.builderSlug)!;
 const [min, max] = [p.priceMin, p.priceMax];
 const sizes = p.units.map((u) => u.carpetSqft);
+// "Request to book" unit choices, e.g. "2 BHK Apartment · 640 sq.ft · ₹1.1 Cr".
+const bookUnits = [...new Set(p.units.map((u) => `${u.label} · ${formatNumber(u.carpetSqft)} sq.ft · ${formatPrice(u.price)}`))];
 const [cityProjects, projectListings, byBuilder, { reviews, summary }, transactions, builderProjects] = await Promise.all([
   getProjects({ citySlug: city.slug }),
   getProjectListings(p.id, 12),
@@ -123,6 +125,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
       <ShareButton client:idle title={p.name} />
       <LeadDialog client:idle kind="brochure" label="⤓ Download Brochure" subject={`Brochure — ${p.name}`} projectId={p.id} successHref={`${projectUrl(p)}/brochure`} />
       {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}, ${loc.name}`)}`} target="_blank" rel="noopener" class="btn border border-[#25D366] bg-white text-[#128C7E] hover:bg-[#25D366]/10">WhatsApp</a>}
+      <LeadDialog client:idle kind="booking" label="Request to book" subject={p.name} projectId={p.id} units={bookUnits} />
       <LeadDialog client:idle kind="callback" label="Request a Call Back" subject={p.name} projectId={p.id} className="btn-primary" />
     </div>
 
@@ -330,6 +333,10 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
         <div class="card sticky top-32 p-5" id="contact">
           <h2 class="text-lg font-bold">Interested in {p.name}?</h2>
           <div class="mt-3"><EnquiryForm client:visible subject={p.name} projectId={p.id} contactName={`${builder.name}'s sales team`} /></div>
+          <div class="mt-3 border-t border-slate-100 pt-3">
+            <LeadDialog client:visible kind="booking" label="Request to book" subject={p.name} projectId={p.id} units={bookUnits} className="btn-ghost w-full" />
+            <p class="mt-1.5 text-xs text-slate-500">A request, not a payment — our team calls to confirm.</p>
+          </div>
         </div>
       </aside>
     </div>

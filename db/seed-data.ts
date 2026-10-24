@@ -6,7 +6,7 @@ import type {
 } from '../src/data/types.ts';
 
 type SeedProject = Omit<Project, 'priceMin' | 'priceMax' | 'bhkLabel'> & { units: UnitConfig[] };
-type SeedListing = Omit<Listing, 'postedAt' | 'projectName' | 'projectSlug' | 'status' | 'photos' | 'description' | 'managed' | 'depositMonths' | 'availableFrom'> & { postedDaysAgo: number };
+type SeedListing = Omit<Listing, 'postedAt' | 'projectName' | 'projectSlug' | 'status' | 'photos' | 'description' | 'managed' | 'depositMonths' | 'availableFrom' | 'pg'> & { postedDaysAgo: number };
 
 function rng(seed: number) {
   let a = seed >>> 0;
@@ -57,7 +57,18 @@ const lucknowLocalities: Locality[] = [
   { slug: 'sushant-golf-city', name: 'Sushant Golf City', citySlug: 'lucknow', ratePerSqft: 6000, rentPerSqft: 15, yoyGrowthPct: 11.4, lat: 26.7745, lng: 80.9886 },
 ];
 
-export const cities: City[] = [...generatedCities, lucknow];
+// Navi Mumbai: hand-written like Lucknow. Real place names and coordinates; prices, people and descriptions are
+// fictional. Stamp duty 7% matches Thane (same Maharashtra rate with the metro cess).
+const naviMumbai: City = { slug: 'navi-mumbai', name: 'Navi Mumbai', state: 'Maharashtra', stampDutyPct: 7, lat: 19.0330, lng: 73.0297 };
+const naviMumbaiLocalities: Locality[] = [
+  { slug: 'vashi', name: 'Vashi', citySlug: 'navi-mumbai', ratePerSqft: 18000, rentPerSqft: 40, yoyGrowthPct: 7.4, lat: 19.0771, lng: 72.9986 },
+  { slug: 'nerul', name: 'Nerul', citySlug: 'navi-mumbai', ratePerSqft: 16000, rentPerSqft: 36, yoyGrowthPct: 6.9, lat: 19.0330, lng: 73.0197 },
+  { slug: 'cbd-belapur', name: 'CBD Belapur', citySlug: 'navi-mumbai', ratePerSqft: 14500, rentPerSqft: 32, yoyGrowthPct: 8.1, lat: 19.0186, lng: 73.0390 },
+  { slug: 'kharghar', name: 'Kharghar', citySlug: 'navi-mumbai', ratePerSqft: 12500, rentPerSqft: 28, yoyGrowthPct: 10.2, lat: 19.0473, lng: 73.0699 },
+  { slug: 'panvel', name: 'Panvel', citySlug: 'navi-mumbai', ratePerSqft: 8500, rentPerSqft: 20, yoyGrowthPct: 13.6, lat: 18.9894, lng: 73.1175 },
+];
+
+export const cities: City[] = [...generatedCities, lucknow, naviMumbai];
 
 const localitySeeds: Record<string, [string, number][]> = {
   mumbai: [['Andheri West', 32000], ['Powai', 28000], ['Bandra West', 58000], ['Malad West', 24000], ['Chembur', 26000], ['Borivali West', 22000]],
@@ -83,7 +94,7 @@ export const localities: Locality[] = [...generatedCities.flatMap((c) =>
     lat: c.lat + between(-0.08, 0.08),
     lng: c.lng + between(-0.08, 0.08),
   })),
-), ...lucknowLocalities];
+), ...lucknowLocalities, ...naviMumbaiLocalities];
 
 const builderSeeds: [string, string][] = [
   ['Aravalli Habitat', 'Gurugram'],
@@ -326,5 +337,113 @@ export const extraListings: (SeedListing & { description: string })[] = [
     amenities: ['Power Backup', 'Covered Parking'], postedDaysAgo: 12,
     contactName: 'Pankaj Tiwari', verified: true, hue: 160,
     description: 'Compact 1 BHK in a quiet lane of Aliganj with a separate entrance and two-wheeler parking. Close to Kapoorthala market.',
+  },
+];
+/**
+ * Hand-written PG / co-living listings (migration 0012), appended after the Lucknow ones in their own insert so
+ * every earlier row stays the same. Existing localities; prices are monthly rent per bed; people are fictional.
+ */
+export const pgListings: (SeedListing & { description: string; pg: NonNullable<Listing['pg']> })[] = [
+  {
+    id: 50805, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 160, price: 14000,
+    citySlug: 'bengaluru', localitySlug: 'koramangala', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 2, totalFloors: 4, facing: 'East', ageYears: 6,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Laundry', 'Power Backup', '24x7 Security', 'CCTV Surveillance'], postedDaysAgo: 2,
+    contactName: 'Lakshmi Rao', verified: true, hue: 330,
+    pg: { sharing: 'double', for: 'women', food: true },
+    description: 'Women-only PG in a quiet Koramangala street with double-sharing rooms, attached bathrooms, three home-style meals a day and weekly housekeeping.',
+  },
+  {
+    id: 50806, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 220, price: 8500,
+    citySlug: 'pune', localitySlug: 'hinjewadi', projectId: null, furnishing: 'Furnished', postedBy: 'Agent',
+    possession: 'Ready to Move', floor: 1, totalFloors: 3, facing: 'North', ageYears: 4,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Power Backup', 'Covered Parking'], postedDaysAgo: 6,
+    contactName: 'Rohan Kulkarni', verified: true, hue: 40,
+    pg: { sharing: 'triple', for: 'men', food: true },
+    description: 'Triple-sharing PG for men a short ride from the Hinjewadi IT parks. Breakfast and dinner included, two-wheeler parking and daily cleaning.',
+  },
+  {
+    id: 50807, purpose: 'rent', segment: 'residential', type: 'PG', bhk: 0, bathrooms: 1, areaSqft: 140, price: 22000,
+    citySlug: 'mumbai', localitySlug: 'powai', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 5, totalFloors: 12, facing: 'West', ageYears: 3,
+    amenities: ['Wi-Fi', 'Housekeeping', 'Laundry', 'Lift', 'Gymnasium', '24x7 Security'], postedDaysAgo: 4,
+    contactName: 'Kabir Shah', verified: false, hue: 260,
+    pg: { sharing: 'single', for: 'any', food: false },
+    description: 'Private single rooms in a co-living flat near Powai lake: shared kitchen and lounge, fast Wi-Fi, a gym in the building and weekly cleaning. Open to everyone.',
+  },
+];
+
+/**
+ * Hand-written Navi Mumbai projects (ids 1034–1036) and listings (ids 50808–50811), kept in their own arrays and
+ * inserts, after Lucknow and the PGs, so every earlier row (and the random stream for Lucknow's transactions and
+ * reviews) stays the same. Existing fictional builders; RERA numbers are marked DEMO.
+ */
+const naviMumbaiNearby = (locality: string, km: [number, number, number, number, number, number, number]): NearbyPlace[] => [
+  { kind: 'School', name: 'Greenfield Public School', km: km[0] }, { kind: 'Hospital', name: 'Lifeline Multispeciality', km: km[1] },
+  { kind: 'Metro', name: `${locality} Metro Station`, km: km[2] }, { kind: 'Mall', name: 'Central Square Mall', km: km[3] },
+  { kind: 'Office Hub', name: 'Business District', km: km[4] }, { kind: 'Airport', name: 'Navi Mumbai International Airport', km: km[5] },
+  { kind: 'Railway', name: `${locality} Railway Station`, km: km[6] },
+];
+export const naviMumbaiProjects: SeedProject[] = [
+  {
+    id: 1034, slug: 'sahyadri-skyline-kharghar', name: 'Sahyadri Skyline', citySlug: 'navi-mumbai', localitySlug: 'kharghar',
+    builderSlug: 'sahyadri-constructions', status: 'Under Construction', possession: 'Jun 2028', rera: 'MAHARERA-DEMO-NM-1034',
+    landAcres: 5.2, totalUnits: 380, towers: 3, floors: 26, ratePerSqft: 13200,
+    units: lucknowUnits(13200, [[1, 450], [2, 640], [2, 700], [3, 980]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Landscaped Gardens'],
+    highlights: ['Kharghar address close to the Central Park and golf course', '60% open space with landscaped podium greens', '1, 2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(13200, 0.84), nearby: naviMumbaiNearby('Kharghar', [0.7, 1.8, 1.1, 2.4, 4.5, 9.0, 1.6]), hue: 190, launchedYear: 2025,
+  },
+  {
+    id: 1035, slug: 'meridian-bayview-vashi', name: 'Meridian Bayview', citySlug: 'navi-mumbai', localitySlug: 'vashi',
+    builderSlug: 'meridian-spaces', status: 'Ready to Move', possession: 'Mar 2024', rera: 'MAHARERA-DEMO-NM-1035',
+    landAcres: 3.4, totalUnits: 240, towers: 2, floors: 20, ratePerSqft: 18800,
+    units: lucknowUnits(18800, [[2, 680], [2, 750], [3, 1050], [3, 1200]]),
+    amenities: ['Gymnasium', 'Clubhouse', 'Kids Play Area', 'Multipurpose Hall', 'Landscaped Gardens', 'Power Backup', '24x7 Security', 'CCTV Surveillance', 'Lift', 'Covered Parking', 'Rainwater Harvesting'],
+    highlights: ['Vashi address a short walk from the station and malls', 'Bay-facing upper floors', '2, 3 BHK homes designed for cross-ventilation', 'Occupancy certificate received — move in now'],
+    priceTrend: lucknowTrend(18800, 0.8), nearby: naviMumbaiNearby('Vashi', [0.5, 1.2, 2.0, 0.8, 1.9, 21.0, 0.9]), hue: 222, launchedYear: 2020,
+  },
+  {
+    id: 1036, slug: 'aravalli-greens-panvel', name: 'Aravalli Greens', citySlug: 'navi-mumbai', localitySlug: 'panvel',
+    builderSlug: 'aravalli-habitat', status: 'New Launch', possession: 'Dec 2030', rera: 'MAHARERA-DEMO-NM-1036',
+    landAcres: 9.8, totalUnits: 560, towers: 5, floors: 24, ratePerSqft: 8900,
+    units: lucknowUnits(8900, [[1, 420], [2, 610], [2, 690], [3, 920]]),
+    amenities: ['Swimming Pool', 'Gymnasium', 'Clubhouse', 'Kids Play Area', 'Jogging Track', 'Yoga Deck', 'Badminton Court', 'Power Backup', '24x7 Security', 'Lift', 'Covered Parking', 'Pet Park'],
+    highlights: ['Panvel address near the upcoming airport', '72% open space with landscaped central greens', '1, 2, 3 BHK homes designed for cross-ventilation', 'Construction-linked payment plan available'],
+    priceTrend: lucknowTrend(8900, 0.86), nearby: naviMumbaiNearby('Panvel', [1.0, 2.2, 3.5, 2.8, 6.0, 7.5, 1.4]), hue: 168, launchedYear: 2026,
+  },
+];
+export const naviMumbaiListings: (SeedListing & { description: string })[] = [
+  {
+    id: 50808, purpose: 'buy', segment: 'residential', type: 'Apartment', bhk: 2, bathrooms: 2, areaSqft: 1050, price: 18500000,
+    citySlug: 'navi-mumbai', localitySlug: 'vashi', projectId: null, furnishing: 'Semi-Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 8, totalFloors: 15, facing: 'West', ageYears: 6,
+    amenities: ['Lift', 'Power Backup', 'Covered Parking', '24x7 Security', 'Gymnasium'], postedDaysAgo: 3,
+    contactName: 'Neha Patil', verified: true, hue: 210,
+    description: 'Well-kept 2 BHK in Sector 17, Vashi, a few minutes from the station and malls. Two balconies, modular kitchen and one covered parking.',
+  },
+  {
+    id: 50809, purpose: 'buy', segment: 'residential', type: 'Apartment', bhk: 3, bathrooms: 3, areaSqft: 1400, price: 17000000,
+    citySlug: 'navi-mumbai', localitySlug: 'kharghar', projectId: null, furnishing: 'Unfurnished', postedBy: 'Agent',
+    possession: 'Ready to Move', floor: 11, totalFloors: 22, facing: 'North-East', ageYears: 3,
+    amenities: ['Lift', 'Power Backup', 'Swimming Pool', 'Clubhouse', 'Covered Parking', 'Kids Play Area'], postedDaysAgo: 7,
+    contactName: 'Sameer Joshi', verified: true, hue: 185,
+    description: 'Spacious 3 BHK with hill views in a gated Kharghar complex, close to Central Park, schools and the metro.',
+  },
+  {
+    id: 50810, purpose: 'rent', segment: 'residential', type: 'Apartment', bhk: 2, bathrooms: 2, areaSqft: 950, price: 34000,
+    citySlug: 'navi-mumbai', localitySlug: 'nerul', projectId: null, furnishing: 'Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 4, totalFloors: 7, facing: 'East', ageYears: 9,
+    amenities: ['Lift', 'Power Backup', '24x7 Security'], postedDaysAgo: 2,
+    contactName: 'Farhan Shaikh', verified: false, hue: 240,
+    description: 'Furnished 2 BHK in Nerul West, walking distance from the station and the lake. Suits a family or two working professionals.',
+  },
+  {
+    id: 50811, purpose: 'rent', segment: 'residential', type: 'Apartment', bhk: 1, bathrooms: 1, areaSqft: 600, price: 19000,
+    citySlug: 'navi-mumbai', localitySlug: 'cbd-belapur', projectId: null, furnishing: 'Semi-Furnished', postedBy: 'Owner',
+    possession: 'Ready to Move', floor: 2, totalFloors: 5, facing: 'South', ageYears: 11,
+    amenities: ['Power Backup', 'Covered Parking'], postedDaysAgo: 10,
+    contactName: 'Priya Naik', verified: true, hue: 150,
+    description: 'Compact 1 BHK near the CBD Belapur offices and station, in a quiet society with two-wheeler parking.',
   },
 ];
