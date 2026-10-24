@@ -55,8 +55,9 @@ export async function projectTransactions(projectId: number) {
   return results;
 }
 
-/** Listing counts and averages per locality for a city, used by rates, heatmap and guides. */
-export async function localityMarket(citySlug: string) {
+/** Listing counts and averages per locality for a city, used by rates, heatmap and guides. Cached for 5 minutes (counts can lag that long). */
+export const localityMarket = (citySlug: string) => cached(`localityMarket:${citySlug}`, () => loadLocalityMarket(citySlug));
+async function loadLocalityMarket(citySlug: string) {
   const { results } = await db()
     .prepare(`SELECT locality_slug, count(*) AS n,
         sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
@@ -138,8 +139,9 @@ export async function agentsDirectory(citySlug?: string) {
   return results.map((r) => ({ ...r, localities: r.localities.split(',') }));
 }
 
-/** Data for the home page "discover", "localities" and transactions-trend panels. */
-export async function homeMarket() {
+/** Data for the home page "discover", "localities" and transactions-trend panels. Cached for 5 minutes (counts can lag that long). */
+export const homeMarket = () => cached('homeMarket', () => loadHomeMarket());
+async function loadHomeMarket() {
   const [cats, locs, tx] = await db().batch([
     db().prepare(`SELECT city_slug, segment, type, bhk, min(price) AS mn, count(*) AS n FROM listings
       WHERE status = 'active' AND closed IS NULL AND purpose = 'buy' GROUP BY city_slug, segment, type, bhk`),

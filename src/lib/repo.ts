@@ -228,8 +228,9 @@ export async function searchLocalityPins(mode: Mode, citySlug: string, f: Filter
   return results;
 }
 
-/** Market snapshot for a search scope, computed on the unfiltered inventory. */
-export async function marketStats(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
+/** Market snapshot for a search scope, computed on the unfiltered inventory. Cached for 5 minutes (counts can lag that long). */
+export const marketStats = (mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') => cached(`marketStats:${mode}:${citySlug}:${commercialPurpose ?? ""}`, () => loadMarketStats(mode, citySlug, commercialPurpose));
+async function loadMarketStats(mode: Mode, citySlug: string, commercialPurpose?: 'buy' | 'rent') {
   const { where, args } = scope(mode, citySlug, commercialPurpose);
   const w = where.join(' AND ');
   const [overall, byBhk, byType, byFurnishing] = await db().batch([
@@ -283,7 +284,9 @@ export async function getProjectListings(projectId: number, limit = 3): Promise<
 
 // ---------- stats ----------
 
-export async function cityStats() {
+/** Listing and project counts and the average sale rate per city. Cached for 5 minutes (counts can lag that long). */
+export const cityStats = () => cached('cityStats', () => loadCityStats());
+async function loadCityStats() {
   const [l, p] = await db().batch([
     db().prepare(`SELECT city_slug, count(*) AS total, sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
       avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rate
@@ -364,7 +367,9 @@ export function cityFacets(citySlug: string): Promise<CityFacets> {
   return value;
 }
 
-export async function platformTotals() {
+/** Site-wide totals for the home page. Cached for 5 minutes (counts can lag that long). */
+export const platformTotals = () => cached('platformTotals', () => loadPlatformTotals());
+async function loadPlatformTotals() {
   const r = await db()
     .prepare(`SELECT (SELECT count(*) FROM listings WHERE status = 'active' AND closed IS NULL) AS listings, (SELECT count(*) FROM projects) AS projects,
       (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities) AS localities`)
@@ -372,7 +377,9 @@ export async function platformTotals() {
   return r!;
 }
 
-export async function countProjectsByBuilder(): Promise<Map<string, number>> {
+/** Number of projects per builder (/builders). Cached for 5 minutes (counts can lag that long). */
+export const countProjectsByBuilder = () => cached('projectsByBuilder', () => loadCountProjectsByBuilder());
+async function loadCountProjectsByBuilder(): Promise<Map<string, number>> {
   const { results } = await db().prepare('SELECT builder_slug, count(*) AS n FROM projects GROUP BY builder_slug').all<Row>();
   return new Map(results.map((r) => [r.builder_slug as string, r.n as number]));
 }

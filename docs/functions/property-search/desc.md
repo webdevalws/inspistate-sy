@@ -107,6 +107,13 @@ Filtered, sorted, paginated listings with SEO facet URLs.
 - No results → the normal empty state. Map view hides pagination and shows "Pins show localities, not
   exact addresses." Listings have no coordinates of their own; exact pins would need a migration.
 
+## Cached stats (item 80)
+- Whole-table and whole-city stats are cached per isolate for 5 minutes with `cached(key, load)` (`src/lib/repo.ts`):
+  `cityStats`, `platformTotals`, `countProjectsByBuilder`, `marketStats(mode, city, purpose)` (the snapshot below
+  search results) and, in `src/lib/community.ts`, `homeMarket`, `homeInsights` and `localityMarket(city)`. Callers
+  are unchanged. **Counts and averages can lag up to 5 minutes** after a listing is approved, edited or closed;
+  the listings themselves (search results, detail pages) are always read live.
+
 ## Files
 - `src/pages/[mode]/[city]/[...facets].astro`
 - `src/lib/search.ts`
