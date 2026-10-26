@@ -63,7 +63,7 @@ const back = `/account/agent/find-sellers${backParams ? `?${backParams}` : ''}`;
               </label>
               <label class={label}>Locality
                 <select name="locality" class={select} disabled={!city}>
-                  <option value="">{city ? 'All localities' : 'Choose a city first'}</option>
+                  <option value="">{city ? 'All localities' : 'City first'}</option>
                   {city && refs.localitiesOf(city).map((l) => <option value={l.slug} selected={l.slug === locality}>{l.name}</option>)}
                 </select>
               </label>
