@@ -1,0 +1,68 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import Th from '../../../components/admin/Th.astro';
+import Pagination from '../../../components/Pagination.astro';
+import Photo from '../../../components/Photo.astro';
+import { getRefs } from '../../../lib/repo';
+import { paged } from '../../../lib/admin-tables';
+import { formatRange } from '../../../lib/format';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD } from '../../../components/admin/ui';
+
+// All projects, hidden ones included: search, sort, 25 per page; Edit and Hide / Unhide (/api/admin/projects/{id},
+// audited). Hidden projects are left out of every public page (VISIBLE_PROJECT in repo.ts).
+const sp = Astro.url.searchParams;
+const refs = await getRefs();
+type Row = { id: number; name: string; slug: string; city_slug: string; locality_slug: string; builder: string | null; price_min: number; price_max: number; status: string; hidden: number; hue: number; launched_year: number; updated_at: string | null; photo: string | null };
+const res = await paged<Row>({
+  from: 'projects p LEFT JOIN builders b ON b.slug = p.builder_slug',
+  select: `p.id, p.name, p.slug, p.city_slug, p.locality_slug, b.name AS builder, p.price_min, p.price_max, p.status, p.hidden, p.hue, p.launched_year, p.updated_at,
+    (SELECT r2_key FROM project_photos ph WHERE ph.project_id = p.id ORDER BY position LIMIT 1) AS photo`,
+  search: { columns: ['p.name', 'p.slug', 'p.city_slug', 'p.locality_slug', 'b.name', 'p.rera'], idColumn: 'p.id' },
+  sorts: { name: 'lower(p.name)', city: 'p.city_slug', price: 'p.price_min', status: 'p.hidden', date: "coalesce(p.updated_at, p.launched_year || '-01-01')" },
+  defaultSort: 'date', url: Astro.url,
+});
+const done = sp.get('done');
+const doneText = ({ hide: 'Project hidden: it is no longer on the site.', unhide: 'Project is live on the site again.', saved: 'Project saved. The site shows it now.', added: 'Project added. The site shows it now.' } as Record<string, string>)[done ?? ''];
+const backParams = new URLSearchParams([...sp].filter(([k]) => k !== 'done')).toString();
+const back = `/admin/projects${backParams ? `?${backParams}` : ''}`;
+const date = (r: Row) => (r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' }) : `Launched ${r.launched_year}`);
+---
+<AdminLayout title="All projects" active="projects" sub="all" crumbs={[['Projects', '/admin/projects'], ['All projects']]}>
+  {doneText && <p class={NOTE_OK}>{doneText}</p>}
+  <AdminCard title={`Projects (${res.total})`} id="projects" search={{ value: res.q, placeholder: 'Name, city, locality, builder', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }} add={{ href: '/admin/projects/new', label: 'Add project' }}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[1040px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Image" /><Th label="Name" sortKey="name" url={Astro.url} /><Th label="City / locality" sortKey="city" url={Astro.url} /><Th label="Builder" /><Th label="Price range" sortKey="price" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((p, i) => (
+            <tr data-row={p.id}>
+              <td class={TD}>{res.offset + i + 1}</td>
+              <td class={TD}><Photo src={p.photo ? `/admin/media/${p.photo}` : undefined} hue={p.hue} kind="tower" alt={p.name} class="h-14 w-20 rounded-md" /></td>
+              <td class={TD}>
+                {p.hidden ? <span class="font-semibold text-slate-800">{p.name}</span> : <a href={`/projects/${p.city_slug}/${p.slug}`} class="font-semibold text-slate-800 hover:text-brand-700">{p.name}</a>}
+                <span class="block text-xs text-slate-500">#{p.id} · {p.status}</span>
+              </td>
+              <td class={TD}>{refs.city(p.city_slug)?.name ?? p.city_slug}<span class="block text-xs text-slate-500">{refs.locality(p.city_slug, p.locality_slug)?.name ?? p.locality_slug}</span></td>
+              <td class={TD}>{p.builder ?? '—'}</td>
+              <td class:list={[TD, 'whitespace-nowrap']}>{formatRange(p.price_min, p.price_max)}</td>
+              <td class={TD}>{p.hidden ? <Pill status="hidden" label="Hidden" /> : <Pill status="live" label="Live" />}</td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{date(p)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/projects/${p.id}`} class="flex flex-col gap-1.5">
+                  <input type="hidden" name="back" value={back} />
+                  <ActionButton label={`Edit ${p.name}`} icon="edit" href={`/admin/projects/${p.id}`} />
+                  {p.hidden ? <ActionButton label={`Unhide ${p.name}`} icon="eye" value="unhide" /> : <ActionButton label={`Hide ${p.name}`} icon="eye-off" value="hide" tone="danger" confirm={`Hide ${p.name}? It disappears from the site until you unhide it.`} />}
+                </form>
+              </td>
+            </tr>
+          ))}
+          {res.rows.length === 0 && <tr><td colspan="9" class={EMPTY}>{res.q ? 'No projects match.' : 'No projects yet.'}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

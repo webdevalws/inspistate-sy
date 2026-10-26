@@ -56,7 +56,7 @@ export function getRefs(): Promise<Refs> {
 async function loadRefs(): Promise<Refs> {
   const [c, l, b] = await db().batch([
     db().prepare('SELECT * FROM cities ORDER BY sort_order'),
-    db().prepare('SELECT * FROM localities ORDER BY city_slug, name'),
+    db().prepare('SELECT * FROM localities WHERE hidden = 0 ORDER BY city_slug, name'),
     db().prepare('SELECT * FROM builders ORDER BY name'),
   ]);
   const cities: City[] = (c.results as Row[]).map((r) => ({
@@ -67,6 +67,8 @@ async function loadRefs(): Promise<Refs> {
     slug: r.slug as string, name: r.name as string, citySlug: r.city_slug as string,
     ratePerSqft: r.rate_per_sqft as number, rentPerSqft: r.rent_per_sqft as number,
     yoyGrowthPct: r.yoy_growth_pct as number, lat: r.lat as number, lng: r.lng as number,
+    ...(r.description ? { description: r.description as string } : {}),
+    ...(r.photo_key ? { photo: `/media/${r.photo_key as string}` } : {}),
   }));
   const builders: Builder[] = (b.results as Row[]).map((r) => ({
     slug: r.slug as string, name: r.name as string, founded: r.founded as number, hq: r.hq as string,
@@ -91,20 +93,28 @@ const toProject = (r: Row): Project => ({
   ratePerSqft: r.rate_per_sqft as number, priceMin: r.price_min as number, priceMax: r.price_max as number, bhkLabel: r.bhk_label as string,
   amenities: json(r.amenities, []), highlights: json(r.highlights, []), priceTrend: json(r.price_trend, []), nearby: json(r.nearby, []),
   hue: r.hue as number, launchedYear: r.launched_year as number,
+  ...(r.description ? { description: r.description as string } : {}),
+  ...(r.cover ? { cover: `/media/${r.cover as string}` } : {}),
 });
+
+/** Public project reads: every column plus the cover photo key (the first project_photos position), NULL when none. */
+const PROJECT_SELECT = 'SELECT *, (SELECT r2_key FROM project_photos ph WHERE ph.project_id = projects.id ORDER BY position LIMIT 1) AS cover FROM projects';
+
+/** Projects the public may see: not hidden by the admin (migration 0018). Admin pages read projects without it. */
+export const VISIBLE_PROJECT = 'hidden = 0';
 
 export async function getProjects(
   filter: { citySlug?: string; builderSlug?: string; localitySlug?: string; status?: string } = {},
   opts: { limit?: number; orderBy?: 'newest' | 'default' } = {},
 ): Promise<Project[]> {
-  const where: string[] = [];
+  const where: string[] = [VISIBLE_PROJECT];
   const args: unknown[] = [];
   const cols = { citySlug: 'city_slug', builderSlug: 'builder_slug', localitySlug: 'locality_slug', status: 'status' } as const;
   for (const [k, col] of Object.entries(cols)) {
     const v = filter[k as keyof typeof filter];
     if (v) { where.push(`${col} = ?`); args.push(v); }
   }
-  const sql = `SELECT * FROM projects ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+  const sql = `${PROJECT_SELECT} WHERE ${where.join(' AND ')}
     ORDER BY ${opts.orderBy === 'newest' ? 'launched_year DESC, id' : 'id'} ${opts.limit ? `LIMIT ${Number(opts.limit)}` : ''}`;
   const { results } = await db().prepare(sql).bind(...args).all<Row>();
   return results.map(toProject);
@@ -114,16 +124,20 @@ export async function getProjects(
 export const allProjects = () => cached('projects:newest', () => getProjects({}, { orderBy: 'newest' }));
 
 export async function getProject(citySlug: string, slug: string): Promise<ProjectDetail | undefined> {
-  const r = await db().prepare('SELECT * FROM projects WHERE city_slug = ? AND slug = ?').bind(citySlug, slug).first<Row>();
+  const r = await db().prepare(`${PROJECT_SELECT} WHERE city_slug = ? AND slug = ? AND ${VISIBLE_PROJECT}`).bind(citySlug, slug).first<Row>();
   if (!r) return undefined;
-  const { results } = await db().prepare('SELECT bhk, label, carpet_sqft, price FROM project_units WHERE project_id = ? ORDER BY bhk, price').bind(r.id).all<Row>();
-  const units: UnitConfig[] = results.map((u) => ({ bhk: u.bhk as number, label: u.label as string, carpetSqft: u.carpet_sqft as number, price: u.price as number }));
-  return { ...toProject(r), units };
+  const [u, ph] = await db().batch<Row>([
+    db().prepare('SELECT bhk, label, carpet_sqft, price FROM project_units WHERE project_id = ? ORDER BY bhk, price').bind(r.id),
+    db().prepare('SELECT r2_key FROM project_photos WHERE project_id = ? ORDER BY position').bind(r.id),
+  ]);
+  const units: UnitConfig[] = u.results.map((x) => ({ bhk: x.bhk as number, label: x.label as string, carpetSqft: x.carpet_sqft as number, price: x.price as number }));
+  const photos = ph.results.map((x) => `/media/${x.r2_key as string}`);
+  return { ...toProject(r), units, ...(photos.length ? { photos } : {}) };
 }
 
 export async function getProjectsByIds(ids: number[]): Promise<Project[]> {
   if (!ids.length) return [];
-  const { results } = await db().prepare(`SELECT * FROM projects WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
+  const { results } = await db().prepare(`${PROJECT_SELECT} WHERE ${VISIBLE_PROJECT} AND id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
   return results.map(toProject);
 }
 
@@ -304,7 +318,7 @@ async function loadCityStats() {
     db().prepare(`SELECT city_slug, count(*) AS total, sum(purpose = 'buy') AS sale, sum(purpose = 'rent') AS rent,
       avg(CASE WHEN purpose = 'buy' AND segment = 'residential' THEN 1.0 * price / area_sqft END) AS rate
       FROM listings WHERE ${live()} GROUP BY city_slug`),
-    db().prepare('SELECT city_slug, count(*) AS n FROM projects GROUP BY city_slug'),
+    db().prepare(`SELECT city_slug, count(*) AS n FROM projects WHERE ${VISIBLE_PROJECT} GROUP BY city_slug`),
   ]);
   const projects = new Map((p.results as Row[]).map((r) => [r.city_slug as string, r.n as number]));
   const out = new Map<string, { total: number; forSale: number; forRent: number; projects: number; avgRate: number }>();
@@ -349,6 +363,39 @@ const bandCase = (bands: readonly (readonly [number, number])[]) =>
   `CASE ${bands.slice(0, -1).map(([, hi], i) => `WHEN price <= ${Number(hi)} THEN ${i}`).join(' ')} ELSE ${bands.length - 1} END`;
 const facetCache = new Map<string, { at: number; value: Promise<CityFacets> }>();
 
+function dropCaches() {
+  statsCache.clear();
+  facetCache.clear();
+  refsCache = null;
+}
+
+/** The content version this instance's caches were built under (migration 0019); null before the first check. */
+let seenVersion: number | null = null;
+
+/**
+ * After an admin edit: drops this Worker instance's 5-minute caches (reference data, project list, stats, search
+ * suggestions, city facets) and bumps the content version so every other instance drops its caches on its next request.
+ */
+export async function clearContentCaches() {
+  dropCaches();
+  try {
+    seenVersion = (await db().prepare('UPDATE content_version SET v = v + 1 WHERE id = 1 RETURNING v').first<number>('v')) ?? seenVersion;
+  } catch { /* migration 0019 not applied yet: other instances catch up within 5 minutes, as before */ }
+}
+
+/**
+ * Once per request (middleware): one primary-key read of the content version; when an admin edit has bumped it
+ * since this instance last looked, the caches are dropped so the request sees the change.
+ */
+export async function syncContentVersion() {
+  try {
+    const v = await db().prepare('SELECT v FROM content_version WHERE id = 1').first<number>('v');
+    if (v == null) return;
+    if (seenVersion !== null && v !== seenVersion) dropCaches();
+    seenVersion = v;
+  } catch { /* migration 0019 not applied yet */ }
+}
+
 /**
  * Counts of a city's live listings by purpose, segment, type, BHK, locality and budget band (bands match
  * BUDGET_BANDS), plus ready-to-move counts and rate sums. One grouped query per city, cached per isolate for
@@ -384,8 +431,8 @@ export function cityFacets(citySlug: string): Promise<CityFacets> {
 export const platformTotals = () => cached('platformTotals', () => loadPlatformTotals());
 async function loadPlatformTotals() {
   const r = await db()
-    .prepare(`SELECT (SELECT count(*) FROM listings WHERE ${live()}) AS listings, (SELECT count(*) FROM projects) AS projects,
-      (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities) AS localities`)
+    .prepare(`SELECT (SELECT count(*) FROM listings WHERE ${live()}) AS listings, (SELECT count(*) FROM projects WHERE ${VISIBLE_PROJECT}) AS projects,
+      (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities WHERE hidden = 0) AS localities`)
     .first<Record<string, number>>();
   return r!;
 }
@@ -393,7 +440,7 @@ async function loadPlatformTotals() {
 /** Number of projects per builder (/builders). Cached for 5 minutes (counts can lag that long). */
 export const countProjectsByBuilder = () => cached('projectsByBuilder', () => loadCountProjectsByBuilder());
 async function loadCountProjectsByBuilder(): Promise<Map<string, number>> {
-  const { results } = await db().prepare('SELECT builder_slug, count(*) AS n FROM projects GROUP BY builder_slug').all<Row>();
+  const { results } = await db().prepare(`SELECT builder_slug, count(*) AS n FROM projects WHERE ${VISIBLE_PROJECT} GROUP BY builder_slug`).all<Row>();
   return new Map(results.map((r) => [r.builder_slug as string, r.n as number]));
 }
 
@@ -463,6 +510,16 @@ export async function deleteListingPhotos(listingId: number): Promise<number> {
 }
 
 /** Whether a listing's photos may be served: not for rejected or deleted listings (pending ones are shown in previews). */
+/** Photos of a project are served while it is live (hidden projects disappear everywhere, photos included). */
+export async function projectPhotosVisible(projectId: number): Promise<boolean> {
+  return !!(await db().prepare(`SELECT 1 FROM projects WHERE id = ? AND ${VISIBLE_PROJECT}`).bind(projectId).first());
+}
+
+/** A locality's photo is served while the locality is live. */
+export async function localityPhotoVisible(citySlug: string, slug: string): Promise<boolean> {
+  return !!(await db().prepare('SELECT 1 FROM localities WHERE city_slug = ? AND slug = ? AND hidden = 0').bind(citySlug, slug).first());
+}
+
 export async function photosVisible(listingId: number): Promise<boolean> {
   const r = await db().prepare('SELECT status, closed FROM listings WHERE id = ?').bind(listingId).first<{ status: string; closed: string | null }>();
   return !!r && r.status !== 'rejected' && r.closed !== 'deleted';
@@ -551,7 +608,7 @@ export async function adminCounts() {
 
 export const sitemapData = async () => {
   const [p, l] = await db().batch([
-    db().prepare('SELECT city_slug, slug FROM projects'),
+    db().prepare(`SELECT city_slug, slug FROM projects WHERE ${VISIBLE_PROJECT} ORDER BY city_slug, slug`),
     db().prepare(`SELECT id, posted_at FROM listings WHERE ${live()} ORDER BY id`),
   ]);
   return { projects: p.results as Row[], listings: l.results as Row[] };

@@ -33,6 +33,9 @@ One page per city that links into everything we have for it: search, localities,
   shows only when it has data; the whole section and the rate/heatmap links hide when there is nothing.
 - **Localities table:** each name links to its locality page (`/locality/{city}/{slug}`, via `localityUrl`
   in `src/lib/urls.ts`); hidden when the city has no localities. The Buy and Rent links show only when that locality has listings for sale / rent.
+  Localities come from the reference data the admin edits (`/admin/localities`, item 124): added localities appear
+  here, hidden ones don't, and edited rates and growth show at once. The locality page shows the admin's
+  description under its title when there is one.
 - **Top projects:** the first 6 of the city's projects as `ProjectCard`s; when there are more than 6, a
   "View all N projects →" link goes to `/new-projects/{city}`. Hidden when the city has no projects.
 - **Top builders:** up to 4 developers with projects in the city (most projects first, then most delivered),

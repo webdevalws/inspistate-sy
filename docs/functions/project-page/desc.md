@@ -21,7 +21,13 @@ Full project dossier.
   cards.
 - **Images:** the project page's gallery and the listing pages use the generated SVG illustrations
   (`Cover.astro`: `public/images/project-1…6.svg` chosen by `hue`, plus villa/plot illustrations). Project
-  **cards** (`ProjectCard.astro`) use a set of six stock `.jpg` photos chosen by `id % 6`.
+  **cards** (`ProjectCard.astro`) use a set of six stock `.jpg` photos chosen by `id % 6`. When the admin has
+  uploaded photos (item 123, `/admin/projects/{id}`), the first one (the cover) replaces the stock photo on cards
+  and the large hero image, the next two fill the hero's side tiles, and all of them fill the “Photos” tab.
+- **Admin-managed projects (items 120–126, docs/functions/admin/desc.md):** projects can be added, edited and hidden
+  in the admin. A hidden project's page is a 404. The admin's description, when set, is an extra paragraph under
+  “About {name}”. Projects without nearby places skip the travel-time box. New projects get a flat eight-quarter
+  price trend at their rate (the same length as the seed data, which the home page's market insights average).
 - **Demo data:** 30 generated projects (ids 1001–1030) plus 3 hand-written Lucknow projects (ids
   1031–1033: Ganga Gomti Heights in Gomti Nagar, under construction; Meridian Golf Vista in Sushant Golf
   City, new launch; Vistaar Awadh Residency in Indira Nagar, ready to move), with existing fictional

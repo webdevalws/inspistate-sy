@@ -23,7 +23,8 @@ const luxuryImages = [
   '/images/commercial-luxury-tower.jpg',
   '/images/hero-luxury.jpg',
 ];
-const img = luxuryImages[p.id % luxuryImages.length];
+// The admin's cover photo when there is one, else a stock image.
+const img = p.cover ?? luxuryImages[p.id % luxuryImages.length];
 ---
 <article class:list={['group overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(7,14,31,0.12)] hover:border-slate-300', layout === 'row' && 'flex flex-col sm:flex-row']}>
   <a href={projectUrl(p)} class:list={['relative block overflow-hidden bg-slate-900', layout === 'row' ? 'h-48 sm:h-auto sm:w-72 sm:shrink-0' : 'aspect-[16/10]']}>

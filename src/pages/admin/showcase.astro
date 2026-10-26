@@ -55,7 +55,7 @@ const addable = cityLocalities.filter((l) => !locPicks.includes(l.slug)).sort((a
           {picked.map((p, i) => (
             <tr data-pick={p.id}>
               <td class={TD}>{i + 1}</td>
-              <td class={TD}><Photo hue={p.hue} kind="tower" alt={p.name} class="h-14 w-20 rounded-md" /></td>
+              <td class={TD}><Photo src={p.cover} hue={p.hue} kind="tower" alt={p.name} class="h-14 w-20 rounded-md" /></td>
               <td class={TD}><a href={`/projects/${p.citySlug}/${p.slug}`} class="font-semibold text-slate-800 hover:text-brand-700">{p.name}</a><span class="block text-xs text-slate-500">{where(p)}</span></td>
               <td class={TD}>{p.status}</td>
               <td class={TD}>{i < N ? <Pill status="live" label="On home page" /> : <Pill status="hidden" label={`Not shown (${N} cards)`} />}</td>

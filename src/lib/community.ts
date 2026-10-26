@@ -98,10 +98,10 @@ async function loadHomeInsights() {
     db().prepare(`SELECT city_slug, rate FROM (SELECT city_slug, rate, row_number() OVER (PARTITION BY city_slug ORDER BY rate) AS rn,
         count(*) OVER (PARTITION BY city_slug) AS n FROM (${BUY_RATES})) WHERE rn = n / 2 + 1`),
     db().prepare(`SELECT p.city_slug, count(*) AS n, sum(t.price) AS value, 1.0 * sum(t.price) / sum(t.area_sqft) AS rate, min(t.registered_on) AS first, max(t.registered_on) AS last
-      FROM transactions t JOIN projects p ON p.id = t.project_id GROUP BY p.city_slug`),
+      FROM transactions t JOIN projects p ON p.id = t.project_id WHERE p.hidden = 0 GROUP BY p.city_slug`),
     db().prepare(`SELECT r.author, r.rating, r.body, r.created_at, r.resident_type, p.name AS project, p.slug, p.city_slug
-      FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'published' ORDER BY r.created_at DESC LIMIT 6`),
-    db().prepare("SELECT avg(rating) AS rating, count(*) AS n FROM reviews WHERE status = 'published'"),
+      FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'published' AND p.hidden = 0 ORDER BY r.created_at DESC LIMIT 6`),
+    db().prepare("SELECT avg(rating) AS rating, count(*) AS n FROM reviews WHERE status = 'published' AND project_id IN (SELECT id FROM projects WHERE hidden = 0)"),
   ]);
   const histByCity = new Map<string, { lo: number; hi: number; n: number; counts: number[] }>();
   for (const row of hist.results as { city_slug: string; lo: number; hi: number; n: number; b: number; c: number }[]) {
@@ -148,7 +148,7 @@ async function loadHomeMarket() {
     db().prepare(`SELECT city_slug, locality_slug, min(price) AS mn, max(price) AS mx, count(*) AS n FROM listings
       WHERE ${live()} AND purpose = 'buy' AND segment = 'residential' GROUP BY city_slug, locality_slug`),
     db().prepare(`SELECT p.city_slug, substr(t.registered_on, 1, 4) || '-Q' || ((cast(substr(t.registered_on, 6, 2) AS integer) + 2) / 3) AS q, count(*) AS n
-      FROM transactions t JOIN projects p ON p.id = t.project_id GROUP BY p.city_slug, q ORDER BY q`),
+      FROM transactions t JOIN projects p ON p.id = t.project_id WHERE p.hidden = 0 GROUP BY p.city_slug, q ORDER BY q`),
   ]);
   const catRows = cats.results as { city_slug: string; segment: string; type: string; bhk: number; mn: number; n: number }[];
   const locRows = locs.results as { city_slug: string; locality_slug: string; mn: number; mx: number; n: number }[];

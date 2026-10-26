@@ -96,9 +96,24 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
     <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: loc.name, href: `/locality/${city.slug}/${loc.slug}` }, { label: p.name }]} />
 
     <div class="mt-4 grid gap-3 sm:grid-cols-3 sm:grid-rows-2">
-      <Cover hue={p.hue} class="h-56 rounded-2xl sm:col-span-2 sm:row-span-2 sm:h-full" label={p.status} />
-      <Cover hue={p.hue + 25} kind="house" class="hidden h-40 rounded-2xl sm:block" label="Clubhouse" />
-      <Cover hue={p.hue - 25} kind="plot" class="hidden h-40 rounded-2xl sm:block" label="Master plan" />
+      {p.photos ? (
+        // Admin-uploaded photos: the cover large, the next two beside it (generated covers fill any gap).
+        <>
+          <div class="relative h-56 overflow-hidden rounded-2xl bg-slate-200 sm:col-span-2 sm:row-span-2 sm:h-full">
+            <img src={p.photos[0]} alt={`${p.name}, ${loc.name}`} class="absolute inset-0 h-full w-full object-cover" />
+            <span class="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700">{p.status}</span>
+          </div>
+          {[1, 2].map((i) => p.photos![i]
+            ? <div class="relative hidden h-40 overflow-hidden rounded-2xl bg-slate-200 sm:block"><img src={p.photos![i]} alt={`${p.name} photo ${i + 1}`} loading="lazy" class="absolute inset-0 h-full w-full object-cover" /></div>
+            : <Cover hue={p.hue + (i === 1 ? 25 : -25)} kind={i === 1 ? 'house' : 'plot'} class="hidden h-40 rounded-2xl sm:block" label={i === 1 ? 'Clubhouse' : 'Master plan'} />)}
+        </>
+      ) : (
+        <>
+          <Cover hue={p.hue} class="h-56 rounded-2xl sm:col-span-2 sm:row-span-2 sm:h-full" label={p.status} />
+          <Cover hue={p.hue + 25} kind="house" class="hidden h-40 rounded-2xl sm:block" label="Clubhouse" />
+          <Cover hue={p.hue - 25} kind="plot" class="hidden h-40 rounded-2xl sm:block" label="Master plan" />
+        </>
+      )}
     </div>
 
     <div class="mt-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -140,6 +155,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
         <section id="overview" class="scroll-mt-32">
           <h2 class="section-title mb-4">About {p.name}</h2>
           <p class="mb-5 leading-relaxed text-slate-700">{p.name} by {builder.name} is {p.status === 'Under Construction' ? 'an' : 'a'} {p.status.toLowerCase()} residential project in {loc.name}, {city.name}, spread across {p.landAcres} acres with {formatNumber(p.totalUnits)} homes in {p.towers} towers. It offers {p.bhkLabel} apartments from {formatNumber(Math.min(...sizes))} to {formatNumber(Math.max(...sizes))} sq.ft, priced from {formatPrice(min)}. Possession starts {p.possession}.</p>
+          {p.description && <p class="mb-5 whitespace-pre-line leading-relaxed text-slate-700">{p.description}</p>}
           <h3 class="mb-3 text-lg font-bold">Key project details</h3>
           <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-3">
             {keyFacts.map(([k, v]) => <div class="bg-white p-4"><dt class="text-xs text-slate-500">{k}</dt><dd class="mt-0.5 font-semibold text-slate-900">{v}</dd></div>)}
@@ -200,7 +216,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
           <h2 class="section-title mb-4">Master plan, photos & brochure</h2>
           <Tabs id="gallery" labels={['Master Plan', 'Photos', 'Walkthrough']}>
             <div slot="tab-0"><Cover hue={p.hue - 25} kind="plot" class="h-72 rounded-2xl" label={`${p.landAcres} acres · ${p.towers} towers`} /></div>
-            <div slot="tab-1"><div class="grid grid-cols-2 gap-3 sm:grid-cols-3">{['Exterior', 'Clubhouse', 'Living room', 'Bedroom', 'Kitchen', 'Landscape'].map((l, i) => <Cover hue={p.hue + i * 15} kind={i % 2 ? 'house' : 'tower'} class="h-32 rounded-xl" label={l} />)}</div></div>
+            <div slot="tab-1"><div class="grid grid-cols-2 gap-3 sm:grid-cols-3">{p.photos ? p.photos.map((src, i) => <div class="relative h-32 overflow-hidden rounded-xl bg-slate-200"><img src={src} alt={`${p.name} photo ${i + 1}`} loading="lazy" class="absolute inset-0 h-full w-full object-cover" /></div>) : ['Exterior', 'Clubhouse', 'Living room', 'Bedroom', 'Kitchen', 'Landscape'].map((l, i) => <Cover hue={p.hue + i * 15} kind={i % 2 ? 'house' : 'tower'} class="h-32 rounded-xl" label={l} />)}</div></div>
             <div slot="tab-2"><div class="grid h-60 place-items-center rounded-2xl bg-slate-900 text-slate-300"><p>▶ Walkthrough video will appear here once the developer uploads it.</p></div></div>
           </Tabs>
           <div class="mt-4"><LeadDialog client:visible kind="brochure" label="⤓ Get all downloads (brochure, price sheet)" subject={`Brochure — ${p.name}`} projectId={p.id} successHref={`${projectUrl(p)}/brochure`} className="btn-ghost" /></div>
@@ -226,9 +242,10 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
 
         <section id="location" class="scroll-mt-32">
           <h2 class="section-title mb-4">Location and connectivity around {loc.name}</h2>
-          <div class="grid gap-4 md:grid-cols-2">
+          <div class:list={['grid gap-4', p.nearby.length > 0 && 'md:grid-cols-2']}>
             <iframe title={`Map of ${loc.name}`} class="h-72 w-full rounded-2xl border border-slate-200" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${loc.lat},${loc.lng}`}></iframe>
-            <TravelTime client:visible places={p.nearby} origin={p.name} />
+            {/* Admin-added projects may have no nearby places: then there is nothing to time. */}
+            {p.nearby.length > 0 && <TravelTime client:visible places={p.nearby} origin={p.name} />}
           </div>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {nearbyByKind.map(([kind, list]) => (

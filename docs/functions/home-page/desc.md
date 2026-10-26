@@ -82,6 +82,11 @@ search form puts city + Search on one row under the query field.
   `src/lib/showcase.ts`), then the automatic choice fills the rest (newest projects; fastest-growing localities), no
   duplicates, 5 cards each. The picks are read live on every request, so changes show at once. The city tabs come
   from `localityTabCities` (first eight cities, then later cities with projects), shared with the admin page.
+- Admin content (items 123–125): a hot project card shows the project's cover photo and a Top Localities card the
+  locality's photo when the admin has uploaded one, else the stock photos as before; hidden projects and localities
+  are left out; a locality's edited YoY and reference rate show on its card. Edits show at once on every Worker
+  instance (content version, docs/functions/admin/desc.md). Market insights average each city's project price
+  trends per quarter label, so a project with a different set of quarters can't break the chart.
 
 ## Data loading (item 79)
 - The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one

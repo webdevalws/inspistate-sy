@@ -1,0 +1,32 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import LocalityForm from '../../../components/admin/LocalityForm.astro';
+import { clearContentCaches, getRefs } from '../../../lib/repo';
+import { addLocality, localityFormFrom, parseLocalityForm, parseNewLocality, type LocalityFormValues } from '../../../lib/admin-localities';
+import { logAdmin } from '../../../lib/audit';
+
+// Add a locality. The form posts here (admin middleware: password + same-origin); on success → its edit page (to add a
+// photo), on an error the form is shown again with the values kept. Audited as locality.add.
+const refs = await getRefs();
+let values: LocalityFormValues = { city: Astro.url.searchParams.get('city') ?? '' };
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const where = await parseNewLocality(form, refs.cities.map((c) => c.slug));
+  const parsed = parseLocalityForm(form);
+  if (where.ok && parsed.ok) {
+    await addLocality(where.city, where.slug, parsed.locality);
+    await logAdmin(Astro, 'locality.add', `locality ${parsed.locality.name} (/locality/${where.city}/${where.slug}), rate ₹${parsed.locality.ratePerSqft}/sq.ft`);
+    await clearContentCaches();
+    return Astro.redirect(`/admin/localities/${where.city}/${where.slug}?done=added`, 303);
+  }
+  error = !parsed.ok ? parsed.error : !where.ok ? where.error : '';
+  values = localityFormFrom(form);
+}
+---
+<AdminLayout title="Add locality" active="localities" crumbs={[['Localities', '/admin/localities'], ['Add locality']]}>
+  <AdminCard title="Add locality" id="add-locality">
+    <LocalityForm values={values} error={error} submit="Add locality" cities={refs.cities} />
+  </AdminCard>
+</AdminLayout>

@@ -67,6 +67,58 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   - Every change is audited: `showcase.add|remove|up|down`, e.g. “hot selling projects: #1003 Skyreach Riverstone”, moves
     with the new place (“→ 2”).
 
+## Projects and localities (items 120–126)
+- **Migration 0018** (additive): `projects.hidden` (0/1), `projects.description`, `projects.updated_at`; a
+  `project_photos (project_id, r2_key, position)` table (position 1 = cover); `localities.hidden`,
+  `localities.description`, `localities.photo_key`.
+- **Hidden projects** (item 120) are left out of every public read through one condition, `VISIBLE_PROJECT` in
+  `src/lib/repo.ts`: project lists (city, builder, new projects, home, search suggestions, Showcase), the project page
+  (404), compare, the sitemap, city / builder / platform counts, and stats built on project reviews and registered
+  transactions. **Hidden localities** leave the reference data (`getRefs`). Admin pages read everything.
+- **Projects → All projects** (item 121, `/admin/projects`): every project, hidden ones included — cover image, name,
+  city / locality, builder, price range, status (Live / Hidden), date (last admin save, else launch year); search, sort,
+  25 per page; **Edit**, **+ Add project** and **Hide / Unhide** (`POST /api/admin/projects/{id}`, `action=hide|unhide`, asks before
+  hiding, audited as `project.hide|unhide` with old → new).
+- **Add / edit a project** (item 122, `/admin/projects/new`, `/admin/projects/{id}`, `src/lib/admin-projects.ts`): the
+  form posts to its own page (admin protection as everywhere) and is shown again with the values and a clear message
+  on any error. Fields: name; URL slug (made from name + locality when empty; unique within the city); city and
+  locality (checked to match); builder (existing, or **New builder** with name, founded year, head office, about);
+  status badge (New Launch / Under Construction / Ready to Move); RERA number (the “RERA verified” badge shows when
+  filled); possession; launch year; rate/sq.ft; land acres; towers; floors; total units; **configurations** (rows of
+  BHK, label, carpet sq.ft, price — the price range and “2, 3 BHK” label are worked out from them); amenities and
+  highlights (one per line); nearby places (“name, type, km”); description (shown as an extra paragraph in “About
+  {name}” on the project page, only when filled). A new project gets a flat six-quarter price trend at its rate.
+  Audited: `project.add`, `builder.add`, and one `project.edit` row per changed field (old → new; lists as item
+  counts).
+- **Project photos** (item 123, “Photos” card on the edit page, `src/lib/admin-project-photos.ts`): upload up to 12
+  photos, checked like listing photos (JPEG / PNG / WebP from the file's bytes, 5 MB each, EXIF incl. GPS stripped by
+  `src/lib/strip-metadata.ts`), stored in R2 as `projects/<id>/<uuid>.<ext>`; **Make cover**, move earlier / later,
+  **Remove** (also deletes the R2 object). The first photo is the cover: project cards (city, locality, builder, new
+  projects search, compare), the home page “Hot projects” cards and the project page hero; all photos fill the
+  project page “Photos” tab. Projects without photos (the demo ones) keep their stock images and generated covers.
+  `/media` serves a project photo only while the project is live; the admin sees them through `/admin/media/…`
+  (admin password). Audited: `project.photo-add`, `project.photo-order`, `project.photo-remove`.
+- **Localities** (item 124, `/admin/localities?city=…`, `src/lib/admin-localities.ts`): one city at a time, hidden
+  ones included — photo, name, reference rate, rent, YoY, live listings / projects, status; search, sort, 25 per page.
+  **Edit** (`/admin/localities/{city}/{slug}`): name, reference rate (₹/sq.ft), rent (₹/sq.ft per month), yearly growth
+  %, latitude / longitude (checked to be inside India), description (shown under the title on the locality page), and
+  one **photo** (same checks as listing photos; R2 `localities/<city>/<slug>/<uuid>.<ext>`; replacing or removing it
+  deletes the old object) used on the home page “Top Localities” card instead of the stock image. The card's price
+  range still comes from live listings; the reference rate shows until there are some. **+ Add locality**
+  (`/admin/localities/new`): the same fields plus city and slug (made from the name when empty, new within the city),
+  fixed afterwards because listings and projects refer to them. **Hide / Unhide**: a hidden locality leaves the home
+  page tabs, the city and property-rates pages, its locality page (404), the sitemap and its photo (`/media` 404);
+  hiding is refused while live listings or projects use it, with a message giving both counts. Audited:
+  `locality.add`, `locality.edit` (one row per field, old → new), `locality.photo`, `locality.hide|unhide`.
+- **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
+  (reference data, project list, stats, suggestions, city facets) so the change shows at once.
+- **Content version** (item 125, migration 0019): `clearContentCaches()` also bumps the one-row `content_version`
+  table. The middleware reads it once per request (`syncContentVersion()`, a primary-key lookup run in parallel with
+  the session check; skipped for `/_astro/`, `/media/`, `/admin/media/` and image files), and an instance whose
+  caches were built under an older version drops them first — so an admin edit shows at once on every Worker
+  instance. That is the only extra query: with warm caches the home page makes two (this and the Showcase picks).
+  If the migration has not been applied the check is skipped and instances catch up within 5 minutes, as before.
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).

@@ -1,0 +1,89 @@
+---
+// Add / edit project form (/admin/projects/new, /admin/projects/{id}). Plain form: no JavaScript needed — localities are
+// grouped by city and checked against the city on the server; configurations are rows (blank ones are skipped).
+// Every field is checked server-side (src/lib/admin-projects.ts).
+import type { Refs } from '../../lib/repo';
+import { EXTRA_UNIT_ROWS, NEARBY_KINDS, PROJECT_STATUSES, type ProjectFormValues } from '../../lib/admin-projects';
+
+interface Props { values: ProjectFormValues; refs: Refs; error?: string; submit: string }
+const { values: v, refs, error, submit } = Astro.props;
+const val = (k: string) => (typeof v[k] === 'string' ? (v[k] as string) : '');
+const arr = (k: string) => (Array.isArray(v[k]) ? (v[k] as string[]) : []);
+const rows = Math.max(arr('unitBhk').length, 1) + EXTRA_UNIT_ROWS;
+const label = 'block text-sm text-slate-600';
+const input = 'input mt-1';
+---
+<form method="post" class="space-y-8" id="project-form">
+  {error && <p class="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700" role="alert">{error}</p>}
+
+  <fieldset class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <legend class="mb-2 font-semibold text-slate-800">Project</legend>
+    <label class={label}>Name<input name="name" value={val('name')} required minlength="3" maxlength="120" class={input} /></label>
+    <label class={label}>URL name (slug) <span class="text-xs">— empty: made from the name</span><input name="slug" value={val('slug')} maxlength="100" pattern="[a-z0-9-]*" title="Lowercase letters, digits and dashes" class={input} /></label>
+    <label class={label}>Status (badge)
+      <select name="status" class={input}>{PROJECT_STATUSES.map((s) => <option selected={s === val('status')}>{s}</option>)}</select>
+    </label>
+    <label class={label}>City
+      <select name="city" class={input} required>{refs.cities.map((c) => <option value={c.slug} selected={c.slug === val('city')}>{c.name}</option>)}</select>
+    </label>
+    <label class={label}>Locality (in that city)
+      <select name="locality" class={input} required>
+        {refs.cities.map((c) => <optgroup label={c.name}>{refs.localitiesOf(c.slug).map((l) => <option value={l.slug} selected={l.slug === val('locality') && c.slug === val('city')}>{l.name}</option>)}</optgroup>)}
+      </select>
+    </label>
+    <label class={label}>RERA number <span class="text-xs">— shows the “RERA verified” badge</span><input name="rera" value={val('rera')} maxlength="60" class={input} /></label>
+    <label class={label}>Possession<input name="possession" value={val('possession')} required maxlength="40" placeholder="Dec 2027 or Ready" class={input} /></label>
+    <label class={label}>Launch year<input name="launchedYear" type="number" value={val('launchedYear') || String(new Date().getFullYear())} required class={input} /></label>
+    <label class={label}>Rate (₹ per sq.ft)<input name="ratePerSqft" type="number" value={val('ratePerSqft')} required min="500" class={input} /></label>
+    <label class={label}>Land (acres)<input name="landAcres" type="number" step="0.1" value={val('landAcres') || '0'} min="0" class={input} /></label>
+    <label class={label}>Towers<input name="towers" type="number" value={val('towers') || '0'} min="0" class={input} /></label>
+    <label class={label}>Floors<input name="floors" type="number" value={val('floors') || '0'} min="0" class={input} /></label>
+    <label class={label}>Total units<input name="totalUnits" type="number" value={val('totalUnits') || '0'} min="0" class={input} /></label>
+  </fieldset>
+
+  <fieldset class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <legend class="mb-2 font-semibold text-slate-800">Builder</legend>
+    <label class:list={[label, 'sm:col-span-2 lg:col-span-4']}>Builder
+      <select name="builder" class={input}>
+        {refs.builders.map((b) => <option value={b.slug} selected={b.slug === val('builder')}>{b.name}</option>)}
+        <option value="__new" selected={val('builder') === '__new'}>＋ New builder (fill in below)</option>
+      </select>
+    </label>
+    <label class={label}>New builder: name<input name="newBuilderName" value={val('newBuilderName')} maxlength="100" class={input} /></label>
+    <label class={label}>Founded (year, required for a new builder)<input name="newBuilderFounded" type="number" value={val('newBuilderFounded')} class={input} /></label>
+    <label class={label}>Head office <span class="text-xs">— empty: the project's city</span><input name="newBuilderHq" value={val('newBuilderHq')} maxlength="80" class={input} /></label>
+    <label class={label}>About<input name="newBuilderAbout" value={val('newBuilderAbout')} maxlength="1000" class={input} /></label>
+  </fieldset>
+
+  <fieldset>
+    <legend class="mb-2 font-semibold text-slate-800">Configurations <span class="text-sm font-normal text-slate-500">— price range and “2, 3 BHK” are worked out from these; blank rows are skipped</span></legend>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[620px] text-sm">
+        <thead class="bg-slate-100 text-left text-[13px] font-semibold text-slate-700"><tr><th class="px-3 py-2">BHK (0 = studio)</th><th class="px-3 py-2">Label</th><th class="px-3 py-2">Carpet (sq.ft)</th><th class="px-3 py-2">Price (₹)</th></tr></thead>
+        <tbody>
+          {Array.from({ length: rows }, (_, i) => (
+            <tr>
+              <td class="px-3 py-1.5"><input name="unitBhk" type="number" min="0" max="10" value={arr('unitBhk')[i] ?? ''} aria-label={`Configuration ${i + 1} BHK`} class="input py-1.5" /></td>
+              <td class="px-3 py-1.5"><input name="unitLabel" value={arr('unitLabel')[i] ?? ''} maxlength="60" placeholder="e.g. 2 BHK Premium" aria-label={`Configuration ${i + 1} label`} class="input py-1.5" /></td>
+              <td class="px-3 py-1.5"><input name="unitCarpet" type="number" min="100" value={arr('unitCarpet')[i] ?? ''} aria-label={`Configuration ${i + 1} carpet area`} class="input py-1.5" /></td>
+              <td class="px-3 py-1.5"><input name="unitPrice" type="number" min="100000" value={arr('unitPrice')[i] ?? ''} aria-label={`Configuration ${i + 1} price`} class="input py-1.5" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </fieldset>
+
+  <fieldset class="grid gap-4 lg:grid-cols-3">
+    <legend class="mb-2 font-semibold text-slate-800">Details</legend>
+    <label class={label}>Amenities <span class="text-xs">— one per line</span><textarea name="amenities" rows="7" class={input}>{val('amenities')}</textarea></label>
+    <label class={label}>Highlights <span class="text-xs">— one per line</span><textarea name="highlights" rows="7" class={input}>{val('highlights')}</textarea></label>
+    <label class={label}>Nearby places <span class="text-xs">— “name, type, km”; type: {NEARBY_KINDS.join(', ')}</span><textarea name="nearby" rows="7" class={input}>{val('nearby')}</textarea></label>
+    <label class:list={[label, 'lg:col-span-3']}>Description <span class="text-xs">— shown as “About the project” on the project page</span><textarea name="description" rows="5" maxlength="5000" class={input}>{val('description')}</textarea></label>
+  </fieldset>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <button class="btn-primary py-2">{submit}</button>
+    <a href="/admin/projects" class="btn-ghost py-2">Cancel</a>
+  </div>
+</form>

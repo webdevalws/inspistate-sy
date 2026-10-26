@@ -1,0 +1,99 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import ProjectForm from '../../../components/admin/ProjectForm.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import { clearContentCaches, getRefs } from '../../../lib/repo';
+import { formValues, parseProjectForm, projectFormValues, saveProject } from '../../../lib/admin-projects';
+import { MAX_PROJECT_PHOTOS, addProjectPhotos, changeProjectPhoto, projectPhotoKeys } from '../../../lib/admin-project-photos';
+import { logAdmin } from '../../../lib/audit';
+import { NOTE_ERR, NOTE_OK } from '../../../components/admin/ui';
+import { env } from 'cloudflare:workers';
+
+// Edit a project. The forms post here; each changed field is audited (project.edit, old → new) and the caches cleared.
+// Photos (lib/admin-project-photos.ts): upload, make cover, move, remove — audited as project.photo-*.
+const id = Number(Astro.params.id);
+const info = Number.isInteger(id) && id > 0 ? await env.DB.prepare('SELECT name, slug, city_slug, hidden FROM projects WHERE id = ?').bind(id).first<{ name: string; slug: string; city_slug: string; hidden: number }>() : null;
+if (!info) return new Response('Project not found', { status: 404 });
+let error = '';
+let values = await projectFormValues(id);
+let photoError = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  if (action === 'photo-add') {
+    const files = form.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0);
+    const r = await addProjectPhotos(id, files);
+    if (r.ok) {
+      await logAdmin(Astro, 'project.photo-add', `project #${id} ${info.name}: ${r.added} photo(s) added, ${r.total - r.added} → ${r.total}`);
+      await clearContentCaches();
+      return Astro.redirect(`/admin/projects/${id}?done=photos#photos`, 303);
+    }
+    photoError = r.error;
+  } else if (/^photo-(cover|up|down|remove)$/.test(action)) {
+    const what = action.slice(6);
+    const text = await changeProjectPhoto(id, what, String(form.get('key') ?? ''));
+    if (text) {
+      await logAdmin(Astro, what === 'remove' ? 'project.photo-remove' : 'project.photo-order', `project #${id} ${info.name}: ${text}`);
+      await clearContentCaches();
+    }
+    return Astro.redirect(`/admin/projects/${id}?done=${text ? (what === 'remove' ? 'photo-removed' : 'photo-moved') : 'unchanged'}#photos`, 303);
+  } else {
+    const parsed = await parseProjectForm(form, await getRefs(), id);
+    if (parsed.ok) {
+      const { changes } = await saveProject(id, parsed.project, parsed.newBuilder);
+      if (parsed.newBuilder) await logAdmin(Astro, 'builder.add', `builder ${parsed.newBuilder.name} (${parsed.newBuilder.slug})`);
+      for (const [field, from, to] of changes) await logAdmin(Astro, 'project.edit', `project #${id} ${field}: ${from} → ${to}`);
+      if (changes.length || parsed.newBuilder) await clearContentCaches();
+      return Astro.redirect(`/admin/projects/${id}?done=${changes.length ? 'saved' : 'unchanged'}`, 303);
+    }
+    error = parsed.error;
+    values = formValues(form);
+  }
+}
+const photos = await projectPhotoKeys(id);
+const refs = await getRefs();
+const done = ({ added: 'Project added. Add photos below; it is already live on the site.', saved: 'Changes saved. The site shows them now.', unchanged: 'Nothing changed.', photos: 'Photos added. The site shows them now.', 'photo-removed': 'Photo removed.', 'photo-moved': 'Photo order saved.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+---
+<AdminLayout title={info.name} active="projects" sub="all" crumbs={[['Projects', '/admin/projects'], [info.name]]}>
+  {done && <p class={NOTE_OK}>{done}</p>}
+  <p class="mb-4 flex flex-wrap items-center gap-3 text-sm">
+    {info.hidden ? <Pill status="hidden" label="Hidden" /> : <Pill status="live" label="Live" />}
+    {!info.hidden && <a href={`/projects/${info.city_slug}/${info.slug}`} class="text-brand-700 hover:underline">View on the site →</a>}
+  </p>
+  <AdminCard title={`Photos (${photos.length} of ${MAX_PROJECT_PHOTOS})`} id="photos">
+    {photoError && <p class={NOTE_ERR} role="alert">{photoError}</p>}
+    <p class="mb-4 text-sm text-slate-600">The first photo is the cover (cards, home page, top of the project page). {photos.length === 0 && 'Until photos are added the site shows stock images.'}</p>
+    {photos.length > 0 && (
+      <ul class="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {photos.map((k, i) => (
+          <li class="rounded-lg border border-slate-200 p-2" data-photo={k}>
+            <div class="relative h-32 overflow-hidden rounded-md bg-slate-200">
+              <img src={`/admin/media/${k}`} alt={`Photo ${i + 1}`} loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+              {i === 0 && <span class="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-slate-700">Cover</span>}
+            </div>
+            <form method="post" class="mt-2 flex flex-wrap items-center gap-1.5">
+              <input type="hidden" name="key" value={k} />
+              {i > 0 && <button name="action" value="photo-cover" class="btn-ghost px-2 py-1 text-xs">Make cover</button>}
+              {i > 0 && <ActionButton label={`Move photo ${i + 1} earlier`} icon="up" value="photo-up" />}
+              {i < photos.length - 1 && <ActionButton label={`Move photo ${i + 1} later`} icon="down" value="photo-down" />}
+              <ActionButton label={`Remove photo ${i + 1}`} icon="delete" value="photo-remove" tone="danger" confirm="Remove this photo?" />
+            </form>
+          </li>
+        ))}
+      </ul>
+    )}
+    {photos.length < MAX_PROJECT_PHOTOS && (
+      <form method="post" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="action" value="photo-add" />
+        <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required aria-label="Photos to upload" class="text-sm" />
+        <button class="btn-primary py-2">Upload photos</button>
+        <span class="text-xs text-slate-500">JPEG, PNG or WebP · 5 MB each · location data is removed</span>
+      </form>
+    )}
+  </AdminCard>
+  <AdminCard title="Edit project" id="edit">
+    <ProjectForm values={values!} refs={refs} error={error} submit="Save changes" />
+  </AdminCard>
+</AdminLayout>
