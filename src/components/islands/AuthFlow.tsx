@@ -17,6 +17,8 @@ interface Props {
   initialError?: string;
   /** Show "Continue with Google" (only when GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set). */
   google?: boolean;
+  /** The page a generic login was opened on (not an action): buyers return to it after logging in (afterLogin). */
+  from?: string | null;
   /** Register step pre-fill, e.g. the name and email of an account created with Google. */
   knownName?: string;
   knownEmail?: string;
@@ -49,7 +51,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data;
 }
 
-export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user', initialError = '', google = false, knownName = '', knownEmail = '' }: Props) {
+export default function AuthFlow({ cities, next = null, startAt = 'phone', knownPhone = '', defaultRole = 'user', initialError = '', google = false, knownName = '', knownEmail = '', from = null }: Props) {
   const [step, setStep] = useState<Step>(startAt);
   const [phone, setPhone] = useState(knownPhone);
   const [code, setCode] = useState('');
@@ -96,7 +98,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       const r = await post<{ needsRegistration: boolean; user: { role: Role | null } }>('/api/auth/verify', { phone, code, shortlist: readShortlist() });
       if (r.needsRegistration) setStep('register');
       // `next` wins; else sellers / agents go to their page; buyers stay where they are (afterLogin → null).
-      else go(afterLogin(r.user.role, next));
+      else go(afterLogin(r.user.role, next, from));
     });
   };
 
@@ -109,9 +111,15 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   };
 
   const selected = ROLES.find((r) => r.key === role)!;
-  // Google sign-in returns to `next`, else to the page the visitor is on (like phone login). The plain href is the
-  // no-JS fallback; the click handler adds the current page.
-  const googleHref = (to: string | null) => `/api/auth/google/start${to ? `?next=${encodeURIComponent(to)}` : ''}`;
+  // Google sign-in: `next` if the login was for an action; the page the visitor is on goes as `from`, so (like phone
+  // login) buyers come back to it and sellers / agents land on their page. The plain href is the no-JS fallback.
+  const googleHref = (to: string | null, here: string | null) => {
+    const q = new URLSearchParams();
+    if (to) q.set('next', to);
+    if (here) q.set('from', here);
+    const s = q.toString();
+    return `/api/auth/google/start${s ? `?${s}` : ''}`;
+  };
 
   if (step === 'phone') return (
     <form onSubmit={sendCode}>
@@ -129,7 +137,7 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
       {google && (
         <>
           <div className="mt-5 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/45" aria-hidden="true"><span className="h-px flex-1 bg-[#1C1A17]/15" />or<span className="h-px flex-1 bg-[#1C1A17]/15" /></div>
-          <a href={googleHref(next)} onClick={(e) => { e.currentTarget.href = googleHref(safeNext(next) ?? `${window.location.pathname}${window.location.search}`); }} className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2.5 border-[0.5px] border-[#1C1A17]/25 bg-white px-5 py-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[#1C1A17] transition hover:border-[#1C1A17]">{GOOGLE_G}Continue with Google</a>
+          <a href={googleHref(safeNext(next), from)} onClick={(e) => { e.currentTarget.href = googleHref(safeNext(next), from ?? `${window.location.pathname}${window.location.search}`); }} className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2.5 border-[0.5px] border-[#1C1A17]/25 bg-white px-5 py-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[#1C1A17] transition hover:border-[#1C1A17]">{GOOGLE_G}Continue with Google</a>
         </>
       )}
       <p className="mt-4 text-xs leading-relaxed text-[#1C1A17]/50">We’ll send a one-time code by SMS. By continuing you agree to our <a href="/terms" className="underline">Terms</a> and <a href="/privacy" className="underline">Privacy policy</a>.</p>

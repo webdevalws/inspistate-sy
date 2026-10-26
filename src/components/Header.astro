@@ -17,6 +17,8 @@ const pickerCities = cities.map((c) => ({ slug: c.slug, name: c.name, count: cou
 const menus = headerMenus(current.slug, current.name);
 const user = Astro.locals.user;
 const authCities = cities.map((c) => ({ slug: c.slug, name: c.name }));
+// Generic "Login / Register" links pass the current page as `from` (never `next`): without JavaScript, or when clicked
+// before the dialog has loaded, they open /login, and only buyers come back to the page (afterLogin).
 // Account menu follows the role picked at registration. The count: a seller's agent offers waiting for an answer, or
 // an agent's offers accepted in the last week.
 const badge = await offerBadge(user);
@@ -92,7 +94,7 @@ const overlay = Astro.url.pathname === '/';
           </div>
         </details>
       ) : (
-        <a href={`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open class="hidden transition sm:inline-block nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 hover:text-sand-50">Login / Register</a>
+        <a href={`/login?from=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open class="hidden transition sm:inline-block nav-line py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50/85 hover:text-sand-50">Login / Register</a>
       )}
       <a href="/post-property" class="hidden sm:inline-flex items-center gap-2 whitespace-nowrap border-[0.5px] border-sand-50/40 bg-white/5 px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-sand-50 backdrop-blur-md transition hover:bg-sand-50 hover:text-[#1C1A17]">
         Post Property
@@ -110,7 +112,7 @@ const overlay = Astro.url.pathname === '/';
               <div class="pb-2 pl-3">{m.groups.flatMap((g) => g.links).map(([label, href]) => <a href={href} class="block rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100">{label}</a>)}</div>
             </details>
           ))}
-          {!user && <a href="/login" data-auth-open class="mt-2 block rounded-xl px-3 py-2.5 text-center text-sm font-semibold border border-slate-200 hover:bg-slate-50">Login / Register</a>}
+          {!user && <a href={`/login?from=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open class="mt-2 block rounded-xl px-3 py-2.5 text-center text-sm font-semibold border border-slate-200 hover:bg-slate-50">Login / Register</a>}
           <a href="/post-property" class="mt-2 block rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-3 py-2.5 text-center text-sm font-bold text-brand-950 shadow">Post Property Free</a>
         </div>
       </details>

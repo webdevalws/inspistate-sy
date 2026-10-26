@@ -33,7 +33,7 @@ const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest('S
 
 // ---------- flow cookie ----------
 /** What the callback needs from the start of the flow. */
-export interface Flow { state: string; verifier: string; nonce: string; next: string | null; linkUserId: number | null; exp: number }
+export interface Flow { state: string; verifier: string; nonce: string; next: string | null; from?: string | null; linkUserId: number | null; exp: number }
 
 const flowKey = () => crypto.subtle.importKey('raw', enc.encode(`inspistate-google-flow:${clientSecret()}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 
@@ -41,8 +41,8 @@ const flowKey = () => crypto.subtle.importKey('raw', enc.encode(`inspistate-goog
  * Starts a login: stores state, PKCE verifier, nonce, where to go next and (when someone is logged in) the account
  * to link, then returns Google's consent URL. Scopes are openid email profile only.
  */
-export async function startFlow(cookies: AstroCookies, url: URL, next: string | null, linkUserId: number | null): Promise<string> {
-  const flow: Flow = { state: random(32), verifier: random(32), nonce: random(16), next, linkUserId, exp: Date.now() + FLOW_TTL_S * 1000 };
+export async function startFlow(cookies: AstroCookies, url: URL, next: string | null, linkUserId: number | null, from: string | null = null): Promise<string> {
+  const flow: Flow = { state: random(32), verifier: random(32), nonce: random(16), next, from, linkUserId, exp: Date.now() + FLOW_TTL_S * 1000 };
   const payload = b64url(enc.encode(JSON.stringify(flow)));
   const sig = b64url(await crypto.subtle.sign('HMAC', await flowKey(), enc.encode(payload)));
   cookies.set(FLOW_COOKIE, `${payload}.${sig}`, { path: FLOW_PATH, httpOnly: true, sameSite: 'lax', secure: url.protocol === 'https:', maxAge: FLOW_TTL_S });

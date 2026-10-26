@@ -8,9 +8,11 @@ import { GOOGLE_ERRORS, googleEnabled } from '../lib/google';
 import { realPhone } from '../lib/auth';
 
 const next = safeNext(Astro.url.searchParams.get('next'));
+// The page a generic "Login / Register" link was clicked on: buyers go back to it (sellers / agents to their page).
+const from = safeNext(Astro.url.searchParams.get('from'));
 const user = Astro.locals.user;
 // Already registered: `next`, else the role's page (sellers, agents), else /account.
-if (user?.role) return Astro.redirect(next ?? landingFor(user.role) ?? '/account');
+if (user?.role) return Astro.redirect(next ?? landingFor(user.role) ?? from ?? '/account');
 const cities = (await getRefs()).cities.map((c) => ({ slug: c.slug, name: c.name }));
 const defaultRole = roleForNext(next);
 // Why a Google sign-in was refused (the callback redirects here with ?error=…).
@@ -33,7 +35,7 @@ const error = Object.hasOwn(GOOGLE_ERRORS, errorKey) ? GOOGLE_ERRORS[errorKey] :
         </ul>
       </div>
       <div class="border-[0.5px] border-[#1C1A17]/15 bg-sand-50 p-6 sm:p-8">
-        <AuthFlow client:load cities={cities} next={next} startAt={user ? 'register' : 'phone'} knownPhone={realPhone(user?.phone) ?? ''} defaultRole={defaultRole} initialError={error} google={googleEnabled()} knownName={user?.name ?? ''} knownEmail={user?.email ?? ''} />
+        <AuthFlow client:load cities={cities} next={next} from={from} startAt={user ? 'register' : 'phone'} knownPhone={realPhone(user?.phone) ?? ''} defaultRole={defaultRole} initialError={error} google={googleEnabled()} knownName={user?.name ?? ''} knownEmail={user?.email ?? ''} />
       </div>
     </div>
   </div>

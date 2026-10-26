@@ -45,10 +45,13 @@ export function landingFor(role: Role | null | undefined): string | null {
 
 /**
  * Where a login (phone code or Google, page or dialog) goes: a safe `next` always wins (the visitor logged in to do
- * something there), otherwise the role's landing page (`landingFor`). `null` = no change (buyers: stay / default).
+ * something there, e.g. View Number), otherwise the role's landing page (`landingFor`), otherwise — buyers — `from`,
+ * the page a generic "Login / Register" was opened on (null = stay on the current page / default).
+ * Generic login links must pass the page as `from`, never as `next`, or sellers and agents would stay on it.
  * Accounts without a role go to registration first; that step decides with `destinationAfterRegister`.
  */
-export const afterLogin = (role: Role | null | undefined, next: unknown): string | null => safeNext(next) ?? landingFor(role);
+export const afterLogin = (role: Role | null | undefined, next: unknown, from?: unknown): string | null =>
+  safeNext(next) ?? landingFor(role) ?? safeNext(from);
 
 /**
  * Where a brand-new account goes after the register step. `null` means "stay on the current page".

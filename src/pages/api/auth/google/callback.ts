@@ -33,7 +33,12 @@ export const GET: APIRoute = async (ctx) => {
   if (!res.ok) return fail(res.error);
   if (res.token) setSessionCookie(cookies, res.token, url.protocol === 'https:');
   // New accounts finish the usual Buyer / Seller / Agent registration on /login (it opens on that step).
-  if (res.needsRegistration) return redirect(`/login${flow.next ? `?next=${encodeURIComponent(flow.next)}` : ''}`, 303);
+  if (res.needsRegistration) {
+    const q = new URLSearchParams();
+    if (flow.next) q.set('next', flow.next);
+    if (flow.from) q.set('from', flow.from);
+    return redirect(`/login${q.size ? `?${q}` : ''}`, 303);
+  }
   // `next` wins; else sellers / agents go to their page; buyers to /account as before.
-  return redirect(afterLogin(res.role, flow.next) ?? '/account', 303);
+  return redirect(afterLogin(res.role, flow.next, flow.from) ?? '/account', 303);
 };
