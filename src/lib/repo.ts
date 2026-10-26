@@ -481,11 +481,11 @@ export type ClosedAs = 'sold' | 'rented' | 'deleted';
 export async function getOwnedListing(id: number) {
   return db()
     .prepare(`SELECT id, user_id, purpose, segment, type, bhk, area_sqft, price, city_slug, locality_slug, furnishing, description,
-        contact_name, contact_phone, status, closed, edit_token, pg_sharing, pg_for, pg_food FROM listings WHERE id = ?`)
+        contact_name, contact_phone, status, closed, edit_token, pg_sharing, pg_for, pg_food, open_to_agents FROM listings WHERE id = ?`)
     .bind(id)
     .first<{ id: number; user_id: number | null; purpose: 'buy' | 'rent'; segment: 'residential' | 'commercial'; type: string; bhk: number; area_sqft: number; price: number;
       city_slug: string; locality_slug: string; furnishing: string; description: string | null; contact_name: string; contact_phone: string | null;
-      status: ListingStatus; closed: ClosedAs | null; edit_token: string | null; pg_sharing: string | null; pg_for: string | null; pg_food: number | null }>();
+      status: ListingStatus; closed: ClosedAs | null; edit_token: string | null; pg_sharing: string | null; pg_for: string | null; pg_food: number | null; open_to_agents: number }>();
 }
 
 /** Saves an owner's edit. Any edit goes back to review (pending, not verified), even for a live listing. */

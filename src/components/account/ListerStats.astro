@@ -1,0 +1,43 @@
+---
+// Sellers' and agents' overview strip: listings used of the allowance, leads received, and the plan (agents) or
+// "+ List property" (sellers). Used on /account and the agent dashboard (/account/agent).
+import type { User } from '../../lib/auth';
+import type { Allowance, Subscription } from '../../lib/accounts';
+import { planByKey } from '../../data/plans';
+import { fmtDate } from './shared';
+
+interface Props { user: User; allowance: Allowance; leadsCount: number; subs: { active: Subscription | null; requested: Subscription | null } | null }
+const { user, allowance, subs } = Astro.props;
+const leads = { length: Astro.props.leadsCount };
+const plan = subs?.active ? planByKey(subs.active.plan) : null;
+---
+<div class="mt-6 grid border-[0.5px] border-[#1C1A17]/15 bg-white sm:grid-cols-3">
+  <div class="p-5">
+    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Listings</p>
+    <p class="mt-2 font-display text-3xl font-bold">{allowance.used}<span class="text-lg text-[#1C1A17]/45"> / {allowance.limit ?? '∞'}</span></p>
+    {allowance.limit !== null && <div class="mt-3 h-1 bg-[#1C1A17]/10"><div class="h-1 bg-accent-500" style={`width:${Math.min(100, (allowance.used / Math.max(1, allowance.limit)) * 100)}%`}></div></div>}
+    <p class="mt-2 text-xs text-[#1C1A17]/60">{allowance.limit === null ? 'Unlimited with your plan' : allowance.canPost ? `${allowance.limit - allowance.used} free listing${allowance.limit - allowance.used === 1 ? '' : 's'} left` : 'Free listings used up'}</p>
+  </div>
+  <div class="border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
+    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Leads received</p>
+    <p class="mt-2 font-display text-3xl font-bold">{leads.length}</p>
+    <p class="mt-2 text-xs text-[#1C1A17]/60">Buyer enquiries on your listings</p>
+  </div>
+  <div class="flex flex-col justify-between gap-3 border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
+    {user.role === 'agent' ? (
+      <>
+        <div>
+          <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Plan</p>
+          <p class="mt-2 font-display text-lg font-bold">{plan ? plan.name : subs?.requested ? 'Request in progress' : 'Free'}</p>
+          <p class="text-xs text-[#1C1A17]/60">{subs?.active?.ends_at ? `Valid till ${fmtDate(subs.active.ends_at)}` : subs?.requested ? 'Our team will call to activate it' : '3 free listings'}</p>
+        </div>
+        {!plan && <a href="/account/plans" class="ed-link self-start">{subs?.requested ? 'View request' : 'Upgrade'} <span aria-hidden="true">→</span></a>}
+      </>
+    ) : (
+      <>
+        <p class="text-sm text-[#1C1A17]/70">Ready to list another property?</p>
+        <a href="/post-property" class:list={['ed-btn self-start', allowance.canPost ? 'ed-btn-dark' : 'ed-btn-ghost-dark pointer-events-none opacity-50']}>+ List property</a>
+      </>
+    )}
+  </div>
+</div>

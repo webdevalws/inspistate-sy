@@ -15,8 +15,16 @@ name, optional email, optional city and (agents) a required agency name.
 
 ## Outputs
 - HttpOnly session cookie (30 days); `users.role`, `city_slug`, `company`
-- Redirect after **login** (returning account): the safe `next`, else stay on the current page
-  (`/login` itself then forwards to `/account`).
+- Redirect after **login** (returning account), one rule for phone and Google, page and dialog (`afterLogin` in
+  `src/lib/redirect.ts`, item 104): the safe `next` always wins; with no `next`, **sellers** go to `/account#listings`
+  and **agents** to `/account/agent` (`landingFor`); **buyers** keep the old behaviour (stay on the current page; `/login`
+  itself forwards to `/account`). A logged-in seller or agent opening `/login` without `next` is sent to their page too.
+  Actions that need a login carry an explicit `next` so they always return: View Number on listing cards
+  (`data-auth-next` = the current page), post property, save search, forum ask / answer. **Generic** login links never
+  carry a `next`: the header "Login / Register" (desktop and mobile menu) is `/login?from=<page>`, and the Google button
+  sends the page as `from` too. `afterLogin(role, next, from)` = `next` → the role’s page → (buyers) `from`. So sellers
+  and agents land on their page whether the dialog opened or the link was followed (no JavaScript, or clicked before
+  the dialog loaded — item 111), and buyers return to the page as before. The header "My account" link stays `/account`.
 - Redirect after **register** (new account), from `destinationAfterRegister(role, next)`:
   - Buyer (`user`) → the safe `next`, else stay on the current page
   - Seller → `/post-property`, unless `next` is already a seller page (`/post-property…` or `/account…`)

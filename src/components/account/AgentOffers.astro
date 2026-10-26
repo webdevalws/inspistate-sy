@@ -1,0 +1,39 @@
+---
+// "Agent offers" on /account (sellers): agents who offered to help with a listing — name, agency, message, date — with
+// Accept / Decline. The agent's phone only appears once accepted. See docs/functions/agent-offers/desc.md.
+import type { Refs } from '../../lib/repo';
+import type { ReceivedOffer } from '../../lib/agent-offers';
+import { typeLabel } from '../../lib/search';
+import { fmtDate, h2 } from './shared';
+
+interface Props { offers: ReceivedOffer[]; refs: Refs; done?: string }
+const { offers, refs, done } = Astro.props;
+const chip: Record<string, string> = { pending: 'bg-amber-50 text-amber-900', accepted: 'bg-emerald-50 text-emerald-800', declined: 'bg-sand-100 text-[#1C1A17]/70' };
+const chipLabel: Record<string, string> = { pending: 'New', accepted: 'Accepted', declined: 'Declined' };
+---
+<section id="offers" class="scroll-mt-28">
+  <h2 class={h2}>Agent offers</h2>
+  <p class="mt-2 text-sm text-[#1C1A17]/65">Agents who offered to help with listings you marked “open to working with an agent”. Accept to share phone numbers with that agent; decline and they can’t ask again for that listing.</p>
+  {done && <p class="mt-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{done}</p>}
+  {offers.length ? (
+    <ul class="mt-4 border-t-[0.5px] border-[#1C1A17]/15">
+      {offers.map((o) => (
+        <li class="flex flex-wrap items-start justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4" data-offer={o.id}>
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold">{o.agent_name ?? 'Agent'}{o.agency && <span class="font-normal text-[#1C1A17]/60"> · {o.agency}</span>}</p>
+            <p class="text-xs text-[#1C1A17]/55">#{o.listing_id} · {o.bhk ? `${o.bhk} BHK ` : ''}{typeLabel(o.type)} in {refs.locality(o.city_slug, o.locality_slug)?.name}, {refs.city(o.city_slug)?.name} · {fmtDate(o.created_at)}</p>
+            <p class="mt-2 whitespace-pre-line text-sm text-[#1C1A17]/80">{o.message}</p>
+            {o.status === 'accepted' && o.agent_phone && <p class="mt-2 text-sm">Call them: <a href={`tel:+91${o.agent_phone}`} class="font-mono underline">+91 {o.agent_phone}</a></p>}
+            {o.status === 'pending' && (
+              <div class="mt-3 flex flex-wrap gap-3">
+                {!o.listing_closed && <form method="post" action="/api/account/agent-offers"><input type="hidden" name="offer" value={o.id} /><button name="action" value="accept" class="ed-btn ed-btn-dark">Accept</button></form>}
+                <form method="post" action="/api/account/agent-offers"><input type="hidden" name="offer" value={o.id} /><button name="action" value="decline" class="ed-btn ed-btn-ghost-dark">Decline</button></form>
+              </div>
+            )}
+          </div>
+          <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', chip[o.status]]}>{chipLabel[o.status]}</span>
+        </li>
+      ))}
+    </ul>
+  ) : <p class="mt-4 border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">No offers yet. Tick “I’m open to working with an agent” on a listing to let registered agents offer to help.</p>}
+</section>

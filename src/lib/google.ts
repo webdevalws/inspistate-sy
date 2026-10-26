@@ -5,6 +5,7 @@
 import { env } from 'cloudflare:workers';
 import type { AstroCookies } from 'astro';
 import { BLOCKED_MESSAGE, createSession, googlePlaceholderPhone, type User } from './auth';
+import type { Role } from '../data/plans';
 
 const cfg = env as unknown as { GOOGLE_CLIENT_ID?: string; GOOGLE_CLIENT_SECRET?: string };
 const clientId = () => cfg.GOOGLE_CLIENT_ID?.trim() ?? '';
@@ -32,7 +33,7 @@ const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest('S
 
 // ---------- flow cookie ----------
 /** What the callback needs from the start of the flow. */
-export interface Flow { state: string; verifier: string; nonce: string; next: string | null; linkUserId: number | null; exp: number }
+export interface Flow { state: string; verifier: string; nonce: string; next: string | null; from?: string | null; linkUserId: number | null; exp: number }
 
 const flowKey = () => crypto.subtle.importKey('raw', enc.encode(`inspistate-google-flow:${clientSecret()}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 
@@ -40,8 +41,8 @@ const flowKey = () => crypto.subtle.importKey('raw', enc.encode(`inspistate-goog
  * Starts a login: stores state, PKCE verifier, nonce, where to go next and (when someone is logged in) the account
  * to link, then returns Google's consent URL. Scopes are openid email profile only.
  */
-export async function startFlow(cookies: AstroCookies, url: URL, next: string | null, linkUserId: number | null): Promise<string> {
-  const flow: Flow = { state: random(32), verifier: random(32), nonce: random(16), next, linkUserId, exp: Date.now() + FLOW_TTL_S * 1000 };
+export async function startFlow(cookies: AstroCookies, url: URL, next: string | null, linkUserId: number | null, from: string | null = null): Promise<string> {
+  const flow: Flow = { state: random(32), verifier: random(32), nonce: random(16), next, from, linkUserId, exp: Date.now() + FLOW_TTL_S * 1000 };
   const payload = b64url(enc.encode(JSON.stringify(flow)));
   const sig = b64url(await crypto.subtle.sign('HMAC', await flowKey(), enc.encode(payload)));
   cookies.set(FLOW_COOKIE, `${payload}.${sig}`, { path: FLOW_PATH, httpOnly: true, sameSite: 'lax', secure: url.protocol === 'https:', maxAge: FLOW_TTL_S });
@@ -148,7 +149,7 @@ async function verifyIdToken(token: string, jwksUrl: string): Promise<Record<str
 
 // ---------- accounts ----------
 export type GoogleError = 'blocked' | 'google-taken' | 'google-other' | 'google-email-exists';
-type SignInResult = { ok: true; token: string | null; needsRegistration: boolean } | { ok: false; error: GoogleError };
+type SignInResult = { ok: true; token: string | null; needsRegistration: boolean; role: Role | null } | { ok: false; error: GoogleError };
 
 /** Messages for /login?error=… (the blocked one is the same as phone login's). */
 export const GOOGLE_ERRORS: Record<string, string> = {
@@ -171,7 +172,7 @@ export const GOOGLE_ERRORS: Record<string, string> = {
  * (4) otherwise a new account is created and goes through the usual Buyer / Seller / Agent registration.
  */
 export async function signInWithGoogle(g: GoogleIdentity, current: User | null): Promise<SignInResult> {
-  const byGoogle = await db().prepare('SELECT id, role, blocked_at FROM users WHERE google_sub = ?').bind(g.sub).first<{ id: number; role: string | null; blocked_at: string | null }>();
+  const byGoogle = await db().prepare('SELECT id, role, blocked_at FROM users WHERE google_sub = ?').bind(g.sub).first<{ id: number; role: Role | null; blocked_at: string | null }>();
 
   if (current) {
     if (byGoogle && byGoogle.id !== current.id) return { ok: false, error: 'google-taken' };
@@ -179,13 +180,13 @@ export async function signInWithGoogle(g: GoogleIdentity, current: User | null):
       .bind(g.sub, g.email, current.id, g.sub).run().catch((e: unknown) => { if (String(e).includes('UNIQUE')) return null; throw e; });
     if (!linked) return { ok: false, error: 'google-taken' };
     if (!linked.meta.changes) return { ok: false, error: 'google-other' };
-    return { ok: true, token: null, needsRegistration: !current.role };
+    return { ok: true, token: null, needsRegistration: !current.role, role: current.role };
   }
 
   if (byGoogle) {
     if (byGoogle.blocked_at) return { ok: false, error: 'blocked' };
     await db().prepare('UPDATE users SET google_email = ? WHERE id = ?').bind(g.email, byGoogle.id).run();
-    return { ok: true, token: await createSession(byGoogle.id), needsRegistration: !byGoogle.role };
+    return { ok: true, token: await createSession(byGoogle.id), needsRegistration: !byGoogle.role, role: byGoogle.role };
   }
 
   if (await db().prepare('SELECT 1 FROM users WHERE lower(email) = ? OR lower(google_email) = ?').bind(g.email, g.email).first()) {
@@ -199,5 +200,5 @@ export async function signInWithGoogle(g: GoogleIdentity, current: User | null):
   // Created by a parallel callback for the same Google account a moment ago: sign in to that one.
   const id = created ?? (await db().prepare('SELECT id FROM users WHERE google_sub = ?').bind(g.sub).first<number>('id'));
   if (!id) return { ok: false, error: 'google-taken' };
-  return { ok: true, token: await createSession(id), needsRegistration: true };
+  return { ok: true, token: await createSession(id), needsRegistration: true, role: null };
 }

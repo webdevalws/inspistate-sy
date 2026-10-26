@@ -50,6 +50,9 @@ Listing submission with photos and moderation. Requires login; Sellers get 3 fre
 - **Mobile number needed** (item 99): an account created with Google (no mobile number yet) sees "Add your mobile
   number to list your property" (`listingAllowance` reason `phone`) and is sent to the account page to add it.
 
+- **Open to working with an agent** (item 105, Seller accounts): a checkbox on the Contact step, off by default; see
+  [agent offers](../agent-offers/desc.md).
+
 ## Owners manage their listings
 - **Lifecycle column** (migration 0011): `listings.closed` = `sold` | `rented` | `deleted` (NULL while open)
   and `closed_at`, kept separate from the moderation `status`. A listing is public only when

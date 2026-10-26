@@ -4,21 +4,29 @@ import AccountNav from '../components/AccountNav.astro';
 import ShortlistView from '../components/islands/ShortlistView';
 import SavedSearchList from '../components/islands/SavedSearchList';
 import AddPhone from '../components/islands/AddPhone';
+import ListerStats from '../components/account/ListerStats.astro';
+import MyListings from '../components/account/MyListings.astro';
+import LeadsReceived from '../components/account/LeadsReceived.astro';
+import AgentOffers from '../components/account/AgentOffers.astro';
+import { offersReceived } from '../lib/agent-offers';
+import { fmtDate, h2 } from '../components/account/shared';
 import { realPhone } from '../lib/auth';
 import { GOOGLE_ERRORS, googleEnabled } from '../lib/google';
 import { leadsReceived, listingAllowance, myEnquiries, myListings, savedSearches, subscriptionState } from '../lib/accounts';
 import { getRefs } from '../lib/repo';
 import { safeNext } from '../lib/redirect';
-import { formatPrice, formatRent } from '../lib/format';
-import { ROLES, planByKey, roleLabel } from '../data/plans';
+import { ROLES, roleLabel } from '../data/plans';
 
 const user = Astro.locals.user!; // middleware redirects anonymous users to /login
 const lister = user.role === 'seller' || user.role === 'agent';
-const [refs, listings, enquiries, searches, allowance, leads, subs] = await Promise.all([
+const [refs, listings, enquiries, searches, allowance, leads, subs, offers] = await Promise.all([
   getRefs(), myListings(user.id), myEnquiries(user.id), savedSearches(user.id), listingAllowance(user),
   lister ? leadsReceived(user.id) : Promise.resolve([]), user.role === 'agent' ? subscriptionState(user.id) : Promise.resolve(null),
+  user.role === 'seller' ? offersReceived(user.id) : Promise.resolve([]),
 ]);
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+// Agent offers (sellers): waiting ones are counted at the top; ?offer= is the result of Accept / Decline.
+const pendingOffers = offers.filter((o) => o.status === 'pending').length;
+const offerDone = ({ accepted: 'Offer accepted. You can now see each other’s phone numbers.', declined: 'Offer declined. That agent can’t ask again for this listing.', unavailable: 'That offer can’t be answered any more.' } as Record<string, string>)[Astro.url.searchParams.get('offer') ?? ''];
 const saved = Astro.url.searchParams.get('saved');
 // Accounts created with Google have no mobile number until they add one (sellers and agents need it to post).
 const phone = realPhone(user.phone);
@@ -26,17 +34,8 @@ const phoneAdded = Astro.url.searchParams.get('phone') === 'added';
 // Linking Google from here: /api/auth/google/callback comes back with ?google=linked or an error code.
 const googleParam = Astro.url.searchParams.get('google') ?? '';
 const googleError = Object.hasOwn(GOOGLE_ERRORS, googleParam) ? GOOGLE_ERRORS[googleParam] : '';
-const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
-const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
 // Result of an owner action (/api/account/listings/[id] redirects back with ?listing=…).
-const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
-// Buyer numbers on Agent-posted listings need a paid plan, whatever the current role (switching
-// agent → seller must not unmask them). Leads on the owner's own (Owner-posted) listings are always shown.
-const isMasked = (d: { posted_by: string }) => d.posted_by === 'Agent' && !allowance.hasPlan;
-const anyMasked = leads.some(isMasked);
-const mask = (p: string) => `${p.slice(0, 2)}••••••${p.slice(-2)}`;
-const plan = subs?.active ? planByKey(subs.active.plan) : null;
-const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:text-2xl';
+const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.', 'agents-on': 'Agents can now see this listing and offer to help.', 'agents-off': 'This listing is no longer shown to agents.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
 ---
 <Base title="My account" noindex>
   <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
@@ -56,6 +55,12 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
               <a href="/login" data-auth-open class="ed-btn ed-btn-dark">Finish registration →</a>
             </div>
           )}
+          {pendingOffers > 0 && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+              <p class="text-sm">{pendingOffers === 1 ? 'An agent has' : `${pendingOffers} agents have`} offered to help with your listings.</p>
+              <a href="#offers" class="ed-btn ed-btn-dark">See agent offers →</a>
+            </div>
+          )}
           {lister && !phone && (
             <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
               <p class="text-sm">Add your mobile number to post listings and get enquiries from buyers.</p>
@@ -64,36 +69,7 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
           )}
 
           {lister && (
-            <div class="mt-6 grid border-[0.5px] border-[#1C1A17]/15 bg-white sm:grid-cols-3">
-              <div class="p-5">
-                <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Listings</p>
-                <p class="mt-2 font-display text-3xl font-bold">{allowance.used}<span class="text-lg text-[#1C1A17]/45"> / {allowance.limit ?? '∞'}</span></p>
-                {allowance.limit !== null && <div class="mt-3 h-1 bg-[#1C1A17]/10"><div class="h-1 bg-accent-500" style={`width:${Math.min(100, (allowance.used / Math.max(1, allowance.limit)) * 100)}%`}></div></div>}
-                <p class="mt-2 text-xs text-[#1C1A17]/60">{allowance.limit === null ? 'Unlimited with your plan' : allowance.canPost ? `${allowance.limit - allowance.used} free listing${allowance.limit - allowance.used === 1 ? '' : 's'} left` : 'Free listings used up'}</p>
-              </div>
-              <div class="border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
-                <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Leads received</p>
-                <p class="mt-2 font-display text-3xl font-bold">{leads.length}</p>
-                <p class="mt-2 text-xs text-[#1C1A17]/60">Buyer enquiries on your listings</p>
-              </div>
-              <div class="flex flex-col justify-between gap-3 border-t-[0.5px] border-[#1C1A17]/15 p-5 sm:border-l-[0.5px] sm:border-t-0">
-                {user.role === 'agent' ? (
-                  <>
-                    <div>
-                      <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">Plan</p>
-                      <p class="mt-2 font-display text-lg font-bold">{plan ? plan.name : subs?.requested ? 'Request in progress' : 'Free'}</p>
-                      <p class="text-xs text-[#1C1A17]/60">{subs?.active?.ends_at ? `Valid till ${fmtDate(subs.active.ends_at)}` : subs?.requested ? 'Our team will call to activate it' : '3 free listings'}</p>
-                    </div>
-                    {!plan && <a href="/account/plans" class="ed-link self-start">{subs?.requested ? 'View request' : 'Upgrade'} <span aria-hidden="true">→</span></a>}
-                  </>
-                ) : (
-                  <>
-                    <p class="text-sm text-[#1C1A17]/70">Ready to list another property?</p>
-                    <a href="/post-property" class:list={['ed-btn self-start', allowance.canPost ? 'ed-btn-dark' : 'ed-btn-ghost-dark pointer-events-none opacity-50']}>+ List property</a>
-                  </>
-                )}
-              </div>
-            </div>
+            <ListerStats user={user} allowance={allowance} leadsCount={leads.length} subs={subs} />
           )}
 
           {user.role === 'user' && (
@@ -108,52 +84,14 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
         </section>
 
         {lister && (
-          <section id="listings" class="scroll-mt-28">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class={h2}>My Listings</h2><a href="/post-property" class="ed-link">+ List property</a></div>
-            {listingDone && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{listingDone}</p>}
-            {listings.length ? (
-              <ul class="border-t-[0.5px] border-[#1C1A17]/15">
-                {listings.map((l) => {
-                  const title = `#${l.id} · ${l.bhk ? `${l.bhk} BHK ` : ''}${l.type} in ${refs.locality(l.city_slug, l.locality_slug)?.name}, ${refs.city(l.city_slug)?.name}`;
-                  return (
-                  <li class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4">
-                    <div class="min-w-0">
-                      {l.closed ? <span class="font-semibold">{title}</span> : <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">{title}</a>}
-                      <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
-                      {/* Owner actions; edits go back to review. Plain form posts, so they work without JavaScript. */}
-                      {!l.closed && (
-                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <a href={`/post-property?edit=${l.id}`} class="ed-link">Edit</a>
-                          <form method="post" action={`/api/account/listings/${l.id}`}><button name="action" value={l.purpose === 'buy' ? 'sold' : 'rented'} class="ed-link cursor-pointer">Mark {l.purpose === 'buy' ? 'sold' : 'rented'}</button></form>
-                          <form method="post" action={`/api/account/listings/${l.id}`} onsubmit="return confirm('Delete this listing? It will be removed from search and can’t be restored.')"><button name="action" value="delete" class="ed-link cursor-pointer">Delete</button></form>
-                        </div>
-                      )}
-                    </div>
-                    <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.closed ?? l.status]]}>{chipLabel(l)}</span>
-                  </li>
-                  );
-                })}
-              </ul>
-            ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t listed a property yet. <a href="/post-property" class="font-semibold underline">List your first one</a>.</p>}
-          </section>
+          <MyListings listings={listings} refs={refs} listingDone={listingDone} agents={user.role === 'seller'} />
         )}
 
         {lister && (
-          <section id="leads" class="scroll-mt-28">
-            <h2 class={h2}>Leads Received</h2>
-            {anyMasked && <p class="mt-2 text-sm text-[#1C1A17]/65">Buyer numbers are hidden on the free plan. <a href="/account/plans" class="font-semibold underline">Choose a plan</a> to see them.</p>}
-            {leads.length ? (
-              <ul class="mt-4 border-t-[0.5px] border-[#1C1A17]/15">
-                {leads.map((d) => (
-                  <li class="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-3.5 text-sm">
-                    <span><b>{d.name}</b> · {isMasked(d) ? <span class="font-mono">+91 {mask(d.phone)}</span> : <a href={`tel:+91${d.phone}`} class="font-mono underline">+91 {d.phone}</a>} <span class="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[#1C1A17]/50">{d.kind.replace('-', ' ')} · #{d.listing_id}</span></span>
-                    <span class="text-[#1C1A17]/55">{fmtDate(d.created_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : <p class="mt-4 border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">Enquiries from buyers on your listings will show up here.</p>}
-          </section>
+          <LeadsReceived leads={leads} hasPlan={allowance.hasPlan} />
         )}
+
+        {user.role === 'seller' && <AgentOffers offers={offers} refs={refs} done={offerDone} />}
 
         <section id="shortlist" class="scroll-mt-28">
           <h2 class={`${h2} mb-4`}>Shortlist</h2>
@@ -185,9 +123,10 @@ const h2 = 'font-display text-xl font-bold tracking-tight !text-[#1C1A17] sm:tex
               <AddPhone client:visible />
             </div>
           )}
-          <form method="post" action="/api/account/profile" class="grid gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5 sm:grid-cols-3 sm:items-end">
+          <form method="post" action="/api/account/profile" class:list={['grid gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5 sm:items-end', user.role === 'agent' ? 'sm:grid-cols-4' : 'sm:grid-cols-3']}>
             <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Name<input name="name" maxlength="100" value={user.name ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
             <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Email<input name="email" type="email" maxlength="200" value={user.email ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>
+            {user.role === 'agent' && <label class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60">Agency name<input name="company" maxlength="120" value={user.company ?? ''} class="input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal" /></label>}
             <button class="ed-btn ed-btn-dark">Save</button>
           </form>
           {(user.google_email || googleEnabled()) && (

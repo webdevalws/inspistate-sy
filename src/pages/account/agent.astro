@@ -1,0 +1,89 @@
+---
+import Base from '../../layouts/Base.astro';
+import AccountNav from '../../components/AccountNav.astro';
+import ListerStats from '../../components/account/ListerStats.astro';
+import MyListings from '../../components/account/MyListings.astro';
+import LeadsReceived from '../../components/account/LeadsReceived.astro';
+import { realPhone } from '../../lib/auth';
+import { leadsReceived, listingAllowance, myListings, subscriptionState } from '../../lib/accounts';
+import { getRefs } from '../../lib/repo';
+import { NEW_ACCEPTED_DAYS, offersSent } from '../../lib/agent-offers';
+import { fmtDate, h2 } from '../../components/account/shared';
+import { typeLabel } from '../../lib/search';
+
+// Agent dashboard: the agent's plan and listing allowance, their listings and the leads on them, built from the same
+// sections as /account. Where agents land after logging in (landingFor in src/lib/redirect.ts). Other roles go to /account.
+const user = Astro.locals.user!; // middleware redirects anonymous users to /login
+if (user.role !== 'agent') return Astro.redirect('/account');
+const [refs, listings, allowance, leads, subs, offers] = await Promise.all([
+  getRefs(), myListings(user.id), listingAllowance(user), leadsReceived(user.id), subscriptionState(user.id), offersSent(user.id),
+]);
+// Offers accepted in the last week (also counted next to "Agent dashboard" in the menus).
+const since = Date.now() - NEW_ACCEPTED_DAYS * 86400000;
+const newlyAccepted = offers.filter((o) => o.status === 'accepted' && o.responded_at && Date.parse(o.responded_at) > since).length;
+const offerChip: Record<string, string> = { pending: 'bg-amber-50 text-amber-900', accepted: 'bg-emerald-50 text-emerald-800', declined: 'bg-sand-100 text-[#1C1A17]/70' };
+const offerLabel: Record<string, string> = { pending: 'Waiting', accepted: 'Accepted', declined: 'Declined' };
+const phone = realPhone(user.phone);
+const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
+---
+<Base title="Agent dashboard" noindex>
+  <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
+    <div class="container-x grid gap-8 py-8 lg:grid-cols-[260px_1fr] lg:py-12">
+      <AccountNav user={user} active="agent" />
+
+      <div class="min-w-0 space-y-12">
+        <section>
+          <p class="ed-label text-[#1C1A17]/60">Agent dashboard</p>
+          <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">{user.company ?? 'Your agency'}</h1>
+          <p class="mt-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#1C1A17]/55">{user.name}{phone && ` · +91 ${phone}`}{user.city_slug && ` · ${refs.city(user.city_slug)?.name ?? ''}`}</p>
+
+          {!phone && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+              <p class="text-sm">Add your mobile number to post listings and get enquiries from buyers.</p>
+              <a href="/account#profile" class="ed-btn ed-btn-dark">Add mobile number →</a>
+            </div>
+          )}
+
+          {newlyAccepted > 0 && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-emerald-300 bg-emerald-50 p-5">
+              <p class="text-sm text-emerald-800">{newlyAccepted === 1 ? 'An owner has' : `${newlyAccepted} owners have`} accepted your offer this week — their phone numbers are under Offers sent.</p>
+              <a href="#offers" class="ed-btn ed-btn-dark">See offers →</a>
+            </div>
+          )}
+
+          <ListerStats user={user} allowance={allowance} leadsCount={leads.length} subs={subs} />
+
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a href="/post-property" class:list={['ed-btn', allowance.canPost ? 'ed-btn-dark' : 'ed-btn-ghost-dark pointer-events-none opacity-50']}>+ List property</a>
+            <a href="/account/agent/find-sellers" class="ed-btn ed-btn-ghost-dark">Find sellers</a>
+            <a href="/account/plans" class="ed-btn ed-btn-ghost-dark">Subscription plans</a>
+          </div>
+        </section>
+
+        <MyListings listings={listings} refs={refs} listingDone={listingDone} back="/account/agent" />
+
+        <LeadsReceived leads={leads} hasPlan={allowance.hasPlan} />
+
+        <section id="offers" class="scroll-mt-28">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class={h2}>Offers sent</h2><a href="/account/agent/find-sellers" class="ed-link">Find sellers <span aria-hidden="true">→</span></a></div>
+          {offers.length ? (
+            <ul class="border-t-[0.5px] border-[#1C1A17]/15">
+              {offers.map((o) => (
+                <li class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4">
+                  <div class="min-w-0">
+                    <a href={`/property/${o.listing_id}`} class="font-semibold hover:underline">#{o.listing_id} · {o.bhk ? `${o.bhk} BHK ` : ''}{typeLabel(o.type)} in {refs.locality(o.city_slug, o.locality_slug)?.name}, {refs.city(o.city_slug)?.name}</a>
+                    <p class="text-sm text-[#1C1A17]/60">Sent {fmtDate(o.created_at)}{o.responded_at && ` · answered ${fmtDate(o.responded_at)}`}</p>
+                    {o.status === 'accepted' && (
+                      <p class="mt-1 text-sm">Owner: <b>{o.seller_name ?? 'Owner'}</b>{o.seller_phone && <> · <a href={`tel:+91${o.seller_phone}`} class="font-mono underline">+91 {o.seller_phone}</a></>}</p>
+                    )}
+                  </div>
+                  <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', offerChip[o.status]]}>{offerLabel[o.status]}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t offered to help a seller yet. <a href="/account/agent/find-sellers" class="font-semibold underline">Find sellers</a>.</p>}
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>

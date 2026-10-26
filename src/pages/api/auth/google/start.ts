@@ -12,5 +12,7 @@ export const GET: APIRoute = async (ctx) => {
   const blocked = await guard(ctx, 'google-start', START_PER_IP_PER_DAY);
   if (blocked) return blocked;
   const next = safeNext(ctx.url.searchParams.get('next'));
-  return ctx.redirect(await startFlow(ctx.cookies, ctx.url, next, ctx.locals.user?.id ?? null), 302);
+  // `from`: the page a generic login was opened on (buyers return to it); `next`: an action to come back to.
+  const from = safeNext(ctx.url.searchParams.get('from'));
+  return ctx.redirect(await startFlow(ctx.cookies, ctx.url, next, ctx.locals.user?.id ?? null, from), 302);
 };
