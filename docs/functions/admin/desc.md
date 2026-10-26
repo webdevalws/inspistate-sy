@@ -112,6 +112,12 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   `locality.add`, `locality.edit` (one row per field, old → new), `locality.photo`, `locality.hide|unhide`.
 - **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
   (reference data, project list, stats, suggestions, city facets) so the change shows at once.
+- **Content version** (item 125, migration 0019): `clearContentCaches()` also bumps the one-row `content_version`
+  table. The middleware reads it once per request (`syncContentVersion()`, a primary-key lookup run in parallel with
+  the session check; skipped for `/_astro/`, `/media/`, `/admin/media/` and image files), and an instance whose
+  caches were built under an older version drops them first — so an admin edit shows at once on every Worker
+  instance. That is the only extra query: with warm caches the home page makes two (this and the Showcase picks).
+  If the migration has not been applied the check is skipped and instances catch up within 5 minutes, as before.
 
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the

@@ -27,7 +27,7 @@ if (Astro.request.method === 'POST') {
     const r = await addProjectPhotos(id, files);
     if (r.ok) {
       await logAdmin(Astro, 'project.photo-add', `project #${id} ${info.name}: ${r.added} photo(s) added, ${r.total - r.added} → ${r.total}`);
-      clearContentCaches();
+      await clearContentCaches();
       return Astro.redirect(`/admin/projects/${id}?done=photos#photos`, 303);
     }
     photoError = r.error;
@@ -36,7 +36,7 @@ if (Astro.request.method === 'POST') {
     const text = await changeProjectPhoto(id, what, String(form.get('key') ?? ''));
     if (text) {
       await logAdmin(Astro, what === 'remove' ? 'project.photo-remove' : 'project.photo-order', `project #${id} ${info.name}: ${text}`);
-      clearContentCaches();
+      await clearContentCaches();
     }
     return Astro.redirect(`/admin/projects/${id}?done=${text ? (what === 'remove' ? 'photo-removed' : 'photo-moved') : 'unchanged'}#photos`, 303);
   } else {
@@ -45,7 +45,7 @@ if (Astro.request.method === 'POST') {
       const { changes } = await saveProject(id, parsed.project, parsed.newBuilder);
       if (parsed.newBuilder) await logAdmin(Astro, 'builder.add', `builder ${parsed.newBuilder.name} (${parsed.newBuilder.slug})`);
       for (const [field, from, to] of changes) await logAdmin(Astro, 'project.edit', `project #${id} ${field}: ${from} → ${to}`);
-      if (changes.length || parsed.newBuilder) clearContentCaches();
+      if (changes.length || parsed.newBuilder) await clearContentCaches();
       return Astro.redirect(`/admin/projects/${id}?done=${changes.length ? 'saved' : 'unchanged'}`, 303);
     }
     error = parsed.error;

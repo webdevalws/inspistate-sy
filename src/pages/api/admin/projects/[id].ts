@@ -22,7 +22,7 @@ export const POST: APIRoute = async (ctx) => {
     if (p.hidden !== hidden) {
       await env.DB.prepare("UPDATE projects SET hidden = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?").bind(hidden, id).run();
       await logAdmin(ctx, `project.${action}`, `project #${id} ${p.name}: ${p.hidden ? 'hidden' : 'live'} → ${hidden ? 'hidden' : 'live'}`);
-      clearContentCaches();
+      await clearContentCaches();
     }
     return to(action);
   }

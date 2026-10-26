@@ -27,7 +27,7 @@ if (Astro.request.method === 'POST') {
     if (r.ok) {
       if (action === 'photo-set' || loc.photo_key) {
         await logAdmin(Astro, 'locality.photo', `${tag}: photo ${action === 'photo-remove' ? 'removed' : loc.photo_key ? 'replaced' : 'added'}`);
-        clearContentCaches();
+        await clearContentCaches();
       }
       return Astro.redirect(`/admin/localities/${citySlug}/${slug}?done=${action === 'photo-set' ? 'photo' : 'photo-removed'}#photo`, 303);
     }
@@ -37,7 +37,7 @@ if (Astro.request.method === 'POST') {
     if (parsed.ok) {
       const changes = await updateLocality(loc, parsed.locality);
       for (const [field, from, to] of changes) await logAdmin(Astro, 'locality.edit', `${tag} ${field}: ${from} → ${to}`);
-      if (changes.length) clearContentCaches();
+      if (changes.length) await clearContentCaches();
       return Astro.redirect(`/admin/localities/${citySlug}/${slug}?done=${changes.length ? 'saved' : 'unchanged'}`, 303);
     }
     error = parsed.error;

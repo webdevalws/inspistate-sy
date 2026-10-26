@@ -35,7 +35,7 @@ if (Astro.request.method === 'POST') {
   if (!!loc.hidden !== hide) {
     await setLocalityHidden(loc.city_slug, loc.slug, hide);
     await logAdmin(Astro, `locality.${action}`, `locality ${loc.name} (${loc.city_slug}/${loc.slug}): ${loc.hidden ? 'hidden' : 'live'} → ${hide ? 'hidden' : 'live'}`);
-    clearContentCaches();
+    await clearContentCaches();
   }
   return back(action);
 }

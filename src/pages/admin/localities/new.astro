@@ -18,7 +18,7 @@ if (Astro.request.method === 'POST') {
   if (where.ok && parsed.ok) {
     await addLocality(where.city, where.slug, parsed.locality);
     await logAdmin(Astro, 'locality.add', `locality ${parsed.locality.name} (/locality/${where.city}/${where.slug}), rate ₹${parsed.locality.ratePerSqft}/sq.ft`);
-    clearContentCaches();
+    await clearContentCaches();
     return Astro.redirect(`/admin/localities/${where.city}/${where.slug}?done=added`, 303);
   }
   error = !parsed.ok ? parsed.error : !where.ok ? where.error : '';

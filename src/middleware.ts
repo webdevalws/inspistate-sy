@@ -2,6 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { userFromCookies } from './lib/auth';
 import { clientIp, dailyCount, overDailyLimit } from './lib/limits';
+import { syncContentVersion } from './lib/repo';
 import { checkRequiredSettings } from './lib/startup';
 
 const encoder = new TextEncoder();
@@ -25,7 +26,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   checkRequiredSettings(); // production only, once per Worker instance
   const { pathname } = ctx.url;
   const isAsset = pathname.startsWith('/_astro/') || pathname.startsWith('/media/') || /\.(svg|ico|png|txt|xml)$/.test(pathname);
-  ctx.locals.user = isAsset ? null : await userFromCookies(ctx.cookies);
+  // Uploaded photos and build files use no cached content; everything else first checks the content version, so an
+  // admin edit made on another Worker instance shows at once (one primary-key read, in parallel with the session).
+  const usesContent = !(pathname.startsWith('/_astro/') || pathname.startsWith('/media/') || pathname.startsWith('/admin/media/') || /\.(svg|ico|png|txt)$/.test(pathname));
+  const [user] = await Promise.all([isAsset ? null : userFromCookies(ctx.cookies), usesContent ? syncContentVersion() : null]);
+  ctx.locals.user = user;
 
   // Account APIs that change state must come from our own pages.
   if ((pathname.startsWith('/api/account/') || pathname.startsWith('/api/auth/')) && ctx.request.method !== 'GET' && ctx.request.headers.get('origin') !== ctx.url.origin) {

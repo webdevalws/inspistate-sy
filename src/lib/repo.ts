@@ -363,14 +363,37 @@ const bandCase = (bands: readonly (readonly [number, number])[]) =>
   `CASE ${bands.slice(0, -1).map(([, hi], i) => `WHEN price <= ${Number(hi)} THEN ${i}`).join(' ')} ELSE ${bands.length - 1} END`;
 const facetCache = new Map<string, { at: number; value: Promise<CityFacets> }>();
 
-/**
- * Drops this Worker instance's 5-minute caches (reference data, project list, stats, search suggestions, city facets)
- * after an admin edit, so the change shows at once here. Other instances catch up through the content version.
- */
-export function clearContentCaches() {
+function dropCaches() {
   statsCache.clear();
   facetCache.clear();
   refsCache = null;
+}
+
+/** The content version this instance's caches were built under (migration 0019); null before the first check. */
+let seenVersion: number | null = null;
+
+/**
+ * After an admin edit: drops this Worker instance's 5-minute caches (reference data, project list, stats, search
+ * suggestions, city facets) and bumps the content version so every other instance drops its caches on its next request.
+ */
+export async function clearContentCaches() {
+  dropCaches();
+  try {
+    seenVersion = (await db().prepare('UPDATE content_version SET v = v + 1 WHERE id = 1 RETURNING v').first<number>('v')) ?? seenVersion;
+  } catch { /* migration 0019 not applied yet: other instances catch up within 5 minutes, as before */ }
+}
+
+/**
+ * Once per request (middleware): one primary-key read of the content version; when an admin edit has bumped it
+ * since this instance last looked, the caches are dropped so the request sees the change.
+ */
+export async function syncContentVersion() {
+  try {
+    const v = await db().prepare('SELECT v FROM content_version WHERE id = 1').first<number>('v');
+    if (v == null) return;
+    if (seenVersion !== null && v !== seenVersion) dropCaches();
+    seenVersion = v;
+  } catch { /* migration 0019 not applied yet */ }
 }
 
 /**

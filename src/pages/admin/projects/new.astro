@@ -18,7 +18,7 @@ if (Astro.request.method === 'POST') {
     const { id } = await saveProject(null, parsed.project, parsed.newBuilder);
     if (parsed.newBuilder) await logAdmin(Astro, 'builder.add', `builder ${parsed.newBuilder.name} (${parsed.newBuilder.slug})`);
     await logAdmin(Astro, 'project.add', `project #${id} ${parsed.project.name} (/projects/${parsed.project.citySlug}/${parsed.project.slug})`);
-    clearContentCaches();
+    await clearContentCaches();
     return Astro.redirect(`/admin/projects/${id}?done=added`, 303);
   }
   error = parsed.error;
