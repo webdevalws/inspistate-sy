@@ -6,8 +6,9 @@ import { formatPrice, formatRent } from '../../lib/format';
 import { fmtDate, h2 } from './shared';
 
 /** `back`: the page the owner actions return to (only /account/agent besides the default /account). */
-interface Props { listings: Awaited<ReturnType<typeof myListings>>; refs: Refs; listingDone?: string; back?: string }
-const { listings, refs, listingDone, back } = Astro.props;
+/** `agents`: Seller accounts get the per-listing "open to working with an agent" toggle. */
+interface Props { listings: Awaited<ReturnType<typeof myListings>>; refs: Refs; listingDone?: string; back?: string; agents?: boolean }
+const { listings, refs, listingDone, back, agents } = Astro.props;
 const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
 const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
 ---
@@ -31,6 +32,13 @@ const chipLabel = (l: { status: string; closed: string | null }) => (l.closed ==
                 <form method="post" action={`/api/account/listings/${l.id}`} onsubmit="return confirm('Delete this listing? It will be removed from search and can’t be restored.')">{back && <input type="hidden" name="back" value={back} />}<button name="action" value="delete" class="ed-link cursor-pointer">Delete</button></form>
               </div>
             )}
+            {agents && !l.closed && (
+              <form method="post" action={`/api/account/listings/${l.id}`} class="mt-2">
+                <input type="hidden" name="action" value={l.open_to_agents ? 'agents-off' : 'agents-on'} />
+                <label class="flex items-center gap-2 text-sm text-[#1C1A17]/70"><input type="checkbox" checked={!!l.open_to_agents} data-autosubmit class="accent-brand-600" />I’m open to working with an agent</label>
+                <noscript><button class="ed-link cursor-pointer">Save</button></noscript>
+              </form>
+            )}
           </div>
           <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.closed ?? l.status]]}>{chipLabel(l)}</span>
         </li>
@@ -39,3 +47,8 @@ const chipLabel = (l: { status: string; closed: string | null }) => (l.closed ==
     </ul>
   ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t listed a property yet. <a href="/post-property" class="font-semibold underline">List your first one</a>.</p>}
 </section>
+
+<script>
+  // The "open to working with an agent" checkbox saves as soon as it changes (without JS: the Save button).
+  document.querySelectorAll<HTMLInputElement>('input[data-autosubmit]').forEach((el) => el.addEventListener('change', () => el.form?.submit()));
+</script>

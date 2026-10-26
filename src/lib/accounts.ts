@@ -40,9 +40,9 @@ export async function deleteSavedSearch(userId: number, id: number) {
 export async function myListings(userId: number) {
   const { results } = await db()
     // Deleted listings disappear from the owner's list; sold / rented ones stay with their own chip.
-    .prepare("SELECT id, purpose, type, bhk, area_sqft, price, city_slug, locality_slug, status, closed, edit_token, posted_at FROM listings WHERE user_id = ? AND (closed IS NULL OR closed != 'deleted') ORDER BY id DESC")
+    .prepare("SELECT id, purpose, type, bhk, area_sqft, price, city_slug, locality_slug, status, closed, edit_token, posted_at, open_to_agents FROM listings WHERE user_id = ? AND (closed IS NULL OR closed != 'deleted') ORDER BY id DESC")
     .bind(userId)
-    .all<{ id: number; purpose: string; type: string; bhk: number; area_sqft: number; price: number; city_slug: string; locality_slug: string; status: string; closed: 'sold' | 'rented' | null; edit_token: string; posted_at: string }>();
+    .all<{ id: number; purpose: string; type: string; bhk: number; area_sqft: number; price: number; city_slug: string; locality_slug: string; status: string; closed: 'sold' | 'rented' | null; edit_token: string; posted_at: string; open_to_agents: number }>();
   return results;
 }
 

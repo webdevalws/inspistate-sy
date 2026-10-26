@@ -5,6 +5,7 @@ import { listingAllowance } from '../../lib/accounts';
 import { parseListingFields } from '../../lib/listing-form';
 import { stripMetadata, type ImageMime } from '../../lib/strip-metadata';
 import { sameSite } from '../../lib/limits';
+import { setOpenToAgents } from '../../lib/agent-offers';
 
 const MAX_PHOTOS = 8;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -60,6 +61,9 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
     ...parsed.fields, userId: locals.user!.id,
     postedBy: locals.user!.role === 'agent' ? 'Agent' : 'Owner',
   });
+
+  // Sellers can opt in to offers from agents ("I'm open to working with an agent"); off by default.
+  if (locals.user!.role === 'seller' && form.get('openToAgents') === '1') await setOpenToAgents(id, locals.user!.id, true);
 
   const keys = photos.map((p) => `listings/${id}/${crypto.randomUUID()}.${p.ext}`);
   await Promise.all(photos.map((p, i) => env.MEDIA.put(keys[i], p.bytes, { httpMetadata: { contentType: p.mime } })));

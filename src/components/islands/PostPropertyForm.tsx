@@ -5,14 +5,16 @@ interface Props {
   cities: { slug: string; name: string; localities: { slug: string; name: string }[] }[];
   /** Edit an existing listing: prefilled values, no photo step, saved to /api/account/listings/[id]. */
   edit?: { id: number; values: Record<string, string> };
+  /** Seller accounts: show "I’m open to working with an agent" (agents' listings are never offered to agents). */
+  askAgents?: boolean;
 }
 
 const ALL_STEPS = ['Basics', 'Location', 'Details', 'Photos', 'Contact'];
 const MAX_PHOTOS = 8;
 const MAX_BYTES = 5 * 1024 * 1024;
-const BLANK = { purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: '', locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '', pgSharing: 'double', pgFor: 'any', pgFood: '1' };
+const BLANK = { purpose: 'Sell', segment: 'Residential', type: 'Apartment', city: '', locality: '', bhk: '2', area: '', price: '', furnishing: 'Semi-Furnished', description: '', name: '', phone: '', pgSharing: 'double', pgFor: 'any', pgFood: '1', openToAgents: '0' };
 
-export default function PostPropertyForm({ cities, edit }: Props) {
+export default function PostPropertyForm({ cities, edit, askAgents = false }: Props) {
   const STEPS = edit ? ALL_STEPS.filter((s) => s !== 'Photos') : ALL_STEPS;
   const [step, setStep] = useState(0);
   const at = STEPS[step];
@@ -48,6 +50,7 @@ export default function PostPropertyForm({ cities, edit }: Props) {
     fd.set('purpose', data.purpose === 'Sell' ? 'buy' : 'rent');
     fd.set('segment', data.segment.toLowerCase());
     for (const k of ['type', 'city', 'locality', 'bhk', 'area', 'price', 'furnishing', 'description', 'name', 'phone', 'pgSharing', 'pgFor', 'pgFood'] as const) fd.set(k, data[k]);
+    if (askAgents) fd.set('openToAgents', data.openToAgents);
     if (edit) fd.set('action', 'edit');
     else photos.forEach((p) => fd.append('photos', p));
     try {
@@ -159,6 +162,9 @@ export default function PostPropertyForm({ cities, edit }: Props) {
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium">Your name<input required maxLength={100} className="input mt-1" value={data.name} onChange={set('name')} /></label>
             <label className="text-sm font-medium">Mobile number<input required pattern="[6-9][0-9]{9}" title="10-digit Indian mobile number" className="input mt-1" value={data.phone} onChange={set('phone')} inputMode="tel" /></label>
+            {askAgents && (
+              <label className="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={data.openToAgents === '1'} onChange={(e) => setData({ ...data, openToAgents: e.target.checked ? '1' : '0' })} className="mt-0.5 accent-brand-600" /><span>I’m open to working with an agent <span className="block text-xs text-slate-500">Registered agents can see this listing (never your name or number) and offer to help. You choose whether to accept.</span></span></label>
+            )}
           </div>
         )}
       </div>

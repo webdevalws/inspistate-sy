@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { closeListing, deleteListingPhotos, getOwnedListing, getRefs, updateListing } from '../../../../lib/repo';
 import { parseListingFields } from '../../../../lib/listing-form';
+import { setOpenToAgents } from '../../../../lib/agent-offers';
 
 // Owner actions on one listing: edit (JSON, from the post-property form) or mark sold / rented / delete
 // (plain form posts from /account, answered with a redirect). Only the listing's owner may act; admins
@@ -24,7 +25,15 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
     const parsed = parseListingFields(form, await getRefs());
     if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 422 });
     await updateListing(id, parsed.fields);
+    if (locals.user.role === 'seller') await setOpenToAgents(id, locals.user.id, form.get('openToAgents') === '1');
     return Response.json({ ok: true, id, previewUrl: `/property/${id}?token=${listing.edit_token}` });
+  }
+
+  // "I'm open to working with an agent" on My Listings (sellers): no re-review, unlike an edit.
+  if (action === 'agents-on' || action === 'agents-off') {
+    if (locals.user.role !== 'seller') return Response.json({ error: 'Only Seller accounts can work with agents.' }, { status: 403 });
+    await setOpenToAgents(id, locals.user.id, action === 'agents-on');
+    return redirect(`/account?listing=${action}#listings`, 303);
   }
 
   const as = action === 'sold' || action === 'rented' || action === 'delete' ? (action === 'delete' ? 'deleted' : action) : null;

@@ -29,7 +29,7 @@ const phoneAdded = Astro.url.searchParams.get('phone') === 'added';
 const googleParam = Astro.url.searchParams.get('google') ?? '';
 const googleError = Object.hasOwn(GOOGLE_ERRORS, googleParam) ? GOOGLE_ERRORS[googleParam] : '';
 // Result of an owner action (/api/account/listings/[id] redirects back with ?listing=…).
-const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
+const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked rented.', deleted: 'Listing deleted.', 'agents-on': 'Agents can now see this listing and offer to help.', 'agents-off': 'This listing is no longer shown to agents.' } as Record<string, string>)[Astro.url.searchParams.get('listing') ?? ''];
 ---
 <Base title="My account" noindex>
   <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
@@ -72,7 +72,7 @@ const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked ren
         </section>
 
         {lister && (
-          <MyListings listings={listings} refs={refs} listingDone={listingDone} />
+          <MyListings listings={listings} refs={refs} listingDone={listingDone} agents={user.role === 'seller'} />
         )}
 
         {lister && (
