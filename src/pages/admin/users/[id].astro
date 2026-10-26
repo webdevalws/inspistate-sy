@@ -7,12 +7,13 @@ import { formatPrice, formatRent } from '../../../lib/format';
 import { safeNext } from '../../../lib/redirect';
 import { PLANS, planByKey, ROLES, roleLabel } from '../../../data/plans';
 import { realPhone } from '../../../lib/auth';
+import { adminUserOffers } from '../../../lib/agent-offers';
 
 // One account: details, listings (every state), enquiries sent and leads received. Protected by the admin middleware.
 const id = Number(Astro.params.id);
 const user = Number.isInteger(id) && id > 0 ? await adminUser(id) : null;
 if (!user) return new Response('User not found', { status: 404 });
-const [refs, listings, sent, received, plans] = await Promise.all([getRefs(), adminUserListings(id), myEnquiries(id), leadsReceived(id), adminUserPlans(id)]);
+const [refs, listings, sent, received, plans, offers] = await Promise.all([getRefs(), adminUserListings(id), myEnquiries(id), leadsReceived(id), adminUserPlans(id), adminUserOffers(id)]);
 const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
 const details: [string, string][] = [
@@ -158,6 +159,28 @@ const error = ({
               </tr>
             ))}
             {received.length === 0 && <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No leads yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="offers" class="mt-12">
+      <h2 class="section-title mb-4">Agent offers ({offers.length})</h2>
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">When</th><th class="px-4 py-3">Listing</th><th class="px-4 py-3">Agent</th><th class="px-4 py-3">Seller</th><th class="px-4 py-3">Message</th><th class="px-4 py-3">Status</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            {offers.map((o) => (
+              <tr>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(o.created_at)}</td>
+                <td class="px-4 py-3">#{o.listing_id}</td>
+                <td class="px-4 py-3">{o.agent_id === user.id ? <b>This user</b> : <a href={`/admin/users/${o.agent_id}`} class="text-brand-700 hover:underline">{o.agent_name ?? `User #${o.agent_id}`}</a>}{o.agency && <span class="block text-xs text-slate-500">{o.agency}</span>}</td>
+                <td class="px-4 py-3">{o.seller_id === user.id ? <b>This user</b> : <a href={`/admin/users/${o.seller_id}`} class="text-brand-700 hover:underline">{o.seller_name ?? `User #${o.seller_id}`}</a>}</td>
+                <td class="max-w-xs truncate px-4 py-3 text-xs text-slate-500" title={o.message}>{o.message}</td>
+                <td class="whitespace-nowrap px-4 py-3"><span class="chip">{o.status}</span>{o.responded_at && <span class="block text-xs text-slate-500">{fmtTime(o.responded_at)}</span>}</td>
+              </tr>
+            ))}
+            {offers.length === 0 && <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No agent offers.</td></tr>}
           </tbody>
         </table>
       </div>

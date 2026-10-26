@@ -33,6 +33,8 @@ branch) audit admin actions.
   Rejected, Sold, Rented, Deleted — non-live ones open with the edit token, deleted ones are not linked);
   **Enquiries sent**; **Leads on their listings**; and **Plans** (every request and plan with dates).
   Unknown ids are 404.
+- **Agent offers** (item 109): the user detail page lists the offers the account sent or received (see
+  [agent offers](../agent-offers/desc.md)).
 - **Login method** (item 101): the list has a **Login** column — Phone, Google or Phone + Google (`loginMethod`: a real
   mobile number and/or a linked Google account, migration 0015) — with the Google email under it; the detail page
   shows **Login method** and **Google email**. Linking Google (by the user, see [login](../login/desc.md)) isn't

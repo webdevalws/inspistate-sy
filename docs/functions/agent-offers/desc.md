@@ -48,6 +48,11 @@ Accept do both see each other's phone numbers.
   sidebar, plus a line at the top of `/account`; agents see “Agent dashboard (N)” for offers accepted in the last
   7 days (`NEW_ACCEPTED_DAYS`), plus a line at the top of the dashboard (`offerBadge`).
 
+## Admin (item 109)
+- `/admin/users/{id}` → **Agent offers**: every offer the account sent (as agent) or received (as seller), blocked
+  parties included — date, listing, agent (with agency) and seller linking to their admin pages, message, status and
+  answer date (`adminUserOffers`).
+
 ## Files
 - `src/lib/agent-offers.ts`, `migrations/0016_agent_offers.sql`, `src/pages/api/account/agent-offers.ts`,
   `src/pages/account/agent/find-sellers.astro`, `src/pages/account/agent.astro`, `src/components/account/AgentOffers.astro`

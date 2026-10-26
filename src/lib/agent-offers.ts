@@ -182,3 +182,22 @@ export async function offerBadge(user: Pick<User, 'id' | 'role'> | null): Promis
   }
   return 0;
 }
+
+// ---------- admin ----------
+
+export interface AdminOffer {
+  id: number; listing_id: number; status: 'pending' | 'accepted' | 'declined'; message: string; created_at: string; responded_at: string | null;
+  agent_id: number; agent_name: string | null; agency: string | null; seller_id: number; seller_name: string | null;
+}
+
+/** Every offer the account sent (as agent) or received (as seller), newest first, blocked parties included. */
+export async function adminUserOffers(userId: number): Promise<AdminOffer[]> {
+  const { results } = await db()
+    .prepare(`SELECT o.id, o.listing_id, o.status, o.message, o.created_at, o.responded_at,
+        o.agent_id, a.name AS agent_name, a.company AS agency, o.seller_id, s.name AS seller_name
+      FROM agent_offers o JOIN users a ON a.id = o.agent_id JOIN users s ON s.id = o.seller_id
+      WHERE o.agent_id = ? OR o.seller_id = ? ORDER BY o.id DESC LIMIT 200`)
+    .bind(userId, userId)
+    .all<AdminOffer>();
+  return results;
+}
