@@ -14,6 +14,17 @@ Accept do both see each other's phone numbers.
   only; agents' own listings are never offered to agents (`setOpenToAgents` checks the owner is a Seller).
 - Toggling on My Listings doesn't send the listing back to review (an edit does).
 
+## Find sellers (item 106)
+- `/account/agent/find-sellers`, agents only (others are sent to `/account`); linked from the agent sidebar, header
+  account menu and the agent dashboard. Agents need an agency name: without one the page asks for it, and the account
+  page Profile now has an **Agency name** field for agents (agents who switched role from Seller have none).
+- Lists live listings (shared `live()`: approved, open, owner not blocked) with `open_to_agents = 1`, posted as Owner
+  by an active **Seller** account, never the agent’s own; newest first, 12 per page (`Pagination`).
+- Filters (GET): city, locality (of the chosen city), buy / rent, type, BHK (5 = 5 and above).
+- Each row: photo, title (BHK, type, sale / rent, locality, city), price, area, posted date, link to the public listing,
+  and the agent’s offer status if any. **Never** the seller’s name or phone or the listing’s contact details:
+  `findSellerListings` doesn’t select them.
+
 ## Files
 - `src/lib/agent-offers.ts`, `migrations/0016_agent_offers.sql`
 - `src/components/islands/PostPropertyForm.tsx`, `src/components/account/MyListings.astro`,

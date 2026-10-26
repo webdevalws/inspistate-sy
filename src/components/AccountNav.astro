@@ -3,7 +3,7 @@
 import { realPhone, type User } from '../lib/auth';
 import { roleLabel } from '../data/plans';
 
-interface Props { user: User; active: 'overview' | 'agent' | 'plans' }
+interface Props { user: User; active: 'overview' | 'agent' | 'find-sellers' | 'plans' }
 const { user, active } = Astro.props;
 const lister = user.role === 'seller' || user.role === 'agent';
 const P = {
@@ -21,7 +21,10 @@ const P = {
 };
 const items: { label: string; href: string; icon: string; on?: boolean }[] = [
   { label: 'Overview', href: '/account', icon: P.overview, on: active === 'overview' },
-  ...(user.role === 'agent' ? [{ label: 'Agent dashboard', href: '/account/agent', icon: P.dashboard, on: active === 'agent' }] : []),
+  ...(user.role === 'agent' ? [
+    { label: 'Agent dashboard', href: '/account/agent', icon: P.dashboard, on: active === 'agent' },
+    { label: 'Find sellers', href: '/account/agent/find-sellers', icon: P.search, on: active === 'find-sellers' },
+  ] : []),
   ...(lister ? [
     { label: 'My Listings', href: '/account#listings', icon: P.listings },
     { label: 'List Property', href: '/post-property', icon: P.add },

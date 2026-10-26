@@ -54,6 +54,10 @@ export async function myEnquiries(userId: number) {
   return results;
 }
 
+export async function updateCompany(userId: number, company: string) {
+  await db().prepare("UPDATE users SET company = ? WHERE id = ? AND role = 'agent'").bind(company, userId).run();
+}
+
 export async function updateProfile(userId: number, name: string | null, email: string | null) {
   await db().prepare('UPDATE users SET name = ?, email = ? WHERE id = ?').bind(name, email, userId).run();
 }

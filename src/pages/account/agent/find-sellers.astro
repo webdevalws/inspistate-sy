@@ -1,0 +1,112 @@
+---
+import Base from '../../../layouts/Base.astro';
+import AccountNav from '../../../components/AccountNav.astro';
+import Pagination from '../../../components/Pagination.astro';
+import Photo from '../../../components/Photo.astro';
+import { FIND_TYPES, findSellerListings, type FindFilters } from '../../../lib/agent-offers';
+import { getRefs } from '../../../lib/repo';
+import { formatPrice, formatRent } from '../../../lib/format';
+import { typeLabel } from '../../../lib/search';
+import { fmtDate, h2 } from '../../../components/account/shared';
+
+// Agents find live listings whose Seller opted in to working with an agent. Never shows the seller's name or phone,
+// or the listing's contact details (the query doesn't select them). See docs/functions/agent-offers/desc.md.
+const user = Astro.locals.user!; // middleware redirects anonymous users to /login
+if (user.role !== 'agent') return Astro.redirect('/account');
+const refs = await getRefs();
+const sp = Astro.url.searchParams;
+const city = refs.city(sp.get('city') ?? '') ? sp.get('city')! : '';
+const locality = city && refs.locality(city, sp.get('locality') ?? '') ? sp.get('locality')! : '';
+const purpose = sp.get('for') === 'buy' || sp.get('for') === 'rent' ? (sp.get('for') as 'buy' | 'rent') : undefined;
+const type = FIND_TYPES.includes(sp.get('type') ?? '') ? sp.get('type')! : '';
+const bhk = [1, 2, 3, 4, 5].find((n) => String(n) === sp.get('bhk'));
+const hasAgency = !!user.company?.trim();
+const filters: FindFilters = { city: city || undefined, locality: locality || undefined, purpose, type: type || undefined, bhk, page: Math.floor(Number(sp.get('page')) || 1) };
+const res = hasAgency ? await findSellerListings(user.id, filters) : { rows: [], total: 0, page: 1, pages: 1 };
+const label = 'font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/60';
+const select = 'input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal';
+const offerChip: Record<string, string> = { pending: 'bg-amber-50 text-amber-900', accepted: 'bg-emerald-50 text-emerald-800', declined: 'bg-sand-100 text-[#1C1A17]/70' };
+const offerLabel: Record<string, string> = { pending: 'Offer sent', accepted: 'Accepted', declined: 'Declined' };
+---
+<Base title="Find sellers" noindex>
+  <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
+    <div class="container-x grid gap-8 py-8 lg:grid-cols-[260px_1fr] lg:py-12">
+      <AccountNav user={user} active="find-sellers" />
+
+      <div class="min-w-0 space-y-8">
+        <section>
+          <p class="ed-label text-[#1C1A17]/60">Agent dashboard</p>
+          <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Find sellers</h1>
+          <p class="mt-2 max-w-xl text-sm text-[#1C1A17]/65">Owners who said they’re open to working with an agent. You see the property, never the owner’s name or number — offer to help, and if the owner accepts you both get each other’s phone numbers.</p>
+        </section>
+
+        {!hasAgency ? (
+          <div class="flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+            <p class="text-sm">Add your agency name to your profile to find sellers.</p>
+            <a href="/account#profile" class="ed-btn ed-btn-dark">Add agency name →</a>
+          </div>
+        ) : (
+          <>
+            <form method="get" action="/account/agent/find-sellers" class="grid gap-4 border-[0.5px] border-[#1C1A17]/15 bg-white p-5 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
+              <label class={label}>City
+                <select name="city" class={select}>
+                  <option value="">All cities</option>
+                  {refs.cities.map((c) => <option value={c.slug} selected={c.slug === city}>{c.name}</option>)}
+                </select>
+              </label>
+              <label class={label}>Locality
+                <select name="locality" class={select} disabled={!city}>
+                  <option value="">{city ? 'All localities' : 'Choose a city first'}</option>
+                  {city && refs.localitiesOf(city).map((l) => <option value={l.slug} selected={l.slug === locality}>{l.name}</option>)}
+                </select>
+              </label>
+              <label class={label}>Buy / rent
+                <select name="for" class={select}>
+                  <option value="">Both</option>
+                  <option value="buy" selected={purpose === 'buy'}>For sale</option>
+                  <option value="rent" selected={purpose === 'rent'}>For rent</option>
+                </select>
+              </label>
+              <label class={label}>Type
+                <select name="type" class={select}>
+                  <option value="">All types</option>
+                  {FIND_TYPES.map((t) => <option value={t} selected={t === type}>{typeLabel(t)}</option>)}
+                </select>
+              </label>
+              <label class={label}>BHK
+                <select name="bhk" class={select}>
+                  <option value="">Any</option>
+                  {[1, 2, 3, 4, 5].map((n) => <option value={n} selected={n === bhk}>{n === 5 ? '5+ BHK' : `${n} BHK`}</option>)}
+                </select>
+              </label>
+              <button class="ed-btn ed-btn-dark">Show</button>
+            </form>
+
+            <section>
+              <h2 class={`${h2} mb-4`}>{res.total} {res.total === 1 ? 'listing' : 'listings'}</h2>
+              {res.rows.length ? (
+                <ul class="border-t-[0.5px] border-[#1C1A17]/15">
+                  {res.rows.map((l) => {
+                    const where = `${refs.locality(l.city_slug, l.locality_slug)?.name ?? ''}, ${refs.city(l.city_slug)?.name ?? ''}`;
+                    const title = `${l.bhk ? `${l.bhk} BHK ` : ''}${typeLabel(l.type)} for ${l.purpose === 'buy' ? 'sale' : 'rent'} in ${where}`;
+                    return (
+                      <li class="flex flex-col gap-4 border-b-[0.5px] border-[#1C1A17]/15 bg-white p-4 sm:flex-row" data-listing={l.id}>
+                        <Photo photo={l.photo ?? undefined} hue={l.hue} alt={title} class="h-28 shrink-0 sm:w-40" />
+                        <div class="min-w-0 flex-1">
+                          <a href={`/property/${l.id}`} class="font-semibold hover:underline">{title}</a>
+                          <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
+                          {l.offer && <span class:list={['mt-2 inline-block px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', offerChip[l.offer]]}>{offerLabel[l.offer]}</span>}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">No listings match. Try another city or fewer filters.</p>}
+              <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+</Base>
