@@ -75,6 +75,12 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   `src/lib/repo.ts`: project lists (city, builder, new projects, home, search suggestions, Showcase), the project page
   (404), compare, the sitemap, city / builder / platform counts, and stats built on project reviews and registered
   transactions. **Hidden localities** leave the reference data (`getRefs`). Admin pages read everything.
+- **Projects → All projects** (item 121, `/admin/projects`): every project, hidden ones included — cover image, name,
+  city / locality, builder, price range, status (Live / Hidden), date (last admin save, else launch year); search, sort,
+  25 per page; **Hide / Unhide** (`POST /api/admin/projects/{id}`, `action=hide|unhide`, asks before
+  hiding, audited as `project.hide|unhide` with old → new).
+- **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
+  (reference data, project list, stats, suggestions, city facets) so the change shows at once.
 
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the

@@ -12,6 +12,10 @@ export const ADMIN_NAV: AdminNavItem[] = [
     key: 'users', label: 'Users', href: '/admin/users', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
     children: [{ key: 'all', label: 'All users', href: '/admin/users' }, { key: 'blocked', label: 'Blocked', href: '/admin/users?state=blocked' }],
   },
+  {
+    key: 'projects', label: 'Projects', href: '/admin/projects', icon: 'M4 21V8l6-4v17M10 21V4l10 5v12M14 10h2M14 14h2M6 11h2M6 15h2M3 21h18',
+    children: [{ key: 'all', label: 'All projects', href: '/admin/projects' }],
+  },
   { key: 'reviews', label: 'Reviews', href: '/admin/reviews', icon: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z' },
   { key: 'plans', label: 'Plan requests', href: '/admin/plans', icon: 'M3 8l4 4 5-7 5 7 4-4-2 11H5z' },
   { key: 'orders', label: 'Orders', href: '/admin/orders', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6' },

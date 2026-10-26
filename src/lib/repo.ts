@@ -353,6 +353,16 @@ const bandCase = (bands: readonly (readonly [number, number])[]) =>
 const facetCache = new Map<string, { at: number; value: Promise<CityFacets> }>();
 
 /**
+ * Drops this Worker instance's 5-minute caches (reference data, project list, stats, search suggestions, city facets)
+ * after an admin edit, so the change shows at once here. Other instances catch up through the content version.
+ */
+export function clearContentCaches() {
+  statsCache.clear();
+  facetCache.clear();
+  refsCache = null;
+}
+
+/**
  * Counts of a city's live listings by purpose, segment, type, BHK, locality and budget band (bands match
  * BUDGET_BANDS), plus ready-to-move counts and rate sums. One grouped query per city, cached per isolate for
  * 5 minutes like reference data. Used by the city hub to build links that never lead to empty pages.
