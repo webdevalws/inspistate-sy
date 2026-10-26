@@ -1,0 +1,25 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Th from '../../components/admin/Th.astro';
+import { recentAdminActions } from '../../lib/audit';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Audit log: every state-changing admin action (time, action, target, admin IP). Read-only.
+const audit = await recentAdminActions(100);
+---
+<AdminLayout title="Audit log" active="audit" crumbs={[['Audit log']]}>
+  <AdminCard title="Admin actions" id="audit">
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[680px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Action" /><Th label="Target" /><Th label="IP" /><Th label="Date" /></tr></thead>
+        <tbody class={TBODY}>
+          {audit.map((a, i) => (
+            <tr><td class={TD}>{i + 1}</td><td class={TD}><span class="chip">{a.action}</span></td><td class={TD}>{a.target}</td><td class:list={[TD, 'font-mono text-xs text-slate-500']}>{a.ip ?? '—'}</td><td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(a.at)}</td></tr>
+          ))}
+          {audit.length === 0 && <tr><td colspan="5" class={EMPTY}>No admin actions recorded yet.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>

@@ -12,10 +12,10 @@ export const POST: APIRoute = async (ctx) => {
   if (action === 'sold' || action === 'rented' || action === 'delete') {
     await closeListing(id, action === 'delete' ? 'deleted' : action);
     await logAdmin(ctx, `listing.${action}`, `listing #${id}`);
-    return redirect(`/admin?done=${action}#listings`, 303);
+    return redirect(`/admin/listings?done=${action}`, 303);
   }
   if (action !== 'approve' && action !== 'reject') return new Response('Bad action', { status: 400 });
   await setListingStatus(id, action === 'approve' ? 'active' : 'rejected');
   await logAdmin(ctx, `listing.${action}`, `listing #${id}`);
-  return redirect(`/admin?done=${action}#listings`, 303);
+  return redirect(`/admin/listings?done=${action}`, 303);
 };

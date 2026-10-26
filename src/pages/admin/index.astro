@@ -1,226 +1,49 @@
 ---
-import AdminLayout from '../../layouts/AdminLayout.astro';
-import Photo from '../../components/Photo.astro';
-import { adminCounts, getRefs, LEAD_KINDS, listingsByStatus, recentLeads, type LeadKind } from '../../lib/repo';
-import { listingPrice, listingTitle } from '../../lib/listing';
 import { env } from 'cloudflare:workers';
-import { ORDER_STATUSES, recentOrders } from '../../lib/orders';
-import { safeNext } from '../../lib/redirect';
-import { recentAdminActions } from '../../lib/audit';
-import { recentForumPosts } from '../../lib/forum';
-import { subscribers } from '../../lib/newsletter';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminCounts } from '../../lib/repo';
 import { userCounts } from '../../lib/admin-users';
-import { realPhone } from '../../lib/auth';
 
-// ?leads=<kind> narrows the enquiries table to one lead kind (e.g. booking, referral).
-const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
-const [refs, counts, pending, leads] = await Promise.all([getRefs(), adminCounts(), listingsByStatus('pending', 50), recentLeads(100, leadKind)]);
-const done = Astro.url.searchParams.get('done');
-const { results: pendingPlatform } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
-const { results: pendingReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
-const orders = await recentOrders(100);
-const [audit, forumPosts, news, users] = await Promise.all([recentAdminActions(30), recentForumPosts(40), subscribers(50), userCounts()]);
-const { results: planRequests } = await env.DB.prepare(`SELECT s.id, s.plan, s.amount, s.created_at, u.name, u.phone, u.company FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'requested' ORDER BY s.id`).all<{ id: number; plan: string; amount: number; created_at: string; name: string | null; phone: string; company: string | null }>();
-const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
+// Dashboard: the headline numbers, and what is waiting in each section (each card links there).
+const [counts, users, waiting] = await Promise.all([
+  adminCounts(),
+  userCounts(),
+  env.DB.prepare(`SELECT
+      (SELECT count(*) FROM reviews WHERE status = 'pending') + (SELECT count(*) FROM platform_reviews WHERE status = 'pending') AS reviews,
+      (SELECT count(*) FROM subscriptions WHERE status = 'requested') AS plans,
+      (SELECT count(*) FROM service_orders WHERE status NOT IN ('completed', 'cancelled')) AS orders`)
+    .first<{ reviews: number; plans: number; orders: number }>(),
+]);
+const stats: [string, number][] = [['Leads (total)', counts.leads], ['Leads (24 h)', counts.leads24], ['Pending listings', counts.pending], ['Live listings', counts.active]];
+const sections: [string, number, string, string][] = [
+  ['Listings waiting for review', counts.pending, '/admin/listings', 'Review listings'],
+  ['Reviews waiting', waiting?.reviews ?? 0, '/admin/reviews', 'Moderate reviews'],
+  ['Agent plan requests', waiting?.plans ?? 0, '/admin/plans', 'See requests'],
+  ['Open service orders', waiting?.orders ?? 0, '/admin/orders', 'See orders'],
+  ['Users', users.all, '/admin/users', 'Manage users'],
+  ['Blocked users', users.blocked, '/admin/users?state=blocked', 'See blocked'],
+];
 ---
 <AdminLayout title="Dashboard" active="dashboard" crumbs={[['Dashboard']]}>
-  <div>
-    {done && !done.startsWith('sub-') && !done.startsWith('order-') && <p class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Listing {({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.</p>}
+  <dl class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    {stats.map(([k, v]) => (
+      <div class="rounded-2xl bg-white p-5 shadow-sm"><dt class="text-sm text-slate-500">{k}</dt><dd class="text-3xl font-extrabold text-slate-800">{v}</dd></div>
+    ))}
+  </dl>
 
-    <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-      {[['Leads (total)', counts.leads], ['Leads (24 h)', counts.leads24], ['Pending listings', counts.pending], ['Live listings', counts.active]].map(([k, v]) => (
-        <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="text-3xl font-extrabold">{v}</dd></div>
-      ))}
-    </dl>
+  <h2 class="mt-10 text-xl font-bold text-slate-800">Waiting for you</h2>
+  <ul class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {sections.map(([label, n, href, cta]) => (
+      <li class="flex items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm">
+        <div><p class="text-sm text-slate-500">{label}</p><p class="text-2xl font-extrabold text-slate-800">{n}</p></div>
+        <a href={href} class="btn-ghost py-2">{cta} →</a>
+      </li>
+    ))}
+  </ul>
 
-    <section id="users" class="mt-10">
-      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <h2 class="section-title">Users ({users.all})</h2>
-        <a href="/admin/users" class="btn-ghost py-2">Manage users</a>
-      </div>
-      <div class="flex flex-wrap gap-2" aria-label="Users by role">
-        {([['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']] as const).map(([k, l]) => (
-          <a href={`/admin/users?role=${k}`} class="pill border border-slate-200 bg-white">{l} · {users[k]}</a>
-        ))}
-        <a href="/admin/users?state=blocked" class="pill border border-slate-200 bg-white">Blocked · {users.blocked}</a>
-      </div>
-    </section>
-
-    <section id="subscriptions" class="mt-10">
-      <h2 class="section-title mb-4">Agent plan requests</h2>
-      {done?.startsWith('sub-') && <p class="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Plan request {done === 'sub-activate' ? 'activated' : 'cancelled'}.</p>}
-      {planRequests.length === 0 ? <p class="text-slate-500">No plan requests waiting.</p> : (
-        <ul class="space-y-3">
-          {planRequests.map((r) => (
-            <li class="card flex flex-wrap items-center justify-between gap-4 p-4">
-              <div>
-                <p class="font-semibold">{r.name ?? 'Agent'}{r.company && ` · ${r.company}`} — {r.plan === 'yearly' ? 'Yearly' : 'Half-yearly'} plan, ₹{r.amount.toLocaleString('en-IN')}</p>
-                <p class="text-sm text-slate-500">{realPhone(r.phone) ? <a href={`tel:+91${r.phone}`} class="underline">+91 {r.phone}</a> : 'No mobile number'} · requested {fmtTime(r.created_at)}</p>
-              </div>
-              <form method="post" action={`/api/admin/subscriptions/${r.id}`} class="flex gap-2">
-                <button name="action" value="activate" class="btn-primary py-2">Activate (payment received)</button>
-                <button name="action" value="cancel" class="btn-ghost py-2">Cancel</button>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-
-    <section id="listings" class="mt-10">
-      <h2 class="section-title mb-4">Pending listings</h2>
-      {pending.length === 0 && <p class="text-slate-500">Nothing waiting for review.</p>}
-      <div class="space-y-4">
-        {pending.map((l) => (
-          <div class="card flex flex-col gap-4 p-4 sm:flex-row">
-            <Photo photo={l.photos[0]} hue={l.hue} alt={listingTitle(l, refs)} class="h-32 shrink-0 rounded-xl sm:w-48" label={l.photos.length ? `${l.photos.length} photo${l.photos.length > 1 ? 's' : ''}` : 'No photos'} />
-            <div class="flex-1">
-              <a href={`/property/${l.id}?token=${l.editToken}`} class="font-semibold hover:text-brand-700">#{l.id} · {listingTitle(l, refs)}</a>{l.ownerBlocked && <span class="chip ml-1">owner blocked</span>}
-              <p class="text-sm font-bold">{listingPrice(l)} · {l.areaSqft.toLocaleString('en-IN')} sq.ft</p>
-              <p class="mt-1 text-sm text-slate-500">{l.contactName} · +91 {l.contactPhone} · submitted {fmtTime(l.postedAt)}</p>
-              {l.description && <p class="mt-1 line-clamp-2 text-sm text-slate-600">{l.description}</p>}
-            </div>
-            <form method="post" action={`/api/admin/listings/${l.id}`} class="flex gap-2 sm:flex-col">
-              <button name="action" value="approve" class="btn-primary">Approve</button>
-              <button name="action" value="reject" class="btn-ghost">Reject</button>
-            </form>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section id="reviews" class="mt-12">
-      <h2 class="section-title mb-4">Pending reviews ({pendingReviews.length})</h2>
-      {pendingReviews.length === 0 && <p class="text-slate-500">No reviews waiting.</p>}
-      <div class="space-y-3">
-        {pendingReviews.map((r) => (
-          <div class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-            <div class="flex-1"><p class="font-semibold">{r.project} · {'★'.repeat(r.rating)} <span class="font-normal text-slate-500">by {r.author}, {fmtTime(r.created_at)}</span></p><p class="mt-1 text-sm text-slate-700">{r.body}</p></div>
-            <form method="post" action={`/api/admin/reviews/${r.id}`} class="flex gap-2"><button name="action" value="publish" class="btn-primary py-2">Publish</button><button name="action" value="reject" class="btn-ghost py-2">Reject</button></form>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section id="platform-reviews" class="mt-12">
-      <h2 class="section-title mb-4">Pending site reviews ({pendingPlatform.length})</h2>
-      {pendingPlatform.length === 0 && <p class="text-slate-500">No site reviews waiting.</p>}
-      <div class="space-y-3">
-        {pendingPlatform.map((r) => (
-          <div class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-            <div class="flex-1"><p class="font-semibold">{r.service} · {'★'.repeat(r.rating)} <span class="font-normal text-slate-500">by {r.author}, {fmtTime(r.created_at)}</span></p>{r.title && <p class="text-sm font-semibold">{r.title}</p>}<p class="mt-1 text-sm text-slate-700">{r.body}</p></div>
-            <form method="post" action={`/api/admin/platform-reviews/${r.id}`} class="flex gap-2"><button name="action" value="publish" class="btn-primary py-2">Publish</button><button name="action" value="reject" class="btn-ghost py-2">Reject</button></form>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section id="orders" class="mt-12">
-      <h2 class="section-title mb-4">Service orders ({orders.length})</h2>
-      {done?.startsWith('order-') && <p class="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">Order #{done.slice(6)} status saved.</p>}
-      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table class="w-full min-w-[720px] text-sm">
-          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">#</th><th class="px-4 py-3">When</th><th class="px-4 py-3">Service</th><th class="px-4 py-3">Customer</th><th class="px-4 py-3">Amount</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Details</th></tr></thead>
-          <tbody class="divide-y divide-slate-100">
-            {orders.map((o) => (
-              <tr>
-                <td class="px-4 py-3 font-semibold">{o.id}</td>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(o.created_at)}</td>
-                <td class="px-4 py-3"><span class="chip">{o.kind}</span></td>
-                <td class="px-4 py-3">{o.name}<br /><a href={`tel:+91${o.phone}`} class="text-xs text-brand-700">+91 {o.phone}</a>{o.email && <span class="block text-xs text-slate-500">{o.email}</span>}</td>
-                <td class="px-4 py-3">₹{o.amount.toLocaleString("en-IN")}{o.coupon && <span class="block text-xs text-slate-500">{o.coupon}</span>}</td>
-                <td class="px-4 py-3">
-                  <form method="post" action={`/api/admin/orders/${o.id}`} class="flex items-center gap-2">
-                    <label class="sr-only" for={`order-${o.id}`}>Status of order {o.id}</label>
-                    <select id={`order-${o.id}`} name="status" class="input w-auto py-1.5 text-xs">{ORDER_STATUSES.map((st) => <option value={st} selected={st === o.status}>{st.replace('_', ' ')}</option>)}</select>
-                    <button class="btn-ghost px-3 py-1.5 text-xs">Save</button>
-                  </form>
-                </td>
-                <td class="max-w-xs truncate px-4 py-3 text-xs text-slate-500" title={o.details}>{o.details}</td>
-              </tr>
-            ))}
-            {orders.length === 0 && <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">No orders yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="mt-12">
-      <h2 id="leads" class="section-title mb-4 scroll-mt-28">Recent enquiries</h2>
-      <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by type">
-        {[['', 'All'], ...LEAD_KINDS.map((k) => [k, k.replace('-', ' ')])].map(([k, l]) => (
-          <a href={k ? `/admin?leads=${k}#leads` : '/admin#leads'} class:list={['pill border border-slate-200 bg-white capitalize', (leadKind ?? '') === k && 'pill-active']} aria-current={(leadKind ?? '') === k ? 'true' : undefined}>{l}</a>
-        ))}
-      </div>
-      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table class="w-full min-w-[720px] text-sm">
-          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr><th class="px-4 py-3">When</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Phone</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">About</th></tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {leads.map((ld) => (
-              <tr>
-                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(ld.createdAt)}</td><td class="px-4 py-3"><span class="chip">{ld.kind}</span></td>
-                <td class="px-4 py-3 font-semibold">{ld.name}</td>
-                <td class="whitespace-nowrap px-4 py-3"><a href={`tel:+91${ld.phone}`} class="text-brand-700 hover:underline">+91 {ld.phone}</a></td>
-                <td class="px-4 py-3">{ld.email ?? '—'}</td>
-                <td class="px-4 py-3">{safeNext(ld.page) ? <a href={safeNext(ld.page)!} class="text-brand-700 hover:underline">{ld.subject}</a> : ld.subject}</td>
-              </tr>
-            ))}
-            {leads.length === 0 && <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No enquiries yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="forum" class="mt-12">
-      <h2 class="section-title mb-4">Forum posts</h2>
-      {forumPosts.length === 0 && <p class="text-slate-500">No forum posts yet.</p>}
-      <div class="space-y-3">
-        {forumPosts.map((p) => (
-          <div class:list={['card flex flex-col gap-3 p-4 sm:flex-row sm:items-start', p.status === 'hidden' && 'opacity-60']}>
-            <div class="flex-1">
-              <p class="font-semibold"><span class="chip mr-1">{p.kind}</span>{p.status === 'hidden' && <span class="chip mr-1">hidden</span>}{p.kind === 'question' ? p.title : `Re: ${p.title}`} <span class="font-normal text-slate-500">by {p.author}, {fmtTime(p.createdAt)}</span></p>
-              <p class="mt-1 line-clamp-2 text-sm text-slate-700">{p.body}</p>
-              {p.status === 'published' && <a href={`/forum/${p.questionId}`} class="text-xs text-brand-700 hover:underline">View on site</a>}
-            </div>
-            <form method="post" action={`/api/admin/forum/${p.kind}/${p.id}`}>
-              {p.status === 'published' ? <button name="action" value="hide" class="btn-ghost py-2">Hide</button> : <button name="action" value="unhide" class="btn-primary py-2">Unhide</button>}
-            </form>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section id="newsletter" class="mt-12">
-      <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <h2 class="section-title">Newsletter subscribers ({news.total})</h2>
-        {news.total > 0 && <a href="/api/admin/newsletter.csv" class="btn-ghost py-2" download>Export CSV</a>}
-      </div>
-      {news.total === 0 ? <p class="text-slate-500">No subscribers yet.</p> : (
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <table class="w-full min-w-[420px] text-sm">
-            <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Email</th><th class="px-4 py-3">Subscribed</th></tr></thead>
-            <tbody class="divide-y divide-slate-100">{news.list.map((n) => <tr><td class="px-4 py-3">{n.email}</td><td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(n.created_at)}</td></tr>)}</tbody>
-          </table>
-          {news.total > news.list.length && <p class="px-4 py-2 text-xs text-slate-500">Showing the newest {news.list.length}; the CSV has all {news.total}.</p>}
-        </div>
-      )}
-    </section>
-
-    <section id="audit" class="mt-12">
-      <h2 class="section-title mb-4">Recent admin actions</h2>
-      <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table class="w-full min-w-[560px] text-sm">
-          <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">When</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Target</th><th class="px-4 py-3">IP</th></tr></thead>
-          <tbody class="divide-y divide-slate-100">
-            {audit.map((a) => (
-              <tr><td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtTime(a.at)}</td><td class="px-4 py-3"><span class="chip">{a.action}</span></td><td class="px-4 py-3">{a.target}</td><td class="px-4 py-3 font-mono text-xs text-slate-500">{a.ip ?? '—'}</td></tr>
-            ))}
-            {audit.length === 0 && <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No admin actions recorded yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
+  <div class="mt-6 flex flex-wrap gap-2" aria-label="Users by role">
+    {([['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']] as const).map(([k, l]) => (
+      <a href={`/admin/users?role=${k}`} class="pill border border-slate-200 bg-white">{l} · {users[k]}</a>
+    ))}
   </div>
 </AdminLayout>

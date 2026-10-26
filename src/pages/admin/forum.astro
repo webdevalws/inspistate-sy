@@ -1,0 +1,44 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import Th from '../../components/admin/Th.astro';
+import { recentForumPosts } from '../../lib/forum';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Forum moderation: hide / unhide questions and answers (/api/admin/forum/{kind}/{id}, audited).
+const posts = await recentForumPosts(40);
+const done = Astro.url.searchParams.get('done');
+---
+<AdminLayout title="Forum" active="forum" crumbs={[['Forum']]}>
+  {(done === 'hide' || done === 'unhide') && <p class={NOTE_OK}>Post {done === 'hide' ? 'hidden' : 'shown again'}.</p>}
+  <AdminCard title={`Forum posts (${posts.length})`} id="forum">
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[860px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Title" /><Th label="Type" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {posts.map((p, i) => (
+            <tr data-row={`${p.kind}-${p.id}`}>
+              <td class={TD}>{i + 1}</td>
+              <td class={TD}>
+                <p class="font-semibold text-slate-800">{p.kind === 'question' ? p.title : `Re: ${p.title}`} <span class="font-normal text-slate-500">by {p.author}</span></p>
+                <p class="mt-1 line-clamp-2 max-w-lg text-xs text-slate-500">{p.body}</p>
+                {p.status === 'published' && <a href={`/forum/${p.questionId}`} class="text-xs text-brand-700 hover:underline">View on site</a>}
+              </td>
+              <td class:list={[TD, 'capitalize']}>{p.kind}</td>
+              <td class={TD}><Pill status={p.status} /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(p.createdAt)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/forum/${p.kind}/${p.id}`}>
+                  {p.status === 'published' ? <ActionButton label="Hide" icon="eye-off" value="hide" tone="danger" /> : <ActionButton label="Unhide" icon="eye" value="unhide" />}
+                </form>
+              </td>
+            </tr>
+          ))}
+          {posts.length === 0 && <tr><td colspan="6" class={EMPTY}>No forum posts yet.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>

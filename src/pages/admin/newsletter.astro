@@ -1,0 +1,24 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Th from '../../components/admin/Th.astro';
+import { subscribers } from '../../lib/newsletter';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Newsletter subscribers; Export CSV (/api/admin/newsletter.csv, all subscribers, audited).
+const news = await subscribers(50);
+---
+<AdminLayout title="Newsletter" active="newsletter" crumbs={[['Newsletter']]}>
+  <AdminCard title={`Newsletter subscribers (${news.total})`} id="newsletter" add={news.total > 0 ? { href: '/api/admin/newsletter.csv', label: 'Export CSV', download: true } : undefined}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[480px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Email" /><Th label="Date" /></tr></thead>
+        <tbody class={TBODY}>
+          {news.list.map((n, i) => <tr><td class={TD}>{i + 1}</td><td class={TD}>{n.email}</td><td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(n.created_at)}</td></tr>)}
+          {news.total === 0 && <tr><td colspan="3" class={EMPTY}>No subscribers yet.</td></tr>}
+        </tbody>
+      </table>
+      {news.total > news.list.length && <p class="px-4 py-2 text-xs text-slate-500">Showing the newest {news.list.length}; the CSV has all {news.total}.</p>}
+    </div>
+  </AdminCard>
+</AdminLayout>

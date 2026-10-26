@@ -1,0 +1,10 @@
+---
+// Status pill for admin tables. Tones by meaning: waiting (amber), good (emerald), stopped (rose), neutral.
+interface Props { status: string; label?: string }
+const { status, label } = Astro.props;
+const WAITING = ['pending', 'requested', 'submitted', 'awaiting_payment', 'in_progress'];
+const GOOD = ['active', 'published', 'paid', 'completed', 'accepted', 'live'];
+const STOPPED = ['rejected', 'cancelled', 'declined', 'hidden', 'blocked', 'deleted'];
+const tone = WAITING.includes(status) ? 'bg-amber-100 text-amber-900' : GOOD.includes(status) ? 'bg-emerald-100 text-emerald-800' : STOPPED.includes(status) ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700';
+---
+<span class:list={['inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold capitalize', tone]}>{label ?? status.replace('_', ' ')}</span>

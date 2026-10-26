@@ -21,5 +21,5 @@ export const POST: APIRoute = async (ctx) => {
     await env.DB.prepare("UPDATE subscriptions SET status = 'active', starts_at = ?, ends_at = ? WHERE id = ?").bind(start.toISOString(), end.toISOString(), id).run();
   }
   await logAdmin(ctx, `plan.${action}`, `plan request #${id} (${sub.plan})`);
-  return redirect(`/admin?done=sub-${action}#subscriptions`, 303);
+  return redirect(`/admin/plans?done=sub-${action}`, 303);
 };

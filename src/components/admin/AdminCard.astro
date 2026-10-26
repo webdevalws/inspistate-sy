@@ -1,0 +1,30 @@
+---
+// One admin page card: title, optional search box (GET, keeps the other query params) and optional primary
+// "+ Add …" button, then the content (usually a table). See docs/functions/admin/desc.md.
+interface Props {
+  title: string;
+  /** Search box: submits ?q= to the current page, keeping `keep` params (filters) and dropping the page number. */
+  search?: { value: string; placeholder?: string; keep?: Record<string, string | undefined> };
+  add?: { href: string; label: string; download?: boolean };
+  id?: string;
+}
+const { title, search, add, id } = Astro.props;
+---
+<section id={id} class="scroll-mt-6 rounded-2xl bg-white shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-dashed border-slate-200 px-5 py-5 sm:px-6">
+    <h2 class="text-xl font-bold text-slate-800">{title}</h2>
+    <div class="flex flex-wrap items-center gap-3">
+      {search && (
+        <form method="get" class="flex items-center gap-2" role="search">
+          {Object.entries(search.keep ?? {}).map(([k, v]) => v && <input type="hidden" name={k} value={v} />)}
+          <label for={`${id ?? 'card'}-q`} class="text-sm text-slate-600">Search:</label>
+          <input id={`${id ?? 'card'}-q`} name="q" type="search" value={search.value} maxlength="60" placeholder={search.placeholder} class="input w-48 py-2 sm:w-56" />
+        </form>
+      )}
+      {add && <a href={add.href} download={add.download} class="btn-primary py-2">{add.download ? '' : '+ '}{add.label}</a>}
+    </div>
+  </div>
+  <div class="p-3 sm:p-6">
+    <slot />
+  </div>
+</section>

@@ -13,5 +13,5 @@ export const POST: APIRoute = async (ctx) => {
   const prev = await setOrderStatus(id, status as OrderStatus);
   if (prev === null) return new Response('Order not found', { status: 404 });
   if (prev !== status) await logAdmin(ctx, 'order.status', `order #${id}: ${prev} → ${status}`);
-  return redirect(`/admin?done=order-${id}#orders`, 303);
+  return redirect(`/admin/orders?done=order-${id}`, 303);
 };

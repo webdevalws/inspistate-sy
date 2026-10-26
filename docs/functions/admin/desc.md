@@ -17,6 +17,25 @@ branch) audit admin actions.
   password; it is handled before the password check and never counted as a wrong password. The note under the
   button says: “To fully log out, close the browser.”
 
+## Sections (item 113)
+The old single `/admin` page is split into one page per section, each one card (`AdminCard`: title, optional Search and
+“+ Add …” / Export button) with a table: S.No., image where there is one, title, type, status pill (`Pill`), date and
+action icon buttons (`ActionButton`, labelled for screen readers). The forms and endpoints are unchanged (same URLs,
+same `action` values, same checks and audit entries); only where an endpoint sends the admin back changed.
+
+| Sidebar | Page | Endpoint (unchanged) → back to |
+|---|---|---|
+| Dashboard | `/admin` — headline numbers + what is waiting in each section | — |
+| Listings → Pending | `/admin/listings` | `/api/admin/listings/{id}` → `/admin/listings?done=…` |
+| Users → All users / Blocked | `/admin/users`, `/admin/users?state=blocked`, `/admin/users/{id}` | `/api/admin/users/{id}` → the user page |
+| Reviews | `/admin/reviews` (project + site reviews) | `/api/admin/reviews/{id}`, `/api/admin/platform-reviews/{id}` → `/admin/reviews?done=…` |
+| Plan requests | `/admin/plans` | `/api/admin/subscriptions/{id}` → `/admin/plans?done=…` |
+| Orders | `/admin/orders` | `/api/admin/orders/{id}` → `/admin/orders?done=…` |
+| Enquiries | `/admin/enquiries` (`?leads=<kind>` filter) | — |
+| Forum | `/admin/forum` | `/api/admin/forum/{kind}/{id}` → `/admin/forum?done=…` |
+| Newsletter | `/admin/newsletter` (Export CSV) | `/api/admin/newsletter.csv` |
+| Audit log | `/admin/audit` | — |
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).
@@ -24,6 +43,9 @@ branch) audit admin actions.
   other counters). From the 5th wrong try each failure waits ~2 s; at 20 the IP gets **429** for the rest of the
   day (`ADMIN_SLOW_AFTER` / `ADMIN_LOCK_AFTER` in `src/middleware.ts`). The browser's first request without a
   password is not counted.
+- Refused admin POSTs (401 / 403 / 429) have their body read first (item 113): browsers send the admin password up front
+  only below the page’s own path, so a form posting to `/api/admin/…` is challenged once and retried, and the local dev
+  runtime fails a request answered with its body unread. No effect in production.
 
 ## Audit trail
 - **Migration 0013** adds `admin_audit` (`id`, `at`, `action`, `target`, `ip`). Additive only. The IP is stored

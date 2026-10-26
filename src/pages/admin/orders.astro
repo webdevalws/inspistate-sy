@@ -1,0 +1,43 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import Th from '../../components/admin/Th.astro';
+import { ORDER_STATUSES, recentOrders } from '../../lib/orders';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Service orders: change the status (/api/admin/orders/{id}, audited as order.status old → new).
+const orders = await recentOrders(100);
+const done = Astro.url.searchParams.get('done');
+---
+<AdminLayout title="Orders" active="orders" crumbs={[['Orders']]}>
+  {done?.startsWith('order-') && <p class={NOTE_OK}>Order #{done.slice(6)} status saved.</p>}
+  <AdminCard title={`Service orders (${orders.length})`} id="orders">
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[960px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Order" /><Th label="Service" /><Th label="Customer" /><Th label="Amount" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {orders.map((o, i) => (
+            <tr data-row={o.id}>
+              <td class={TD}>{i + 1}</td>
+              <td class:list={[TD, 'font-semibold']}>#{o.id}<span class="block max-w-[14rem] truncate text-xs font-normal text-slate-500" title={o.details}>{o.details}</span></td>
+              <td class={TD}><span class="chip">{o.kind}</span></td>
+              <td class={TD}>{o.name}<br /><a href={`tel:+91${o.phone}`} class="text-xs text-brand-700">+91 {o.phone}</a>{o.email && <span class="block text-xs text-slate-500">{o.email}</span>}</td>
+              <td class={TD}>₹{o.amount.toLocaleString('en-IN')}{o.coupon && <span class="block text-xs text-slate-500">{o.coupon}</span>}</td>
+              <td class={TD}><Pill status={o.status} /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(o.created_at)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/orders/${o.id}`} class="flex items-center gap-2">
+                  <label class="sr-only" for={`order-${o.id}`}>Status of order {o.id}</label>
+                  <select id={`order-${o.id}`} name="status" class="input w-auto py-1.5 text-xs">{ORDER_STATUSES.map((st) => <option value={st} selected={st === o.status}>{st.replace('_', ' ')}</option>)}</select>
+                  <button class="btn-ghost px-3 py-1.5 text-xs">Save</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+          {orders.length === 0 && <tr><td colspan="8" class={EMPTY}>No orders yet.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>

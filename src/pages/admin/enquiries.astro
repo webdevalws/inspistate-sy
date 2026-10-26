@@ -1,0 +1,40 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Th from '../../components/admin/Th.astro';
+import { LEAD_KINDS, recentLeads, type LeadKind } from '../../lib/repo';
+import { safeNext } from '../../lib/redirect';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Recent enquiries (leads); ?leads=<kind> narrows to one kind (e.g. booking, referral). Read-only.
+const leadKind = LEAD_KINDS.find((k) => k === Astro.url.searchParams.get('leads')) as LeadKind | undefined;
+const leads = await recentLeads(100, leadKind);
+---
+<AdminLayout title="Enquiries" active="enquiries" crumbs={[['Enquiries']]}>
+  <AdminCard title={`Recent enquiries (${leads.length})`} id="leads">
+    <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by type">
+      {[['', 'All'], ...LEAD_KINDS.map((k) => [k, k.replace('-', ' ')])].map(([k, l]) => (
+        <a href={k ? `/admin/enquiries?leads=${k}` : '/admin/enquiries'} class:list={['pill border border-slate-200 bg-white capitalize', (leadKind ?? '') === k && 'pill-active']} aria-current={(leadKind ?? '') === k ? 'true' : undefined}>{l}</a>
+      ))}
+    </div>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[820px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Name" /><Th label="Type" /><Th label="Phone" /><Th label="Email" /><Th label="About" /><Th label="Date" /></tr></thead>
+        <tbody class={TBODY}>
+          {leads.map((ld, i) => (
+            <tr>
+              <td class={TD}>{i + 1}</td>
+              <td class:list={[TD, 'font-semibold text-slate-800']}>{ld.name}</td>
+              <td class={TD}><span class="chip">{ld.kind}</span></td>
+              <td class:list={[TD, 'whitespace-nowrap']}><a href={`tel:+91${ld.phone}`} class="text-brand-700 hover:underline">+91 {ld.phone}</a></td>
+              <td class={TD}>{ld.email ?? '—'}</td>
+              <td class={TD}>{safeNext(ld.page) ? <a href={safeNext(ld.page)!} class="text-brand-700 hover:underline">{ld.subject}</a> : ld.subject}</td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(ld.createdAt)}</td>
+            </tr>
+          ))}
+          {leads.length === 0 && <tr><td colspan="7" class={EMPTY}>No enquiries yet.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>
