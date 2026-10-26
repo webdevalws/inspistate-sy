@@ -25,7 +25,7 @@ const kindHref = (k: string) => { const u = new URLSearchParams([...sp].filter((
   <AdminCard title={`Enquiries (${res.total})`} id="leads" search={{ value: res.q, placeholder: 'Name, phone, email, subject', keep: { leads: leadKind, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
     <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by type">
       {[['', 'All'], ...LEAD_KINDS.map((k) => [k, k.replace('-', ' ')])].map(([k, l]) => (
-        <a href={kindHref(k)} class:list={['pill border border-slate-200 bg-white capitalize', (leadKind ?? '') === k && 'pill-active']} aria-current={(leadKind ?? '') === k ? 'true' : undefined}>{l}</a>
+        <a href={kindHref(k)} class:list={['pill border border-slate-200 capitalize', (leadKind ?? '') === k ? 'pill-active' : 'bg-white']} aria-current={(leadKind ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
     <div class={TABLE_WRAP}>

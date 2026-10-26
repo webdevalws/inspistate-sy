@@ -106,7 +106,7 @@ const addable = cityLocalities.filter((l) => !locPicks.includes(l.slug)).sort((a
     <AdminCard title="Top Localities in India" id="top_localities">
       <div class="mb-4 flex flex-wrap gap-2" aria-label="City">
         {tabCities.map((c) => (
-          <a href={`/admin/showcase?city=${c.slug}#top_localities`} class:list={['pill border border-slate-200 bg-white', c.slug === city.slug && 'pill-active']} aria-current={c.slug === city.slug ? 'true' : undefined}>{c.name}</a>
+          <a href={`/admin/showcase?city=${c.slug}#top_localities`} class:list={['pill border border-slate-200', c.slug === city.slug ? 'pill-active' : 'bg-white']} aria-current={c.slug === city.slug ? 'true' : undefined}>{c.name}</a>
         ))}
       </div>
       <p class:list={['mb-4 rounded-lg px-3 py-2 text-sm', pickedLocs.length >= LN || pickedLocs.length === 0 ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-900']} data-loc-count>

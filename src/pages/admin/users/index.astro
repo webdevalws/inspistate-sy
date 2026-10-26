@@ -34,12 +34,12 @@ const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active
   <AdminCard title={`Users (${res.total})`} id="users" search={{ value: q, placeholder: 'Name or phone', keep: { role, state, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
     <div class="mb-2 flex flex-wrap gap-2" aria-label="Filter by role">
       {roleFilters.map(([k, l]) => (
-        <a href={filterHref('role', k)} class:list={['pill border border-slate-200 bg-white', (role ?? '') === k && 'pill-active']} aria-current={(role ?? '') === k ? 'true' : undefined}>{l}</a>
+        <a href={filterHref('role', k)} class:list={['pill border border-slate-200', (role ?? '') === k ? 'pill-active' : 'bg-white']} aria-current={(role ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
     <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by status">
       {stateFilters.map(([k, l]) => (
-        <a href={filterHref('state', k)} class:list={['pill border border-slate-200 bg-white', (state ?? '') === k && 'pill-active']} aria-current={(state ?? '') === k ? 'true' : undefined}>{l}</a>
+        <a href={filterHref('state', k)} class:list={['pill border border-slate-200', (state ?? '') === k ? 'pill-active' : 'bg-white']} aria-current={(state ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
     <div class={TABLE_WRAP}>

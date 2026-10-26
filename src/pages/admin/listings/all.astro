@@ -47,7 +47,7 @@ const state = (l: Row) => l.closed ?? l.status;
   <AdminCard title={`All listings (${res.total})`} id="all-listings" search={{ value: res.q, placeholder: 'Id, name, locality, type', keep: { status, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
     <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by status">
       {[['', 'All'], ...Object.entries(STATUS).map(([k, [, l]]) => [k, l])].map(([k, l]) => (
-        <a href={filterHref(k)} class:list={['pill border border-slate-200 bg-white', status === k && 'pill-active']} aria-current={status === k ? 'true' : undefined}>{l}</a>
+        <a href={filterHref(k)} class:list={['pill border border-slate-200', status === k ? 'pill-active' : 'bg-white']} aria-current={status === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
     <div class={TABLE_WRAP}>
