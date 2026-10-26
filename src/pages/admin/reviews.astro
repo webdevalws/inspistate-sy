@@ -1,0 +1,72 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import Th from '../../components/admin/Th.astro';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Pending project reviews (/api/admin/reviews/{id}) and site reviews (/api/admin/platform-reviews/{id}):
+// publish or reject, both audited.
+const { results: projectReviews } = await env.DB.prepare("SELECT r.id, r.author, r.rating, r.body, r.created_at, p.name AS project FROM reviews r JOIN projects p ON p.id = r.project_id WHERE r.status = 'pending' ORDER BY r.id DESC LIMIT 50").all<{ id: number; author: string; rating: number; body: string; created_at: string; project: string }>();
+const { results: siteReviews } = await env.DB.prepare("SELECT id, author, rating, service, title, body, created_at FROM platform_reviews WHERE status = 'pending' ORDER BY id DESC LIMIT 50").all<{ id: number; author: string; rating: number; service: string; title: string | null; body: string; created_at: string }>();
+const done = Astro.url.searchParams.get('done');
+const doneText = ({ 'review-publish': 'Review published.', 'review-reject': 'Review rejected.', 'site-publish': 'Site review published.', 'site-reject': 'Site review rejected.' } as Record<string, string>)[done ?? ''];
+---
+<AdminLayout title="Reviews" active="reviews" crumbs={[['Reviews']]}>
+  {doneText && <p class={NOTE_OK}>{doneText}</p>}
+  <div class="space-y-8">
+    <AdminCard title={`Project reviews waiting (${projectReviews.length})`} id="reviews">
+      <div class={TABLE_WRAP}>
+        <table class:list={[TABLE, 'min-w-[820px]']}>
+          <thead class={THEAD}><tr><Th label="S.No." /><Th label="Review" /><Th label="Project" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+          <tbody class={TBODY}>
+            {projectReviews.map((r, i) => (
+              <tr data-row={r.id}>
+                <td class={TD}>{i + 1}</td>
+                <td class={TD}><p class="font-semibold text-slate-800">{'★'.repeat(r.rating)} <span class="font-normal text-slate-500">by {r.author}</span></p><p class="mt-1 max-w-lg text-sm text-slate-700">{r.body}</p></td>
+                <td class={TD}>{r.project}</td>
+                <td class={TD}><Pill status="pending" /></td>
+                <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(r.created_at)}</td>
+                <td class={TD}>
+                  <form method="post" action={`/api/admin/reviews/${r.id}`} class="flex flex-col gap-1.5">
+                    <ActionButton label="Publish" icon="check" value="publish" />
+                    <ActionButton label="Reject" icon="close" value="reject" tone="danger" />
+                  </form>
+                </td>
+              </tr>
+            ))}
+            {projectReviews.length === 0 && <tr><td colspan="6" class={EMPTY}>No reviews waiting.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+
+    <AdminCard title={`Site reviews waiting (${siteReviews.length})`} id="platform-reviews">
+      <div class={TABLE_WRAP}>
+        <table class:list={[TABLE, 'min-w-[820px]']}>
+          <thead class={THEAD}><tr><Th label="S.No." /><Th label="Review" /><Th label="Service" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+          <tbody class={TBODY}>
+            {siteReviews.map((r, i) => (
+              <tr data-row={r.id}>
+                <td class={TD}>{i + 1}</td>
+                <td class={TD}><p class="font-semibold text-slate-800">{'★'.repeat(r.rating)} {r.title && <span>{r.title}</span>} <span class="font-normal text-slate-500">by {r.author}</span></p><p class="mt-1 max-w-lg text-sm text-slate-700">{r.body}</p></td>
+                <td class:list={[TD, 'capitalize']}>{r.service.replace('-', ' ')}</td>
+                <td class={TD}><Pill status="pending" /></td>
+                <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(r.created_at)}</td>
+                <td class={TD}>
+                  <form method="post" action={`/api/admin/platform-reviews/${r.id}`} class="flex flex-col gap-1.5">
+                    <ActionButton label="Publish" icon="check" value="publish" />
+                    <ActionButton label="Reject" icon="close" value="reject" tone="danger" />
+                  </form>
+                </td>
+              </tr>
+            ))}
+            {siteReviews.length === 0 && <tr><td colspan="6" class={EMPTY}>No site reviews waiting.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  </div>
+</AdminLayout>

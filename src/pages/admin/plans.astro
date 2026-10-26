@@ -1,0 +1,45 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import Th from '../../components/admin/Th.astro';
+import { realPhone } from '../../lib/auth';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Agent plan requests: activate once payment is received, or cancel (/api/admin/subscriptions/{id}, audited).
+const { results: requests } = await env.DB.prepare(`SELECT s.id, s.plan, s.amount, s.created_at, s.user_id, u.name, u.phone, u.company FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'requested' ORDER BY s.id`).all<{ id: number; plan: string; amount: number; created_at: string; user_id: number; name: string | null; phone: string; company: string | null }>();
+const done = Astro.url.searchParams.get('done');
+---
+<AdminLayout title="Plan requests" active="plans" crumbs={[['Plan requests']]}>
+  {done?.startsWith('sub-') && <p class={NOTE_OK}>Plan request {done === 'sub-activate' ? 'activated' : 'cancelled'}.</p>}
+  <AdminCard title={`Agent plan requests (${requests.length})`} id="subscriptions">
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[820px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Agent" /><Th label="Plan" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {requests.map((r, i) => (
+            <tr data-row={r.id}>
+              <td class={TD}>{i + 1}</td>
+              <td class={TD}>
+                <a href={`/admin/users/${r.user_id}`} class="font-semibold text-slate-800 hover:text-brand-700">{r.name ?? 'Agent'}</a>{r.company && <span class="text-slate-500"> · {r.company}</span>}
+                <p class="text-xs text-slate-500">{realPhone(r.phone) ? <a href={`tel:+91${r.phone}`} class="underline">+91 {r.phone}</a> : 'No mobile number'}</p>
+              </td>
+              <td class={TD}>{r.plan === 'yearly' ? 'Yearly' : 'Half-yearly'} · ₹{r.amount.toLocaleString('en-IN')}</td>
+              <td class={TD}><Pill status="requested" /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(r.created_at)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/subscriptions/${r.id}`} class="flex flex-col gap-1.5">
+                  <ActionButton label="Activate (payment received)" icon="check" value="activate" />
+                  <ActionButton label="Cancel request" icon="close" value="cancel" tone="danger" />
+                </form>
+              </td>
+            </tr>
+          ))}
+          {requests.length === 0 && <tr><td colspan="6" class={EMPTY}>No plan requests waiting.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>

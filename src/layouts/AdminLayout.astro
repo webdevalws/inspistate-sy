@@ -1,0 +1,111 @@
+---
+// Admin shell (every /admin page): dark sidebar with the InspiState mark, section label, menu with sub-items and
+// Logout; a top bar with the page title, breadcrumb and the admin's name; content on a light background. On phones
+// the sidebar folds into a "Menu" button (no JavaScript needed). No site header or footer. InspiState colours and
+// fonts only. Access control stays in src/middleware.ts. See docs/functions/admin/desc.md.
+import '../styles/global.css';
+import { ADMIN_NAV } from '../lib/admin-nav';
+
+interface Props {
+  title: string;
+  /** Sidebar item to highlight (ADMIN_NAV key) and, optionally, its sub-item. */
+  active: string;
+  sub?: string;
+  /** Breadcrumb after the home icon, e.g. [['Listings', '/admin/listings'], ['Pending']]. */
+  crumbs?: [string, string?][];
+}
+const { title, active, sub, crumbs = [] } = Astro.props;
+const adminName = Astro.locals.adminName ?? 'Admin';
+---
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} · Admin | InspiState</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <div class="lg:flex">
+      {/* Sidebar (lg and up) / folding menu (phones) share one nav */}
+      <aside class="group/aside bg-[#1C1A17] text-sand-50 lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:overflow-y-auto">
+        <div class="flex items-center justify-between gap-4 px-5 py-4 lg:block lg:px-6 lg:py-7">
+          <a href="/admin" class="inline-flex items-center gap-2.5 rounded-xl bg-sand-50 px-3 py-2.5 text-[#1C1A17]" aria-label="InspiState admin home">
+            <img src="/favicon.svg" alt="" class="h-7 w-7" />
+            <span class="font-display text-[15px] font-extrabold uppercase tracking-[0.02em] [font-stretch:115%]">InspiState</span>
+          </a>
+          <p class="hidden lg:mt-8 lg:inline-block lg:rounded-md lg:bg-sand-50/15 lg:px-2.5 lg:py-1 lg:font-mono lg:text-[11px] lg:font-bold lg:uppercase lg:tracking-[0.16em]">Manage</p>
+          <details class="lg:hidden">
+            <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-sand-50/25 px-3 py-2 text-sm font-semibold">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+              Menu
+            </summary>
+          </details>
+        </div>
+        <nav aria-label="Admin" class="hidden pb-6 group-has-[details[open]]/aside:block lg:block">
+          <ul>
+            {ADMIN_NAV.map((item) => {
+              const on = item.key === active;
+              return (
+                <li>
+                  <a href={item.href} aria-current={on && !item.children ? 'page' : undefined} class:list={['flex items-center gap-3 px-6 py-3.5 text-[15px] font-medium transition', on ? 'border-r-4 border-sand-50 bg-accent-500 text-[#1C1A17]' : 'text-sand-50/85 hover:bg-sand-50/10 hover:text-sand-50']}>
+                    <svg viewBox="0 0 24 24" class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={item.icon} /></svg>
+                    {item.label}
+                  </a>
+                  {item.children && on && (
+                    <ul class="my-2 ml-[2.1rem] border-l border-sand-50/25">
+                      {item.children.map((c) => (
+                        <li>
+                          <a href={c.href} aria-current={c.key === sub ? 'page' : undefined} class:list={['flex items-center gap-3 py-2 pl-0 text-sm transition', c.key === sub ? 'font-semibold text-sand-50' : 'text-sand-50/60 hover:text-sand-50']}>
+                            <span class="h-px w-4 bg-sand-50/40" aria-hidden="true"></span>{c.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+            <li class="mt-4 border-t border-sand-50/10 pt-4">
+              <a href="/admin/logout" class="flex items-center gap-3 px-6 py-3.5 text-[15px] font-medium text-sand-50/85 transition hover:bg-sand-50/10 hover:text-sand-50">
+                <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" /></svg>
+                Logout
+              </a>
+              <p class="px-6 text-xs text-sand-50/50">To fully log out, close the browser.</p>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="min-w-0 flex-1 lg:ml-64">
+        <header class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-5 sm:px-8">
+          <div class="min-w-0">
+            <h1 class="text-2xl font-bold text-slate-800">{title}</h1>
+            <nav aria-label="Breadcrumb" class="mt-1">
+              <ol class="flex flex-wrap items-center gap-1.5 text-sm">
+                <li><a href="/admin" class="text-slate-500 hover:text-brand-700" aria-label="Admin dashboard"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v10h12V10" /></svg></a></li>
+                {crumbs.map(([label, href], i) => (
+                  <li class="flex items-center gap-1.5">
+                    <span class="text-slate-400" aria-hidden="true">/</span>
+                    {href && i < crumbs.length - 1 ? <a href={href} class="text-brand-700 hover:underline">{label}</a> : <span class="text-brand-700" aria-current="page">{label}</span>}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-sm font-semibold uppercase text-slate-600" aria-hidden="true">{adminName.slice(0, 1)}</span>
+            <span class="text-sm font-medium text-slate-700">{adminName}</span>
+          </div>
+        </header>
+        <main class="px-4 py-6 sm:px-8 sm:py-8">
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

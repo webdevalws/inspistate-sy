@@ -12,5 +12,5 @@ export const POST: APIRoute = async (ctx) => {
   if (action !== 'hide' && action !== 'unhide') return new Response('Bad action', { status: 400 });
   if (!(await setForumStatus(kind, id, action === 'hide' ? 'hidden' : 'published'))) return new Response('Not found', { status: 404 });
   await logAdmin(ctx, `forum.${action}`, `${kind} #${id}`);
-  return redirect('/admin#forum', 303);
+  return redirect(`/admin/forum?done=${action}`, 303);
 };

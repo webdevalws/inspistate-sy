@@ -1,0 +1,50 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import Th from '../../../components/admin/Th.astro';
+import Photo from '../../../components/Photo.astro';
+import { getRefs, listingsByStatus } from '../../../lib/repo';
+import { listingPrice, listingTitle } from '../../../lib/listing';
+import { typeLabel } from '../../../lib/search';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../../components/admin/ui';
+
+// Listings waiting for review: approve (goes live) or reject. Posts to /api/admin/listings/{id} (audited).
+const [refs, pending] = await Promise.all([getRefs(), listingsByStatus('pending', 50)]);
+const done = Astro.url.searchParams.get('done');
+const doneText = done ? `Listing ${({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.` : '';
+---
+<AdminLayout title="Pending listings" active="listings" sub="pending" crumbs={[['Listings', '/admin/listings'], ['Pending']]}>
+  {doneText && <p class={NOTE_OK}>{doneText}</p>}
+  <AdminCard title={`Pending listings (${pending.length})`} id="listings">
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[900px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Image" /><Th label="Title" /><Th label="Type" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {pending.map((l, i) => (
+            <tr data-row={l.id}>
+              <td class={TD}>{i + 1}</td>
+              <td class={TD}><Photo photo={l.photos[0]} hue={l.hue} alt={listingTitle(l, refs)} class="h-14 w-20 rounded-md" /></td>
+              <td class={TD}>
+                <a href={`/property/${l.id}?token=${l.editToken}`} class="font-semibold text-slate-800 hover:text-brand-700">#{l.id} · {listingTitle(l, refs)}</a>{l.ownerBlocked && <span class="chip ml-1">owner blocked</span>}
+                <p class="text-xs text-slate-500">{listingPrice(l)} · {l.areaSqft.toLocaleString('en-IN')} sq.ft · {l.contactName} · +91 {l.contactPhone}</p>
+                {l.description && <p class="mt-1 line-clamp-2 max-w-md text-xs text-slate-500">{l.description}</p>}
+              </td>
+              <td class={TD}>{typeLabel(l.type)}<span class="block text-xs text-slate-500">{l.purpose === 'buy' ? 'Sale' : 'Rent'}</span></td>
+              <td class={TD}><Pill status="pending" /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(l.postedAt)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/listings/${l.id}`} class="flex flex-col gap-1.5">
+                  <ActionButton label="Approve" icon="check" value="approve" />
+                  <ActionButton label="Reject" icon="close" value="reject" tone="danger" />
+                </form>
+              </td>
+            </tr>
+          ))}
+          {pending.length === 0 && <tr><td colspan="7" class={EMPTY}>Nothing waiting for review.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </AdminCard>
+</AdminLayout>

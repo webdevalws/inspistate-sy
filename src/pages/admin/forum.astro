@@ -1,0 +1,57 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import Th from '../../components/admin/Th.astro';
+import Pagination from '../../components/Pagination.astro';
+import { paged } from '../../lib/admin-tables';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Forum moderation: questions and answers, newest first, search / sort / 25 per page; hide / unhide
+// (/api/admin/forum/{kind}/{id}, audited).
+type Post = { kind: 'question' | 'answer'; id: number; question_id: number; title: string; body: string; author: string; status: string; created_at: string };
+const res = await paged<Post>({
+  from: `(SELECT 'question' AS kind, id, id AS question_id, title, body, author, status, created_at FROM forum_questions
+    UNION ALL
+    SELECT 'answer', fa.id, fa.question_id, fq.title, fa.body, fa.author, fa.status, fa.created_at FROM forum_answers fa JOIN forum_questions fq ON fq.id = fa.question_id) f`,
+  select: 'f.*',
+  search: { columns: ['f.title', 'f.body', 'f.author'] },
+  sorts: { date: 'f.created_at', status: 'f.status', type: 'f.kind' },
+  defaultSort: 'date', url: Astro.url,
+});
+const sp = Astro.url.searchParams;
+const done = sp.get('done');
+---
+<AdminLayout title="Forum" active="forum" crumbs={[['Forum']]}>
+  {(done === 'hide' || done === 'unhide') && <p class={NOTE_OK}>Post {done === 'hide' ? 'hidden' : 'shown again'}.</p>}
+  <AdminCard title={`Forum posts (${res.total})`} id="forum" search={{ value: res.q, placeholder: 'Title, text, author', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[860px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Title" /><Th label="Type" sortKey="type" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((p, i) => (
+            <tr data-row={`${p.kind}-${p.id}`}>
+              <td class={TD}>{res.offset + i + 1}</td>
+              <td class={TD}>
+                <p class="font-semibold text-slate-800">{p.kind === 'question' ? p.title : `Re: ${p.title}`} <span class="font-normal text-slate-500">by {p.author}</span></p>
+                <p class="mt-1 line-clamp-2 max-w-lg text-xs text-slate-500">{p.body}</p>
+                {p.status === 'published' && <a href={`/forum/${p.question_id}`} class="text-xs text-brand-700 hover:underline">View on site</a>}
+              </td>
+              <td class:list={[TD, 'capitalize']}>{p.kind}</td>
+              <td class={TD}><Pill status={p.status} /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(p.created_at)}</td>
+              <td class={TD}>
+                <form method="post" action={`/api/admin/forum/${p.kind}/${p.id}`}>
+                  {p.status === 'published' ? <ActionButton label="Hide" icon="eye-off" value="hide" tone="danger" /> : <ActionButton label="Unhide" icon="eye" value="unhide" />}
+                </form>
+              </td>
+            </tr>
+          ))}
+          {res.rows.length === 0 && <tr><td colspan="6" class={EMPTY}>{res.q ? 'No posts match.' : 'No forum posts yet.'}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

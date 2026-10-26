@@ -1,0 +1,34 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Th from '../../components/admin/Th.astro';
+import Pagination from '../../components/Pagination.astro';
+import { paged } from '../../lib/admin-tables';
+import type { AdminAction } from '../../lib/audit';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Audit log: every state-changing admin action (time, action, target, admin IP). Search, sort, 25 per page. Read-only.
+const res = await paged<AdminAction>({
+  from: 'admin_audit', select: 'id, at, action, target, ip',
+  search: { columns: ['action', 'target', 'ip'] },
+  sorts: { date: 'id', action: 'action' },
+  defaultSort: 'date', url: Astro.url,
+});
+const sp = Astro.url.searchParams;
+---
+<AdminLayout title="Audit log" active="audit" crumbs={[['Audit log']]}>
+  <AdminCard title={`Admin actions (${res.total})`} id="audit" search={{ value: res.q, placeholder: 'Action, target, IP', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[680px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Action" sortKey="action" url={Astro.url} /><Th label="Target" /><Th label="IP" /><Th label="Date" sortKey="date" url={Astro.url} /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((a, i) => (
+            <tr><td class={TD}>{res.offset + i + 1}</td><td class={TD}><span class="chip">{a.action}</span></td><td class={TD}>{a.target}</td><td class:list={[TD, 'font-mono text-xs text-slate-500']}>{a.ip ?? '—'}</td><td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(a.at)}</td></tr>
+          ))}
+          {res.rows.length === 0 && <tr><td colspan="5" class={EMPTY}>{res.q ? 'No actions match.' : 'No admin actions recorded yet.'}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

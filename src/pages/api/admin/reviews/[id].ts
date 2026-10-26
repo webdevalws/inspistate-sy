@@ -11,5 +11,5 @@ export const POST: APIRoute = async (ctx) => {
   if (action !== 'publish' && action !== 'reject') return new Response('Bad action', { status: 400 });
   await env.DB.prepare('UPDATE reviews SET status = ? WHERE id = ?').bind(action === 'publish' ? 'published' : 'rejected', id).run();
   await logAdmin(ctx, `review.${action}`, `review #${id}`);
-  return redirect('/admin#reviews', 303);
+  return redirect(`/admin/reviews?done=review-${action}`, 303);
 };

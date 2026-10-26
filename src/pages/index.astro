@@ -9,6 +9,7 @@ import SearchBox from '../components/islands/SearchBox';
 import LeadDialog from '../components/islands/LeadDialog';
 import ShortlistButton from '../components/islands/ShortlistButton';
 import { allProjects, cityStats, getRefs, platformTotals } from '../lib/repo';
+import { SHOWCASE_CARDS, autoLocalities, localityTabCities, showcasePicks, withPicks } from '../lib/showcase';
 import { homeInsights, homeMarket } from '../lib/community';
 import { searchBoxProps } from '../lib/searchProps';
 import { formatNumber, formatPrice, formatRange } from '../lib/format';
@@ -22,8 +23,11 @@ const [projects, statsFor, sb, totals, ins, mkt] = await Promise.all([
 ]);
 // Cities for the market-insight and locality tabs: the first 8, plus every city added after the original ten
 // demo cities (Lucknow, Navi Mumbai…) that has projects, since the insight charts need them.
-const ORIGINAL_CITIES = 10;
-const topCities = [...cities.slice(0, 8), ...cities.slice(ORIGINAL_CITIES).filter((c) => projects.some((p) => p.citySlug === c.slug))];
+const topCities = localityTabCities(cities, projects);
+// Admin picks for "Hot Selling Projects" and each "Top Localities" tab (/admin/showcase), read live on every request:
+// picks first, then the automatic choice fills the rest (no duplicates); with no picks, exactly the automatic choice.
+const picks = await showcasePicks();
+const projectById = new Map(projects.map((p) => [String(p.id), p]));
 const pct = (a: number, b: number) => (a ? ((b - a) / a) * 100 : 0);
 
 // Market-insight series per city, all from our own data.
@@ -85,7 +89,7 @@ const collections = [
 ].map(({ m, img, span }) => ({ title: m.title, href: m.href, img, span, sub: caption(m) }));
 const moreCollections = [discover[0].cards[4], discover[1].cards[1], discover[2].cards[0], discover[3].cards[1]].map((m) => ({ title: `${m.title} · ${m.city.name}`, href: m.href }));
 
-const hotProjects = projects.slice(0, 5).map((p, i) => ({
+const hotProjects = withPicks(picks.get('hot_projects:') ?? [], projects, (p) => String(p.id), (id) => projectById.get(id), SHOWCASE_CARDS.hot_projects).map((p, i) => ({
   id: p.id, name: p.name, href: projectUrl(p), img: photos[(i + 2) % photos.length], status: p.status,
   locality: refs.locality(p.citySlug, p.localitySlug)?.name ?? '', city: refs.city(p.citySlug)?.name ?? '',
   price: formatRange(p.priceMin, p.priceMax), meta: `${p.bhkLabel} · ${p.possession}`,
@@ -357,7 +361,7 @@ const toolTiles = [
       <Tabs id="localities" variant="mono" labels={topCities.map((x) => x.name)}>
         {topCities.map((city, i) => (
           <div slot={`tab-${i}`} class="ed-rail">
-            {[...refs.localitiesOf(city.slug)].sort((a, b) => b.yoyGrowthPct - a.yoyGrowthPct).slice(0, 5).map((l, j) => {
+            {withPicks(picks.get(`top_localities:${city.slug}`) ?? [], autoLocalities(refs.localitiesOf(city.slug)), (l) => l.slug, (s) => refs.locality(city.slug, s), SHOWCASE_CARDS.top_localities).map((l, j) => {
               const m = mkt.locality(city.slug, l.slug);
               return (
                 <a href={`/locality/${city.slug}/${l.slug}`} class="group block">

@@ -1,0 +1,32 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Th from '../../components/admin/Th.astro';
+import Pagination from '../../components/Pagination.astro';
+import { paged } from '../../lib/admin-tables';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
+
+// Newsletter subscribers: search, sort, 25 per page; Export CSV (/api/admin/newsletter.csv, all subscribers, audited).
+const res = await paged<{ email: string; created_at: string }>({
+  from: 'newsletter_subscribers', select: 'email, created_at',
+  search: { columns: ['email'] },
+  sorts: { date: 'created_at', email: 'email' },
+  defaultSort: 'date', url: Astro.url,
+});
+const sp = Astro.url.searchParams;
+---
+<AdminLayout title="Newsletter" active="newsletter" crumbs={[['Newsletter']]}>
+  <AdminCard title={`Newsletter subscribers (${res.total})`} id="newsletter" search={{ value: res.q, placeholder: 'Email', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }} add={res.total > 0 || res.q ? { href: '/api/admin/newsletter.csv', label: 'Export CSV', download: true } : undefined}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[480px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Email" sortKey="email" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((n, i) => <tr><td class={TD}>{res.offset + i + 1}</td><td class={TD}>{n.email}</td><td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(n.created_at)}</td></tr>)}
+          {res.rows.length === 0 && <tr><td colspan="3" class={EMPTY}>{res.q ? 'No subscribers match.' : 'No subscribers yet.'}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <p class="px-4 py-2 text-xs text-slate-500">The CSV always has every subscriber.</p>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

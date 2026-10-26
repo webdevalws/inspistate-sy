@@ -1,0 +1,25 @@
+---
+// Table header cell. With `sortKey`, the label links to ?sort=<key>&dir=asc|desc on the current page (first click
+// ascending, then toggles; the page number is dropped) and shows ▲ / ▼; without, a plain label.
+interface Props { label: string; sortKey?: string; url?: URL; class?: string }
+const { label, sortKey, url, class: cls = '' } = Astro.props;
+const current = url?.searchParams.get('sort');
+const dir = url?.searchParams.get('dir') === 'desc' ? 'desc' : 'asc';
+const on = !!sortKey && current === sortKey;
+let href = '';
+if (sortKey && url) {
+  const u = new URL(url);
+  u.searchParams.set('sort', sortKey);
+  u.searchParams.set('dir', on && dir === 'asc' ? 'desc' : 'asc');
+  u.searchParams.delete('page');
+  href = u.pathname + u.search;
+}
+---
+<th scope="col" class:list={['px-4 py-3.5', cls]} aria-sort={on ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+  {sortKey ? (
+    <a href={href} class="inline-flex items-center gap-1.5 hover:text-brand-700">
+      {label}
+      <span class:list={['text-[10px] leading-none', on ? 'text-brand-700' : 'text-slate-400']} aria-hidden="true">{on ? (dir === 'asc' ? '▲' : '▼') : '▲▼'}</span>
+    </a>
+  ) : label}
+</th>
