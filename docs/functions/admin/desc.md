@@ -77,8 +77,19 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   transactions. **Hidden localities** leave the reference data (`getRefs`). Admin pages read everything.
 - **Projects → All projects** (item 121, `/admin/projects`): every project, hidden ones included — cover image, name,
   city / locality, builder, price range, status (Live / Hidden), date (last admin save, else launch year); search, sort,
-  25 per page; **Hide / Unhide** (`POST /api/admin/projects/{id}`, `action=hide|unhide`, asks before
+  25 per page; **Edit**, **+ Add project** and **Hide / Unhide** (`POST /api/admin/projects/{id}`, `action=hide|unhide`, asks before
   hiding, audited as `project.hide|unhide` with old → new).
+- **Add / edit a project** (item 122, `/admin/projects/new`, `/admin/projects/{id}`, `src/lib/admin-projects.ts`): the
+  form posts to its own page (admin protection as everywhere) and is shown again with the values and a clear message
+  on any error. Fields: name; URL slug (made from name + locality when empty; unique within the city); city and
+  locality (checked to match); builder (existing, or **New builder** with name, founded year, head office, about);
+  status badge (New Launch / Under Construction / Ready to Move); RERA number (the “RERA verified” badge shows when
+  filled); possession; launch year; rate/sq.ft; land acres; towers; floors; total units; **configurations** (rows of
+  BHK, label, carpet sq.ft, price — the price range and “2, 3 BHK” label are worked out from them); amenities and
+  highlights (one per line); nearby places (“name, type, km”); description (shown as an extra paragraph in “About
+  {name}” on the project page, only when filled). A new project gets a flat six-quarter price trend at its rate.
+  Audited: `project.add`, `builder.add`, and one `project.edit` row per changed field (old → new; lists as item
+  counts).
 - **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
   (reference data, project list, stats, suggestions, city facets) so the change shows at once.
 

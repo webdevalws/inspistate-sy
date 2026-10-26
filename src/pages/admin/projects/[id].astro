@@ -1,0 +1,43 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import ProjectForm from '../../../components/admin/ProjectForm.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import { clearContentCaches, getRefs } from '../../../lib/repo';
+import { formValues, parseProjectForm, projectFormValues, saveProject } from '../../../lib/admin-projects';
+import { logAdmin } from '../../../lib/audit';
+import { NOTE_OK } from '../../../components/admin/ui';
+import { env } from 'cloudflare:workers';
+
+// Edit a project. The form posts here; each changed field is audited (project.edit, old → new) and the caches cleared.
+const id = Number(Astro.params.id);
+const info = Number.isInteger(id) && id > 0 ? await env.DB.prepare('SELECT name, slug, city_slug, hidden FROM projects WHERE id = ?').bind(id).first<{ name: string; slug: string; city_slug: string; hidden: number }>() : null;
+if (!info) return new Response('Project not found', { status: 404 });
+let error = '';
+let values = await projectFormValues(id);
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const parsed = await parseProjectForm(form, await getRefs(), id);
+  if (parsed.ok) {
+    const { changes } = await saveProject(id, parsed.project, parsed.newBuilder);
+    if (parsed.newBuilder) await logAdmin(Astro, 'builder.add', `builder ${parsed.newBuilder.name} (${parsed.newBuilder.slug})`);
+    for (const [field, from, to] of changes) await logAdmin(Astro, 'project.edit', `project #${id} ${field}: ${from} → ${to}`);
+    if (changes.length || parsed.newBuilder) clearContentCaches();
+    return Astro.redirect(`/admin/projects/${id}?done=${changes.length ? 'saved' : 'unchanged'}`, 303);
+  }
+  error = parsed.error;
+  values = formValues(form);
+}
+const refs = await getRefs();
+const done = ({ added: 'Project added. Add photos below; it is already live on the site.', saved: 'Changes saved. The site shows them now.', unchanged: 'Nothing changed.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+---
+<AdminLayout title={info.name} active="projects" sub="all" crumbs={[['Projects', '/admin/projects'], [info.name]]}>
+  {done && <p class={NOTE_OK}>{done}</p>}
+  <p class="mb-4 flex flex-wrap items-center gap-3 text-sm">
+    {info.hidden ? <Pill status="hidden" label="Hidden" /> : <Pill status="live" label="Live" />}
+    {!info.hidden && <a href={`/projects/${info.city_slug}/${info.slug}`} class="text-brand-700 hover:underline">View on the site →</a>}
+  </p>
+  <AdminCard title="Edit project" id="edit">
+    <ProjectForm values={values!} refs={refs} error={error} submit="Save changes" />
+  </AdminCard>
+</AdminLayout>

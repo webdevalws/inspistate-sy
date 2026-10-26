@@ -77,6 +77,8 @@ export interface Project {
   nearby: NearbyPlace[];
   hue: number;
   launchedYear: number;
+  /** Admin-written “About the project” text (migration 0018); absent on projects without one. */
+  description?: string;
 }
 
 export interface ProjectDetail extends Project {

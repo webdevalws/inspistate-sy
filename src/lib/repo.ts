@@ -91,6 +91,7 @@ const toProject = (r: Row): Project => ({
   ratePerSqft: r.rate_per_sqft as number, priceMin: r.price_min as number, priceMax: r.price_max as number, bhkLabel: r.bhk_label as string,
   amenities: json(r.amenities, []), highlights: json(r.highlights, []), priceTrend: json(r.price_trend, []), nearby: json(r.nearby, []),
   hue: r.hue as number, launchedYear: r.launched_year as number,
+  ...(r.description ? { description: r.description as string } : {}),
 });
 
 /** Projects the public may see: not hidden by the admin (migration 0018). Admin pages read projects without it. */

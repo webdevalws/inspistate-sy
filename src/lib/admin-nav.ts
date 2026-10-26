@@ -14,7 +14,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   },
   {
     key: 'projects', label: 'Projects', href: '/admin/projects', icon: 'M4 21V8l6-4v17M10 21V4l10 5v12M14 10h2M14 14h2M6 11h2M6 15h2M3 21h18',
-    children: [{ key: 'all', label: 'All projects', href: '/admin/projects' }],
+    children: [{ key: 'all', label: 'All projects', href: '/admin/projects' }, { key: 'new', label: '+ Add project', href: '/admin/projects/new' }],
   },
   { key: 'reviews', label: 'Reviews', href: '/admin/reviews', icon: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z' },
   { key: 'plans', label: 'Plan requests', href: '/admin/plans', icon: 'M3 8l4 4 5-7 5 7 4-4-2 11H5z' },

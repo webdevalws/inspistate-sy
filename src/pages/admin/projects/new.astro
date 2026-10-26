@@ -1,0 +1,33 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import ProjectForm from '../../../components/admin/ProjectForm.astro';
+import { clearContentCaches, getRefs } from '../../../lib/repo';
+import { formValues, parseProjectForm, saveProject, type ProjectFormValues } from '../../../lib/admin-projects';
+import { logAdmin } from '../../../lib/audit';
+
+// Add a project. The form posts here (admin middleware: password + same-origin); on success → the project's edit page
+// (to add photos), on an error the form is shown again with the values kept.
+let values: ProjectFormValues = {};
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const refs = await getRefs();
+  const parsed = await parseProjectForm(form, refs, null);
+  if (parsed.ok) {
+    const { id } = await saveProject(null, parsed.project, parsed.newBuilder);
+    if (parsed.newBuilder) await logAdmin(Astro, 'builder.add', `builder ${parsed.newBuilder.name} (${parsed.newBuilder.slug})`);
+    await logAdmin(Astro, 'project.add', `project #${id} ${parsed.project.name} (/projects/${parsed.project.citySlug}/${parsed.project.slug})`);
+    clearContentCaches();
+    return Astro.redirect(`/admin/projects/${id}?done=added`, 303);
+  }
+  error = parsed.error;
+  values = formValues(form);
+}
+const refs = await getRefs();
+---
+<AdminLayout title="Add project" active="projects" sub="new" crumbs={[['Projects', '/admin/projects'], ['Add project']]}>
+  <AdminCard title="Add project" id="add-project">
+    <ProjectForm values={values} refs={refs} error={error} submit="Add project" />
+  </AdminCard>
+</AdminLayout>

@@ -140,6 +140,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
         <section id="overview" class="scroll-mt-32">
           <h2 class="section-title mb-4">About {p.name}</h2>
           <p class="mb-5 leading-relaxed text-slate-700">{p.name} by {builder.name} is {p.status === 'Under Construction' ? 'an' : 'a'} {p.status.toLowerCase()} residential project in {loc.name}, {city.name}, spread across {p.landAcres} acres with {formatNumber(p.totalUnits)} homes in {p.towers} towers. It offers {p.bhkLabel} apartments from {formatNumber(Math.min(...sizes))} to {formatNumber(Math.max(...sizes))} sq.ft, priced from {formatPrice(min)}. Possession starts {p.possession}.</p>
+          {p.description && <p class="mb-5 whitespace-pre-line leading-relaxed text-slate-700">{p.description}</p>}
           <h3 class="mb-3 text-lg font-bold">Key project details</h3>
           <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-3">
             {keyFacts.map(([k, v]) => <div class="bg-white p-4"><dt class="text-xs text-slate-500">{k}</dt><dd class="mt-0.5 font-semibold text-slate-900">{v}</dd></div>)}

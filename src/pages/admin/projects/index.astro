@@ -32,7 +32,7 @@ const date = (r: Row) => (r.updated_at ? new Date(r.updated_at).toLocaleDateStri
 ---
 <AdminLayout title="All projects" active="projects" sub="all" crumbs={[['Projects', '/admin/projects'], ['All projects']]}>
   {doneText && <p class={NOTE_OK}>{doneText}</p>}
-  <AdminCard title={`Projects (${res.total})`} id="projects" search={{ value: res.q, placeholder: 'Name, city, locality, builder', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
+  <AdminCard title={`Projects (${res.total})`} id="projects" search={{ value: res.q, placeholder: 'Name, city, locality, builder', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }} add={{ href: '/admin/projects/new', label: 'Add project' }}>
     <div class={TABLE_WRAP}>
       <table class:list={[TABLE, 'min-w-[1040px]']}>
         <thead class={THEAD}><tr><Th label="S.No." /><Th label="Image" /><Th label="Name" sortKey="name" url={Astro.url} /><Th label="City / locality" sortKey="city" url={Astro.url} /><Th label="Builder" /><Th label="Price range" sortKey="price" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /><Th label="Action" /></tr></thead>
@@ -53,6 +53,7 @@ const date = (r: Row) => (r.updated_at ? new Date(r.updated_at).toLocaleDateStri
               <td class={TD}>
                 <form method="post" action={`/api/admin/projects/${p.id}`} class="flex flex-col gap-1.5">
                   <input type="hidden" name="back" value={back} />
+                  <ActionButton label={`Edit ${p.name}`} icon="edit" href={`/admin/projects/${p.id}`} />
                   {p.hidden ? <ActionButton label={`Unhide ${p.name}`} icon="eye" value="unhide" /> : <ActionButton label={`Hide ${p.name}`} icon="eye-off" value="hide" tone="danger" confirm={`Hide ${p.name}? It disappears from the site until you unhide it.`} />}
                 </form>
               </td>
