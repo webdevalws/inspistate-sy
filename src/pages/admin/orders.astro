@@ -3,23 +3,33 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import AdminCard from '../../components/admin/AdminCard.astro';
 import Pill from '../../components/admin/Pill.astro';
 import Th from '../../components/admin/Th.astro';
-import { ORDER_STATUSES, recentOrders } from '../../lib/orders';
+import Pagination from '../../components/Pagination.astro';
+import { ORDER_STATUSES } from '../../lib/orders';
+import { paged } from '../../lib/admin-tables';
 import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../components/admin/ui';
 
-// Service orders: change the status (/api/admin/orders/{id}, audited as order.status old → new).
-const orders = await recentOrders(100);
+// Service orders: search, sort, 25 per page; change the status (/api/admin/orders/{id}, audited as order.status
+// old → new).
+type Order = { id: number; kind: string; name: string; phone: string; email: string | null; details: string; amount: number; coupon: string | null; status: string; created_at: string };
+const res = await paged<Order>({
+  from: 'service_orders o', select: 'o.*',
+  search: { columns: ['o.name', 'o.phone', 'o.kind', 'o.email'], idColumn: 'o.id' },
+  sorts: { id: 'o.id', date: 'o.created_at', amount: 'o.amount', status: 'o.status', service: 'o.kind' },
+  defaultSort: 'id', url: Astro.url,
+});
 const done = Astro.url.searchParams.get('done');
+const sp = Astro.url.searchParams;
 ---
 <AdminLayout title="Orders" active="orders" crumbs={[['Orders']]}>
   {done?.startsWith('order-') && <p class={NOTE_OK}>Order #{done.slice(6)} status saved.</p>}
-  <AdminCard title={`Service orders (${orders.length})`} id="orders">
+  <AdminCard title={`Service orders (${res.total})`} id="orders" search={{ value: res.q, placeholder: 'Order #, name, phone, service', keep: { sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
     <div class={TABLE_WRAP}>
       <table class:list={[TABLE, 'min-w-[960px]']}>
-        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Order" /><Th label="Service" /><Th label="Customer" /><Th label="Amount" /><Th label="Status" /><Th label="Date" /><Th label="Action" /></tr></thead>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Order" sortKey="id" url={Astro.url} /><Th label="Service" sortKey="service" url={Astro.url} /><Th label="Customer" /><Th label="Amount" sortKey="amount" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /><Th label="Action" /></tr></thead>
         <tbody class={TBODY}>
-          {orders.map((o, i) => (
+          {res.rows.map((o, i) => (
             <tr data-row={o.id}>
-              <td class={TD}>{i + 1}</td>
+              <td class={TD}>{res.offset + i + 1}</td>
               <td class:list={[TD, 'font-semibold']}>#{o.id}<span class="block max-w-[14rem] truncate text-xs font-normal text-slate-500" title={o.details}>{o.details}</span></td>
               <td class={TD}><span class="chip">{o.kind}</span></td>
               <td class={TD}>{o.name}<br /><a href={`tel:+91${o.phone}`} class="text-xs text-brand-700">+91 {o.phone}</a>{o.email && <span class="block text-xs text-slate-500">{o.email}</span>}</td>
@@ -35,9 +45,10 @@ const done = Astro.url.searchParams.get('done');
               </td>
             </tr>
           ))}
-          {orders.length === 0 && <tr><td colspan="8" class={EMPTY}>No orders yet.</td></tr>}
+          {res.rows.length === 0 && <tr><td colspan="8" class={EMPTY}>{res.q ? 'No orders match.' : 'No orders yet.'}</td></tr>}
         </tbody>
       </table>
     </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
   </AdminCard>
 </AdminLayout>

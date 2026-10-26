@@ -1,0 +1,91 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import Th from '../../../components/admin/Th.astro';
+import Pagination from '../../../components/Pagination.astro';
+import Photo from '../../../components/Photo.astro';
+import { getRefs } from '../../../lib/repo';
+import { paged } from '../../../lib/admin-tables';
+import { formatPrice, formatRent } from '../../../lib/format';
+import { typeLabel } from '../../../lib/search';
+import { EMPTY, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD, fmtTime } from '../../../components/admin/ui';
+
+// Every listing: search (id, contact name, locality, type), status filter, sortable columns, 25 per page. Actions are
+// the existing ones on /api/admin/listings/{id} (approve / reject, mark sold / rented, delete; all audited).
+const refs = await getRefs();
+const sp = Astro.url.searchParams;
+const STATUS: Record<string, [string, string]> = {
+  pending: ["l.status = 'pending' AND l.closed IS NULL", 'Pending'],
+  active: ["l.status = 'active' AND l.closed IS NULL", 'Live'],
+  rejected: ["l.status = 'rejected' AND l.closed IS NULL", 'Rejected'],
+  closed: ["l.closed IN ('sold', 'rented')", 'Sold / rented'],
+  deleted: ["l.closed = 'deleted'", 'Deleted'],
+};
+const status = Object.hasOwn(STATUS, sp.get('status') ?? '') ? sp.get('status')! : '';
+type Row = { id: number; purpose: 'buy' | 'rent'; type: string; bhk: number; price: number; area_sqft: number; city_slug: string; locality_slug: string; status: string; closed: string | null; owner_blocked: number; posted_at: string; hue: number; contact_name: string; edit_token: string | null; photo: string | null };
+const res = await paged<Row>({
+  from: 'listings l',
+  select: `l.id, l.purpose, l.type, l.bhk, l.price, l.area_sqft, l.city_slug, l.locality_slug, l.status, l.closed, l.owner_blocked, l.posted_at, l.hue, l.contact_name, l.edit_token,
+    (SELECT r2_key FROM listing_photos ph WHERE ph.listing_id = l.id ORDER BY position LIMIT 1) AS photo`,
+  where: status ? [STATUS[status][0]] : [],
+  search: { columns: ['l.contact_name', 'l.locality_slug', 'l.city_slug', 'l.type'], idColumn: 'l.id' },
+  sorts: { id: 'l.id', date: 'l.posted_at', price: 'l.price', type: 'l.type', status: "coalesce(l.closed, l.status)" },
+  defaultSort: 'id', url: Astro.url,
+});
+const done = sp.get('done');
+const doneText = done ? `Listing ${({ approve: 'approved and now live', reject: 'rejected', sold: 'marked sold', rented: 'marked rented', delete: 'deleted' } as Record<string, string>)[done] ?? 'updated'}.` : '';
+// Actions come back here with the same search, filter, sort and page.
+const backParams = new URLSearchParams([...sp].filter(([k]) => k !== 'done')).toString();
+const back = `/admin/listings/all${backParams ? `?${backParams}` : ''}`;
+const filterHref = (s: string) => { const u = new URLSearchParams([...sp].filter(([k]) => !['status', 'page', 'done'].includes(k))); if (s) u.set('status', s); const q = u.toString(); return `/admin/listings/all${q ? `?${q}` : ''}`; };
+const state = (l: Row) => l.closed ?? l.status;
+---
+<AdminLayout title="All listings" active="listings" sub="all" crumbs={[['Listings', '/admin/listings'], ['All listings']]}>
+  {doneText && <p class={NOTE_OK}>{doneText}</p>}
+  <AdminCard title={`All listings (${res.total})`} id="all-listings" search={{ value: res.q, placeholder: 'Id, name, locality, type', keep: { status, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
+    <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by status">
+      {[['', 'All'], ...Object.entries(STATUS).map(([k, [, l]]) => [k, l])].map(([k, l]) => (
+        <a href={filterHref(k)} class:list={['pill border border-slate-200 bg-white', status === k && 'pill-active']} aria-current={status === k ? 'true' : undefined}>{l}</a>
+      ))}
+    </div>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[980px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Image" /><Th label="Title" sortKey="id" url={Astro.url} /><Th label="Type" sortKey="type" url={Astro.url} /><Th label="Price" sortKey="price" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Date" sortKey="date" url={Astro.url} /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((l, i) => {
+            const title = `${l.bhk ? `${l.bhk} BHK ` : ''}${typeLabel(l.type)} in ${refs.locality(l.city_slug, l.locality_slug)?.name ?? l.locality_slug}, ${refs.city(l.city_slug)?.name ?? l.city_slug}`;
+            return (
+              <tr data-row={l.id}>
+                <td class={TD}>{res.offset + i + 1}</td>
+                <td class={TD}><Photo photo={l.photo ?? undefined} hue={l.hue} alt={title} class="h-14 w-20 rounded-md" /></td>
+                <td class={TD}>
+                  {l.closed === 'deleted' ? <span class="font-semibold text-slate-800">#{l.id} · {title}</span> : <a href={`/property/${l.id}${l.status === 'active' && !l.closed && !l.owner_blocked ? '' : `?token=${l.edit_token}`}`} class="font-semibold text-slate-800 hover:text-brand-700">#{l.id} · {title}</a>}
+                  <p class="text-xs text-slate-500">{l.contact_name}{l.owner_blocked ? ' · owner blocked' : ''}</p>
+                </td>
+                <td class={TD}>{typeLabel(l.type)}<span class="block text-xs text-slate-500">{l.purpose === 'buy' ? 'Sale' : 'Rent'}</span></td>
+                <td class:list={[TD, 'whitespace-nowrap']}>{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)}</td>
+                <td class={TD}><Pill status={state(l) === 'active' ? 'live' : state(l)} /></td>
+                <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtTime(l.posted_at)}</td>
+                <td class={TD}>
+                  {l.closed !== 'deleted' && (
+                    <form method="post" action={`/api/admin/listings/${l.id}`} class="flex flex-col gap-1.5">
+                      <input type="hidden" name="back" value={back} />
+                      {l.status === 'pending' && !l.closed && <ActionButton label="Approve" icon="check" value="approve" />}
+                      {l.status === 'pending' && !l.closed && <ActionButton label="Reject" icon="close" value="reject" tone="danger" />}
+                      {l.status === 'active' && !l.closed && <ActionButton label={l.purpose === 'buy' ? 'Mark sold' : 'Mark rented'} icon="check" value={l.purpose === 'buy' ? 'sold' : 'rented'} />}
+                      <ActionButton label="Delete" icon="delete" value="delete" tone="danger" confirm={`Delete listing #${l.id}? It leaves the site and its owner's list.`} />
+                    </form>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          {res.rows.length === 0 && <tr><td colspan="8" class={EMPTY}>No listings match.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

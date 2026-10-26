@@ -36,6 +36,17 @@ same `action` values, same checks and audit entries); only where an endpoint sen
 | Newsletter | `/admin/newsletter` (Export CSV) | `/api/admin/newsletter.csv` |
 | Audit log | `/admin/audit` | — |
 
+## Search, sort and pages (item 114)
+- Long lists read `?q=`, `?sort=<key>&dir=asc|desc` and `?page=` (`paged` in `src/lib/admin-tables.ts`, 25 per page,
+  `Pagination`): search is “contains” on the listed columns (a number also matches the id), sorting only uses each
+  page’s whitelist of columns (`Th` shows ▲ / ▼ and links to the next direction). Used by All listings, Users, Orders,
+  Enquiries, Forum, Newsletter and Audit log; the search box keeps the page’s filters and sort.
+- **Listings → All listings** (`/admin/listings/all`): every listing with a status filter (Pending, Live, Rejected,
+  Sold / rented, Deleted), search (id, contact name, locality, city, type) and the existing actions of
+  `/api/admin/listings/{id}` — approve / reject (pending), mark sold or rented (live), delete (asks first) — all
+  audited as before. Each form sends `back` (only `/admin/listings…` pages are accepted) so the admin returns to the
+  same filtered page.
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).

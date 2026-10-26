@@ -6,7 +6,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z' },
   {
     key: 'listings', label: 'Listings', href: '/admin/listings', icon: 'M4 20V9l8-5 8 5v11M9 20v-6h6v6',
-    children: [{ key: 'pending', label: 'Pending', href: '/admin/listings' }],
+    children: [{ key: 'pending', label: 'Pending', href: '/admin/listings' }, { key: 'all', label: 'All listings', href: '/admin/listings/all' }],
   },
   {
     key: 'users', label: 'Users', href: '/admin/users', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',

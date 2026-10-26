@@ -38,7 +38,10 @@ export interface AdminUserRow {
 export type StateFilter = 'active' | 'blocked';
 export const isStateFilter = (v: unknown): v is StateFilter => v === 'active' || v === 'blocked';
 
-export interface UserQuery { q?: string; role?: RoleFilter; state?: StateFilter; page: number }
+export interface UserQuery { q?: string; role?: RoleFilter; state?: StateFilter; page: number; sort?: string; dir?: 'asc' | 'desc' }
+
+/** Sortable columns of the users table (URL key → SQL); anything else sorts newest first. */
+const USER_SORTS: Record<string, string> = { name: "lower(coalesce(u.name, ''))", joined: 'u.id', listings: 'listings', enquiries: 'enquiries' };
 
 // Listings count excludes owner-deleted ones (as on the owner's own account page); enquiries are the leads the
 // user sent.
@@ -74,7 +77,7 @@ export async function listUsers(f: UserQuery): Promise<{ rows: AdminUserRow[]; t
   const pages = Math.max(1, Math.ceil(total / USERS_PAGE_SIZE));
   const page = Math.min(Math.max(1, f.page), pages);
   const { results } = await db()
-    .prepare(`${ROW_SELECT}${w.sql} ORDER BY u.id DESC LIMIT ? OFFSET ?`)
+    .prepare(`${ROW_SELECT}${w.sql} ORDER BY ${f.sort && Object.hasOwn(USER_SORTS, f.sort) ? `${USER_SORTS[f.sort]} ${f.dir === 'desc' ? 'DESC' : 'ASC'}, u.id DESC` : 'u.id DESC'} LIMIT ? OFFSET ?`)
     .bind(...w.binds, USERS_PAGE_SIZE, (page - 1) * USERS_PAGE_SIZE)
     .all<AdminUserRow>();
   return { rows: results, total, page, pages };

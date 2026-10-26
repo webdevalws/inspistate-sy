@@ -1,8 +1,13 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Pagination from '../../../components/Pagination.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import Th from '../../../components/admin/Th.astro';
+import { EMPTY, TABLE, TABLE_WRAP, TBODY, TD, THEAD } from '../../../components/admin/ui';
 import { getRefs } from '../../../lib/repo';
-import { isRoleFilter, isStateFilter, listUsers, loginMethod, type RoleFilter, type StateFilter } from '../../../lib/admin-users';
+import { USERS_PAGE_SIZE, isRoleFilter, isStateFilter, listUsers, loginMethod, type RoleFilter, type StateFilter } from '../../../lib/admin-users';
 import { planByKey, roleLabel } from '../../../data/plans';
 import { realPhone } from '../../../lib/auth';
 
@@ -12,7 +17,7 @@ const sp = Astro.url.searchParams;
 const q = (sp.get('q') ?? '').trim().slice(0, 60);
 const role = isRoleFilter(sp.get('role')) ? (sp.get('role') as RoleFilter) : undefined;
 const state = isStateFilter(sp.get('state')) ? (sp.get('state') as StateFilter) : undefined;
-const [refs, res] = await Promise.all([getRefs(), listUsers({ q, role, state, page: Math.floor(Number(sp.get('page')) || 1) })]);
+const [refs, res] = await Promise.all([getRefs(), listUsers({ q, role, state, page: Math.floor(Number(sp.get('page')) || 1), sort: sp.get('sort') ?? undefined, dir: sp.get('dir') === 'desc' ? 'desc' : 'asc' })]);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
 // Filter links keep the other filters and the search, and start again at page 1.
 const filterHref = (key: string, value: string) => {
@@ -26,53 +31,44 @@ const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['sell
 const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active'], ['blocked', 'Blocked']];
 ---
 <AdminLayout title="Users" active="users" sub={state === 'blocked' ? 'blocked' : 'all'} crumbs={[['Users', '/admin/users'], [state === 'blocked' ? 'Blocked' : 'All users']]}>
-  <div>
-    <h2 class="section-title">Users ({res.total})</h2>
-
-    <form method="get" action="/admin/users" class="mt-6 flex flex-wrap items-center gap-2">
-      {role && <input type="hidden" name="role" value={role} />}
-      {state && <input type="hidden" name="state" value={state} />}
-      <label class="sr-only" for="user-q">Search by name or phone</label>
-      <input id="user-q" name="q" type="search" value={q} maxlength="60" placeholder="Name or phone" class="input w-full max-w-xs" />
-      <button class="btn-primary py-2">Search</button>
-      {q && <a href={filterHref('q', '')} class="btn-ghost py-2">Clear</a>}
-    </form>
-
-    <div class="mt-4 flex flex-wrap gap-2" aria-label="Filter by role">
+  <AdminCard title={`Users (${res.total})`} id="users" search={{ value: q, placeholder: 'Name or phone', keep: { role, state, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }}>
+    <div class="mb-2 flex flex-wrap gap-2" aria-label="Filter by role">
       {roleFilters.map(([k, l]) => (
         <a href={filterHref('role', k)} class:list={['pill border border-slate-200 bg-white', (role ?? '') === k && 'pill-active']} aria-current={(role ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
-    <div class="mt-2 flex flex-wrap gap-2" aria-label="Filter by status">
+    <div class="mb-4 flex flex-wrap gap-2" aria-label="Filter by status">
       {stateFilters.map(([k, l]) => (
         <a href={filterHref('state', k)} class:list={['pill border border-slate-200 bg-white', (state ?? '') === k && 'pill-active']} aria-current={(state ?? '') === k ? 'true' : undefined}>{l}</a>
       ))}
     </div>
-
-    <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-      <table class="w-full min-w-[1080px] text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-          <tr><th class="px-4 py-3">Name</th><th class="px-4 py-3">Phone</th><th class="px-4 py-3">Login</th><th class="px-4 py-3">Role</th><th class="px-4 py-3">City</th><th class="px-4 py-3">Agency</th><th class="px-4 py-3">Plan</th><th class="px-4 py-3">Joined</th><th class="px-4 py-3">Listings</th><th class="px-4 py-3">Enquiries</th></tr>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[1180px]']}>
+        <thead class={THEAD}>
+          <tr><Th label="S.No." /><Th label="Name" sortKey="name" url={Astro.url} /><Th label="Phone" /><Th label="Login" /><Th label="Role" /><Th label="City" /><Th label="Agency" /><Th label="Plan" /><Th label="Status" /><Th label="Joined" sortKey="joined" url={Astro.url} /><Th label="Listings" sortKey="listings" url={Astro.url} /><Th label="Enquiries" sortKey="enquiries" url={Astro.url} /><Th label="Action" /></tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          {res.rows.map((u) => (
-            <tr>
-              <td class="px-4 py-3 font-semibold"><a href={`/admin/users/${u.id}`} class="text-brand-700 hover:underline">{u.name ?? `User #${u.id}`}</a>{u.blocked_at && <span class="chip ml-1">blocked</span>}</td>
-              <td class="whitespace-nowrap px-4 py-3">{realPhone(u.phone) ? <a href={`tel:+91${u.phone}`} class="text-brand-700 hover:underline">+91 {u.phone}</a> : '—'}</td>
-              <td class="px-4 py-3"><span class="chip">{loginMethod(u)}</span>{u.google_email && <span class="block text-xs text-slate-500">{u.google_email}</span>}</td>
-              <td class="px-4 py-3">{u.role ? <span class="chip">{roleLabel(u.role)}</span> : <span class="text-slate-500">Not registered</span>}</td>
-              <td class="px-4 py-3">{u.city_slug ? (refs.city(u.city_slug)?.name ?? u.city_slug) : '—'}</td>
-              <td class="px-4 py-3">{u.role === 'agent' && u.company ? u.company : '—'}</td>
-              <td class="whitespace-nowrap px-4 py-3">{u.plan ? planByKey(u.plan)?.name ?? u.plan : 'Free'}{!!u.plan_requested && <span class="chip ml-1">requested</span>}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-slate-500">{fmtDate(u.created_at)}</td>
-              <td class="px-4 py-3">{u.listings}</td>
-              <td class="px-4 py-3">{u.enquiries}</td>
+        <tbody class={TBODY}>
+          {res.rows.map((u, i) => (
+            <tr data-row={u.id}>
+              <td class={TD}>{(res.page - 1) * USERS_PAGE_SIZE + i + 1}</td>
+              <td class:list={[TD, 'font-semibold']}><a href={`/admin/users/${u.id}`} class="text-brand-700 hover:underline">{u.name ?? `User #${u.id}`}</a></td>
+              <td class:list={[TD, 'whitespace-nowrap']}>{realPhone(u.phone) ? <a href={`tel:+91${u.phone}`} class="text-brand-700 hover:underline">+91 {u.phone}</a> : '—'}</td>
+              <td class={TD}><span class="chip">{loginMethod(u)}</span>{u.google_email && <span class="block text-xs text-slate-500">{u.google_email}</span>}</td>
+              <td class={TD}>{u.role ? <span class="chip">{roleLabel(u.role)}</span> : <span class="text-slate-500">Not registered</span>}</td>
+              <td class={TD}>{u.city_slug ? (refs.city(u.city_slug)?.name ?? u.city_slug) : '—'}</td>
+              <td class={TD}>{u.role === 'agent' && u.company ? u.company : '—'}</td>
+              <td class:list={[TD, 'whitespace-nowrap']}>{u.plan ? planByKey(u.plan)?.name ?? u.plan : 'Free'}{!!u.plan_requested && <span class="chip ml-1">requested</span>}</td>
+              <td class={TD}><Pill status={u.blocked_at ? 'blocked' : 'active'} label={u.blocked_at ? 'Blocked' : 'Active'} /></td>
+              <td class:list={[TD, 'whitespace-nowrap text-slate-600']}>{fmtDate(u.created_at)}</td>
+              <td class={TD}>{u.listings}</td>
+              <td class={TD}>{u.enquiries}</td>
+              <td class={TD}><ActionButton label={`Edit ${u.name ?? `user #${u.id}`}`} icon="edit" href={`/admin/users/${u.id}#edit`} /></td>
             </tr>
           ))}
-          {res.rows.length === 0 && <tr><td colspan="10" class="px-4 py-6 text-center text-slate-500">No users match.</td></tr>}
+          {res.rows.length === 0 && <tr><td colspan="13" class={EMPTY}>No users match.</td></tr>}
         </tbody>
       </table>
     </div>
     <Pagination page={res.page} pages={res.pages} url={Astro.url} />
-  </div>
+  </AdminCard>
 </AdminLayout>
