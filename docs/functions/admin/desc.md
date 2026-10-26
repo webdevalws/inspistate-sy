@@ -67,6 +67,15 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   - Every change is audited: `showcase.add|remove|up|down`, e.g. “hot selling projects: #1003 Skyreach Riverstone”, moves
     with the new place (“→ 2”).
 
+## Projects and localities (items 120–126)
+- **Migration 0018** (additive): `projects.hidden` (0/1), `projects.description`, `projects.updated_at`; a
+  `project_photos (project_id, r2_key, position)` table (position 1 = cover); `localities.hidden`,
+  `localities.description`, `localities.photo_key`.
+- **Hidden projects** (item 120) are left out of every public read through one condition, `VISIBLE_PROJECT` in
+  `src/lib/repo.ts`: project lists (city, builder, new projects, home, search suggestions, Showcase), the project page
+  (404), compare, the sitemap, city / builder / platform counts, and stats built on project reviews and registered
+  transactions. **Hidden localities** leave the reference data (`getRefs`). Admin pages read everything.
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).

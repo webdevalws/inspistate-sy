@@ -19,7 +19,7 @@ export async function listReviews(opts: { source?: string; city?: string; page: 
     parts.push(`SELECT author, rating, title, body, service AS source, city_slug AS city, created_at, NULL AS project_name, NULL AS project_url FROM platform_reviews WHERE ${w}`);
   }
   if (wantProjects) {
-    let w = "r.status = 'published'";
+    let w = "r.status = 'published' AND p.hidden = 0";
     if (opts.city) { w += ' AND p.city_slug = ?'; args.push(opts.city); }
     parts.push(`SELECT r.author, r.rating, NULL AS title, r.body, 'projects' AS source, p.city_slug AS city, r.created_at, p.name AS project_name, '/projects/' || p.city_slug || '/' || p.slug AS project_url FROM reviews r JOIN projects p ON p.id = r.project_id WHERE ${w}`);
   }

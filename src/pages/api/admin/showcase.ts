@@ -21,7 +21,7 @@ export const POST: APIRoute = async (ctx) => {
   const refs = await getRefs();
   let label: string | null = null;
   if (section === 'hot_projects') {
-    const p = /^\d+$/.test(item) ? await env.DB.prepare('SELECT name FROM projects WHERE id = ?').bind(Number(item)).first<string>('name') : null;
+    const p = /^\d+$/.test(item) ? await env.DB.prepare('SELECT name FROM projects WHERE id = ? AND hidden = 0').bind(Number(item)).first<string>('name') : null;
     label = p ? `#${item} ${p}` : null;
   } else {
     const l = refs.city(city) ? refs.locality(city, item) : undefined;
