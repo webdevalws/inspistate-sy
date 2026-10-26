@@ -34,9 +34,26 @@ const SELLER_PAGES = ['/post-property', '/account'];
 const AGENT_PAGES = ['/account'];
 
 /**
+ * The page a returning seller or agent lands on after logging in: sellers manage their listings, agents get their
+ * dashboard. Buyers have none (null), so their login keeps its usual result (stay on the page, or /account).
+ */
+export function landingFor(role: Role | null | undefined): string | null {
+  if (role === 'seller') return '/account#listings';
+  if (role === 'agent') return '/account/agent';
+  return null;
+}
+
+/**
+ * Where a login (phone code or Google, page or dialog) goes: a safe `next` always wins (the visitor logged in to do
+ * something there), otherwise the role's landing page (`landingFor`). `null` = no change (buyers: stay / default).
+ * Accounts without a role go to registration first; that step decides with `destinationAfterRegister`.
+ */
+export const afterLogin = (role: Role | null | undefined, next: unknown): string | null => safeNext(next) ?? landingFor(role);
+
+/**
  * Where a brand-new account goes after the register step. `null` means "stay on the current page".
  * Buyer → `next` or current page · Seller → `/post-property` unless `next` is already a seller page ·
- * Agent → `/account` unless `next` is already an account page. Returning users who only log in just use `next`.
+ * Agent → `/account` unless `next` is already an account page. Returning users who only log in use `afterLogin`.
  */
 export function destinationAfterRegister(role: Role, next: string | null): string | null {
   const n = safeNext(next);

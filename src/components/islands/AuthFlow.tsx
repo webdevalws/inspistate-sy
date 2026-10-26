@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { readShortlist } from './shortlist';
 import { ROLES, type Role } from '../../data/plans';
-import { destinationAfterRegister, safeNext } from '../../lib/redirect';
+import { afterLogin, destinationAfterRegister, safeNext } from '../../lib/redirect';
 
 // Mobile number → one-time code → (new accounts only) "I am a Buyer / Seller / Agent" registration, or
 // "Continue with Google" (when configured) → the same registration for new accounts.
@@ -93,9 +93,10 @@ export default function AuthFlow({ cities, next = null, startAt = 'phone', known
   const verify = (e: React.SyntheticEvent) => {
     e.preventDefault();
     return run(async () => {
-      const r = await post<{ needsRegistration: boolean }>('/api/auth/verify', { phone, code, shortlist: readShortlist() });
+      const r = await post<{ needsRegistration: boolean; user: { role: Role | null } }>('/api/auth/verify', { phone, code, shortlist: readShortlist() });
       if (r.needsRegistration) setStep('register');
-      else go(safeNext(next));
+      // `next` wins; else sellers / agents go to their page; buyers stay where they are (afterLogin → null).
+      else go(afterLogin(r.user.role, next));
     });
   };
 

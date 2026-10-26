@@ -3,13 +3,14 @@ import Base from '../layouts/Base.astro';
 import AuthFlow from '../components/islands/AuthFlow';
 import { getRefs } from '../lib/repo';
 import { ROLES } from '../data/plans';
-import { roleForNext, safeNext } from '../lib/redirect';
+import { landingFor, roleForNext, safeNext } from '../lib/redirect';
 import { GOOGLE_ERRORS, googleEnabled } from '../lib/google';
 import { realPhone } from '../lib/auth';
 
 const next = safeNext(Astro.url.searchParams.get('next'));
 const user = Astro.locals.user;
-if (user?.role) return Astro.redirect(next ?? '/account');
+// Already registered: `next`, else the role's page (sellers, agents), else /account.
+if (user?.role) return Astro.redirect(next ?? landingFor(user.role) ?? '/account');
 const cities = (await getRefs()).cities.map((c) => ({ slug: c.slug, name: c.name }));
 const defaultRole = roleForNext(next);
 // Why a Google sign-in was refused (the callback redirects here with ?error=…).

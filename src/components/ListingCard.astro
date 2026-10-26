@@ -50,7 +50,7 @@ const facts = l.pg ? ['PG / Co-living', ...pgFacts(l), l.furnishing] : [
           <LeadDialog client:visible kind="view-number" label="View Number" subject={title} listingId={l.id} className="btn-ghost px-3.5 py-2 text-xs font-semibold rounded-xl" />
         ) : (
           // Owner numbers need an account: logged-out visitors get the login dialog (a /login link without JS).
-          <a href={`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open class="btn-ghost px-3.5 py-2 text-xs font-semibold rounded-xl">View Number</a>
+          <a href={`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`} data-auth-open data-auth-next={Astro.url.pathname + Astro.url.search} class="btn-ghost px-3.5 py-2 text-xs font-semibold rounded-xl">View Number</a>
         )}
         <a href={`${listingUrl(l)}#contact`} class="btn-primary px-4 py-2 text-xs font-bold rounded-xl">Contact {l.postedBy === 'Owner' ? 'Owner' : l.postedBy === 'Builder' ? 'Builder' : 'Agent'}</a>
       </div>

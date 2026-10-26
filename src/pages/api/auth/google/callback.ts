@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { googleEnabled, googleIdentity, signInWithGoogle, takeFlow } from '../../../../lib/google';
 import { setSessionCookie } from '../../../../lib/auth';
 import { clientIp, overDailyLimit } from '../../../../lib/limits';
-import { safeNext } from '../../../../lib/redirect';
+import { afterLogin } from '../../../../lib/redirect';
 
 // Google redirects back here with ?code&state. Failures go to /login?error=<code> (messages in GOOGLE_ERRORS), or,
 // when a logged-in account is linking Google (it can't see /login), to /account?google=<code>.
@@ -34,5 +34,6 @@ export const GET: APIRoute = async (ctx) => {
   if (res.token) setSessionCookie(cookies, res.token, url.protocol === 'https:');
   // New accounts finish the usual Buyer / Seller / Agent registration on /login (it opens on that step).
   if (res.needsRegistration) return redirect(`/login${flow.next ? `?next=${encodeURIComponent(flow.next)}` : ''}`, 303);
-  return redirect(safeNext(flow.next) ?? '/account', 303);
+  // `next` wins; else sellers / agents go to their page; buyers to /account as before.
+  return redirect(afterLogin(res.role, flow.next) ?? '/account', 303);
 };
