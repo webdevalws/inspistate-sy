@@ -2,6 +2,8 @@
 // help; the seller accepts or declines (migration 0016). See docs/functions/agent-offers/desc.md.
 import { env } from 'cloudflare:workers';
 import { live } from './repo';
+import { hasRealPhone, realPhone, type User } from './auth';
+import { overDailyLimit } from './limits';
 
 const db = () => env.DB;
 
@@ -57,4 +59,66 @@ export async function findSellerListings(agentId: number, f: FindFilters): Promi
     .bind(agentId, ...binds, FIND_PAGE_SIZE, (page - 1) * FIND_PAGE_SIZE)
     .all<SellerListing>();
   return { rows: results, total, page, pages };
+}
+
+// ---------- agents: offers ----------
+
+export const OFFERS_PER_AGENT_PER_DAY = 20;
+export const OFFER_MESSAGE_MIN = 10;
+export const OFFER_MESSAGE_MAX = 500;
+export type SendError = 'not-agent' | 'no-agency' | 'no-phone' | 'message' | 'not-available' | 'duplicate' | 'limit';
+
+/** Why an offer wasn't sent (find-sellers page, ?offer=…). */
+export const SEND_ERRORS: Record<SendError, string> = {
+  'not-agent': 'Only agent accounts can offer to help sellers.',
+  'no-agency': 'Add your agency name to your profile first.',
+  'no-phone': 'Add your mobile number first — the owner gets it if they accept.',
+  message: `Write a short message (${OFFER_MESSAGE_MIN}–${OFFER_MESSAGE_MAX} characters).`,
+  'not-available': 'This listing is no longer open to agents.',
+  duplicate: 'You have already made an offer on this listing.',
+  limit: `You can send up to ${OFFERS_PER_AGENT_PER_DAY} offers a day. Try again tomorrow.`,
+};
+
+/**
+ * Sends an agent's offer on a listing. Checks, in order: agent with an agency name and a real mobile number, message
+ * length, the listing is still open to agents, no earlier offer on it (one per agent per listing, ever), then counts
+ * against the agent's daily limit (ai_usage 'agent-offer'). Only offers that pass every other check are counted.
+ */
+export async function sendOffer(agent: User, listingId: number, message: string): Promise<{ ok: true } | { ok: false; error: SendError }> {
+  if (agent.role !== 'agent') return { ok: false, error: 'not-agent' };
+  if (!agent.company?.trim()) return { ok: false, error: 'no-agency' };
+  if (!hasRealPhone(agent.phone)) return { ok: false, error: 'no-phone' };
+  const text = message.trim();
+  if (text.length < OFFER_MESSAGE_MIN || text.length > OFFER_MESSAGE_MAX) return { ok: false, error: 'message' };
+  const sellerId = await db().prepare(`SELECT l.user_id FROM listings l WHERE l.id = ? AND ${ELIGIBLE} AND l.user_id != ?`).bind(listingId, agent.id).first<number>('user_id');
+  if (!sellerId) return { ok: false, error: 'not-available' };
+  if (await db().prepare('SELECT 1 FROM agent_offers WHERE listing_id = ? AND agent_id = ?').bind(listingId, agent.id).first()) return { ok: false, error: 'duplicate' };
+  if (await overDailyLimit('agent-offer', `user:${agent.id}`, OFFERS_PER_AGENT_PER_DAY)) return { ok: false, error: 'limit' };
+  const id = await db()
+    .prepare('INSERT INTO agent_offers (listing_id, agent_id, seller_id, message) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id')
+    .bind(listingId, agent.id, sellerId, text)
+    .first<number>('id');
+  return id ? { ok: true } : { ok: false, error: 'duplicate' };
+}
+
+export interface SentOffer {
+  id: number; listing_id: number; status: 'pending' | 'accepted' | 'declined'; message: string; created_at: string; responded_at: string | null;
+  purpose: 'buy' | 'rent'; type: string; bhk: number; city_slug: string; locality_slug: string;
+  /** The seller's name and phone: only filled in once the seller has accepted. */
+  seller_name: string | null; seller_phone: string | null;
+}
+
+/** The agent's offers, newest first. Offers to sellers who are now blocked are left out. */
+export async function offersSent(agentId: number): Promise<SentOffer[]> {
+  const { results } = await db()
+    .prepare(`SELECT o.id, o.listing_id, o.status, o.message, o.created_at, o.responded_at,
+        l.purpose, l.type, l.bhk, l.city_slug, l.locality_slug,
+        CASE WHEN o.status = 'accepted' THEN s.name END AS seller_name,
+        CASE WHEN o.status = 'accepted' THEN s.phone END AS seller_phone
+      FROM agent_offers o JOIN listings l ON l.id = o.listing_id JOIN users s ON s.id = o.seller_id
+      WHERE o.agent_id = ? AND s.blocked_at IS NULL ORDER BY o.id DESC LIMIT 200`)
+    .bind(agentId)
+    .all<SentOffer>();
+  // A Google-only placeholder is never shown (sellers need a real number to post, but be safe).
+  return results.map((r) => ({ ...r, seller_phone: realPhone(r.seller_phone) }));
 }

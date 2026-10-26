@@ -3,7 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import AccountNav from '../../../components/AccountNav.astro';
 import Pagination from '../../../components/Pagination.astro';
 import Photo from '../../../components/Photo.astro';
-import { FIND_TYPES, findSellerListings, type FindFilters } from '../../../lib/agent-offers';
+import { FIND_TYPES, OFFER_MESSAGE_MAX, OFFER_MESSAGE_MIN, SEND_ERRORS, findSellerListings, type FindFilters } from '../../../lib/agent-offers';
 import { getRefs } from '../../../lib/repo';
 import { formatPrice, formatRent } from '../../../lib/format';
 import { typeLabel } from '../../../lib/search';
@@ -27,6 +27,13 @@ const label = 'font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/
 const select = 'input mt-1.5 rounded-none font-sans text-[15px] normal-case tracking-normal';
 const offerChip: Record<string, string> = { pending: 'bg-amber-50 text-amber-900', accepted: 'bg-emerald-50 text-emerald-800', declined: 'bg-sand-100 text-[#1C1A17]/70' };
 const offerLabel: Record<string, string> = { pending: 'Offer sent', accepted: 'Accepted', declined: 'Declined' };
+// Result of "Offer to help" (/api/account/agent-offers redirects back with ?offer=sent or an error code).
+const offerParam = sp.get('offer') ?? '';
+const offerDone = offerParam === 'sent' ? 'Offer sent. The owner sees your name, agency and message, and can accept or decline.' : '';
+const offerError = Object.hasOwn(SEND_ERRORS, offerParam) ? SEND_ERRORS[offerParam as keyof typeof SEND_ERRORS] : '';
+// The current page without ?offer, so a sent offer returns to the same filters and page.
+const backParams = new URLSearchParams([...sp].filter(([k]) => k !== 'offer')).toString();
+const back = `/account/agent/find-sellers${backParams ? `?${backParams}` : ''}`;
 ---
 <Base title="Find sellers" noindex>
   <div class="min-h-[70vh] bg-sand-100 text-[#1C1A17]">
@@ -84,18 +91,30 @@ const offerLabel: Record<string, string> = { pending: 'Offer sent', accepted: 'A
 
             <section>
               <h2 class={`${h2} mb-4`}>{res.total} {res.total === 1 ? 'listing' : 'listings'}</h2>
+              {offerDone && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{offerDone}</p>}
+              {offerError && <p class="mb-3 border-[0.5px] border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800">{offerError}</p>}
               {res.rows.length ? (
                 <ul class="border-t-[0.5px] border-[#1C1A17]/15">
                   {res.rows.map((l) => {
                     const where = `${refs.locality(l.city_slug, l.locality_slug)?.name ?? ''}, ${refs.city(l.city_slug)?.name ?? ''}`;
                     const title = `${l.bhk ? `${l.bhk} BHK ` : ''}${typeLabel(l.type)} for ${l.purpose === 'buy' ? 'sale' : 'rent'} in ${where}`;
                     return (
-                      <li class="flex flex-col gap-4 border-b-[0.5px] border-[#1C1A17]/15 bg-white p-4 sm:flex-row" data-listing={l.id}>
+                      <li id={`listing-${l.id}`} class="flex scroll-mt-28 flex-col gap-4 border-b-[0.5px] border-[#1C1A17]/15 bg-white p-4 sm:flex-row" data-listing={l.id}>
                         <Photo photo={l.photo ?? undefined} hue={l.hue} alt={title} class="h-28 shrink-0 sm:w-40" />
                         <div class="min-w-0 flex-1">
                           <a href={`/property/${l.id}`} class="font-semibold hover:underline">{title}</a>
                           <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
-                          {l.offer && <span class:list={['mt-2 inline-block px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', offerChip[l.offer]]}>{offerLabel[l.offer]}</span>}
+                          {l.offer ? <span class:list={['mt-2 inline-block px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', offerChip[l.offer]]}>{offerLabel[l.offer]}</span> : (
+                            <form method="post" action="/api/account/agent-offers" class="mt-3 grid gap-2">
+                              <input type="hidden" name="action" value="send" />
+                              <input type="hidden" name="listing" value={l.id} />
+                              <input type="hidden" name="back" value={back} />
+                              <label class={label}>Message to the owner
+                                <textarea name="message" required minlength={OFFER_MESSAGE_MIN} maxlength={OFFER_MESSAGE_MAX} rows="2" placeholder="How you can help: buyers you work with, marketing, paperwork…" class={select}></textarea>
+                              </label>
+                              <button class="ed-btn ed-btn-dark self-start">Offer to help</button>
+                            </form>
+                          )}
                         </div>
                       </li>
                     );

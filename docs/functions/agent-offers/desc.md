@@ -25,7 +25,18 @@ Accept do both see each other's phone numbers.
   and the agent’s offer status if any. **Never** the seller’s name or phone or the listing’s contact details:
   `findSellerListings` doesn’t select them.
 
+## Offer to help (item 107)
+- Each row without an offer has a message box (10–500 characters) and **Offer to help** → `POST /api/account/agent-offers`
+  (`action=send`), back to the same page and filters with `?offer=sent` or an error.
+- `sendOffer` checks, in order: agent with an agency name and a **real** mobile number (it is shared on Accept; a
+  Google-only agent adds one first) → message length → the listing is still open to agents → no earlier offer on it
+  (**one per agent per listing, ever**: `UNIQUE (listing_id, agent_id)`) → the daily limit, **20 per agent per day**
+  (`ai_usage` feature `agent-offer`, key `user:<id>`; only offers that pass the other checks are counted).
+- Agent dashboard → **Offers sent**: listing, sent / answered dates, status (Waiting, Accepted, Declined). Offers to
+  sellers who are now blocked are left out.
+
 ## Files
-- `src/lib/agent-offers.ts`, `migrations/0016_agent_offers.sql`
+- `src/lib/agent-offers.ts`, `migrations/0016_agent_offers.sql`, `src/pages/api/account/agent-offers.ts`,
+  `src/pages/account/agent/find-sellers.astro`, `src/pages/account/agent.astro`
 - `src/components/islands/PostPropertyForm.tsx`, `src/components/account/MyListings.astro`,
   `src/pages/api/listings.ts`, `src/pages/api/account/listings/[id].ts`
