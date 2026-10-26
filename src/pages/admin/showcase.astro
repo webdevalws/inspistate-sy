@@ -6,7 +6,8 @@ import ActionButton from '../../components/admin/ActionButton.astro';
 import Th from '../../components/admin/Th.astro';
 import Photo from '../../components/Photo.astro';
 import { allProjects, getRefs } from '../../lib/repo';
-import { SHOWCASE_CARDS, showcaseItems, withPicks } from '../../lib/showcase';
+import { SHOWCASE_CARDS, autoLocalities, localityTabCities, showcaseItems, withPicks } from '../../lib/showcase';
+import type { Locality } from '../../data/types';
 import { EMPTY, NOTE_ERR, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD } from '../../components/admin/ui';
 import type { Project } from '../../data/types';
 
@@ -27,6 +28,17 @@ const DONE: Record<string, [boolean, string]> = {
   exists: [false, 'That one is already picked.'], unknown: [false, 'Only existing projects and localities can be picked.'], unchanged: [false, 'Nothing changed.'],
 };
 const done = Object.hasOwn(DONE, sp.get('done') ?? '') ? DONE[sp.get('done')!] : null;
+
+// Top Localities: one tab per home page city (same rule as the home page), picks per city.
+const tabCities = localityTabCities(refs.cities, projects);
+const city = tabCities.find((c) => c.slug === sp.get('city')) ?? tabCities[0];
+const cityLocalities = refs.localitiesOf(city.slug);
+const locPicks = await showcaseItems('top_localities', city.slug);
+const locBySlug = new Map(cityLocalities.map((l) => [l.slug, l]));
+const pickedLocs = locPicks.map((s) => locBySlug.get(s)).filter((l): l is Locality => !!l);
+const LN = SHOWCASE_CARDS.top_localities;
+const locHomeNow = withPicks(locPicks, autoLocalities(cityLocalities), (l) => l.slug, (s) => locBySlug.get(s), LN);
+const addable = cityLocalities.filter((l) => !locPicks.includes(l.slug)).sort((a, b) => a.name.localeCompare(b.name));
 ---
 <AdminLayout title="Showcase" active="showcase" crumbs={[['Showcase']]}>
   <p class="mb-6 max-w-3xl text-sm text-slate-600">Choose what two home page sections show, and in which order. Changes show on the home page straight away. With nothing picked, a section keeps its automatic choice; with fewer picks than cards, your picks come first and the rest is filled automatically.</p>
@@ -89,4 +101,55 @@ const done = Object.hasOwn(DONE, sp.get('done') ?? '') ? DONE[sp.get('done')!] :
       </ol>
     </div>
   </AdminCard>
+
+  <div class="mt-8">
+    <AdminCard title="Top Localities in India" id="top_localities">
+      <div class="mb-4 flex flex-wrap gap-2" aria-label="City">
+        {tabCities.map((c) => (
+          <a href={`/admin/showcase?city=${c.slug}#top_localities`} class:list={['pill border border-slate-200 bg-white', c.slug === city.slug && 'pill-active']} aria-current={c.slug === city.slug ? 'true' : undefined}>{c.name}</a>
+        ))}
+      </div>
+      <p class:list={['mb-4 rounded-lg px-3 py-2 text-sm', pickedLocs.length >= LN || pickedLocs.length === 0 ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-900']} data-loc-count>
+        The {city.name} tab shows <b>{LN} cards</b>. {pickedLocs.length === 0 ? 'Nothing picked: it shows the fastest-growing localities automatically.' : pickedLocs.length < LN ? `${pickedLocs.length} picked — the other ${LN - pickedLocs.length} are filled automatically with the fastest-growing localities.` : `${pickedLocs.length} picked${pickedLocs.length > LN ? ` — only the first ${LN} are shown` : ''}.`}
+      </p>
+      <div class={TABLE_WRAP}>
+        <table class:list={[TABLE, 'min-w-[680px]']}>
+          <thead class={THEAD}><tr><Th label="S.No." /><Th label="Title" /><Th label="Category" /><Th label="Status" /><Th label="Action" /></tr></thead>
+          <tbody class={TBODY}>
+            {pickedLocs.map((l, i) => (
+              <tr data-pick={l.slug}>
+                <td class={TD}>{i + 1}</td>
+                <td class={TD}><a href={`/locality/${city.slug}/${l.slug}`} class="font-semibold text-slate-800 hover:text-brand-700">{l.name}</a><span class="block text-xs text-slate-500">+{l.yoyGrowthPct}% YoY · ₹{l.ratePerSqft.toLocaleString('en-IN')}/sq.ft</span></td>
+                <td class={TD}>{city.name}</td>
+                <td class={TD}>{i < LN ? <Pill status="live" label="On home page" /> : <Pill status="hidden" label={`Not shown (${LN} cards)`} />}</td>
+                <td class={TD}>
+                  <form method="post" action="/api/admin/showcase" class="flex flex-wrap gap-1.5">
+                    <input type="hidden" name="section" value="top_localities" /><input type="hidden" name="city" value={city.slug} /><input type="hidden" name="item" value={l.slug} />
+                    {i > 0 && <ActionButton label={`Move ${l.name} up`} icon="up" value="up" />}
+                    {i < pickedLocs.length - 1 && <ActionButton label={`Move ${l.name} down`} icon="down" value="down" />}
+                    <ActionButton label={`Remove ${l.name}`} icon="delete" value="remove" tone="danger" />
+                  </form>
+                </td>
+              </tr>
+            ))}
+            {pickedLocs.length === 0 && <tr><td colspan="5" class={EMPTY}>Nothing picked for {city.name} yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {addable.length > 0 && (
+        <form method="post" action="/api/admin/showcase" class="mt-6 flex flex-wrap items-center gap-2 border-t border-dashed border-slate-200 pt-6">
+          <input type="hidden" name="section" value="top_localities" /><input type="hidden" name="city" value={city.slug} />
+          <label for="loc-add" class="text-sm text-slate-600">Add a {city.name} locality:</label>
+          <select id="loc-add" name="item" class="input w-auto py-2">{addable.map((l) => <option value={l.slug}>{l.name} (+{l.yoyGrowthPct}% YoY)</option>)}</select>
+          <button name="action" value="add" class="btn-primary py-2">+ Add locality</button>
+        </form>
+      )}
+      <div class="mt-8 border-t border-dashed border-slate-200 pt-6">
+        <h3 class="font-semibold text-slate-800">The {city.name} tab shows now</h3>
+        <ol class="mt-2 list-decimal pl-5 text-sm text-slate-700" data-loc-home-now>
+          {locHomeNow.map((l) => <li>{l.name}{locPicks.includes(l.slug) ? '' : <span class="text-slate-500"> · automatic</span>}</li>)}
+        </ol>
+      </div>
+    </AdminCard>
+  </div>
 </AdminLayout>

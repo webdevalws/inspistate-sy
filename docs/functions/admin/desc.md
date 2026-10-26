@@ -56,6 +56,9 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   - Shows how many cards the home page displays (5) and warns when fewer are picked (the rest are filled
     automatically, newest projects first, without duplicates); picks beyond 5 are marked “Not shown”.
   - Only existing projects can be added (all projects are public); unknown ids are refused.
+  - **Top Localities in India** (item 116): one tab per home page city (`localityTabCities`, the same rule the home page
+    uses), each with its own picks: move up / down / remove, add from that city's localities (only existing ones), the
+    5-card count and warning (the rest filled with the fastest-growing localities) and a preview of the tab.
   - Every change is audited: `showcase.add|remove|up|down`, e.g. “hot selling projects: #1003 Skyreach Riverstone”, moves
     with the new place (“→ 2”).
 
