@@ -98,6 +98,18 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   project page “Photos” tab. Projects without photos (the demo ones) keep their stock images and generated covers.
   `/media` serves a project photo only while the project is live; the admin sees them through `/admin/media/…`
   (admin password). Audited: `project.photo-add`, `project.photo-order`, `project.photo-remove`.
+- **Localities** (item 124, `/admin/localities?city=…`, `src/lib/admin-localities.ts`): one city at a time, hidden
+  ones included — photo, name, reference rate, rent, YoY, live listings / projects, status; search, sort, 25 per page.
+  **Edit** (`/admin/localities/{city}/{slug}`): name, reference rate (₹/sq.ft), rent (₹/sq.ft per month), yearly growth
+  %, latitude / longitude (checked to be inside India), description (shown under the title on the locality page), and
+  one **photo** (same checks as listing photos; R2 `localities/<city>/<slug>/<uuid>.<ext>`; replacing or removing it
+  deletes the old object) used on the home page “Top Localities” card instead of the stock image. The card's price
+  range still comes from live listings; the reference rate shows until there are some. **+ Add locality**
+  (`/admin/localities/new`): the same fields plus city and slug (made from the name when empty, new within the city),
+  fixed afterwards because listings and projects refer to them. **Hide / Unhide**: a hidden locality leaves the home
+  page tabs, the city and property-rates pages, its locality page (404), the sitemap and its photo (`/media` 404);
+  hiding is refused while live listings or projects use it, with a message giving both counts. Audited:
+  `locality.add`, `locality.edit` (one row per field, old → new), `locality.photo`, `locality.hide|unhide`.
 - **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
   (reference data, project list, stats, suggestions, city facets) so the change shows at once.
 

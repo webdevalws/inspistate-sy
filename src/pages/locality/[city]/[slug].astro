@@ -32,6 +32,7 @@ const faq = [
   <div class="container-x py-6">
     <Breadcrumbs items={[{ label: city.name, href: `/city/${city.slug}` }, { label: 'Property rates', href: `/property-rates/${city.slug}` }, { label: loc.name }]} />
     <h1 class="mt-3 text-2xl font-extrabold sm:text-3xl">{loc.name}, {city.name} — locality overview</h1>
+    {loc.description && <p class="mt-3 max-w-3xl whitespace-pre-line leading-relaxed text-slate-700">{loc.description}</p>}
 
     <div class="mt-5 grid grid-cols-2 gap-4 md:grid-cols-5">
       {[['Avg. sale rate', formatRate(m?.sale_rate ?? loc.ratePerSqft)], ['Yearly growth', `▲ ${loc.yoyGrowthPct}%`], ['Avg. rent', `₹${loc.rentPerSqft}/sq.ft`], ['Rental yield', `${yieldPct.toFixed(1)}%`], ['Price rank in city', `#${rank} of ${peers.length}`]].map(([k, v]) => <div class="card p-4"><p class="text-xs uppercase tracking-wide text-slate-500">{k}</p><p class="mt-1 text-xl font-extrabold">{v}</p></div>)}

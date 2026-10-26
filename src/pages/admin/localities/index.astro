@@ -1,0 +1,98 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../components/admin/AdminCard.astro';
+import Pill from '../../../components/admin/Pill.astro';
+import ActionButton from '../../../components/admin/ActionButton.astro';
+import Th from '../../../components/admin/Th.astro';
+import Pagination from '../../../components/Pagination.astro';
+import { clearContentCaches, getRefs, live, VISIBLE_PROJECT } from '../../../lib/repo';
+import { getLocality, localityUse, setLocalityHidden } from '../../../lib/admin-localities';
+import { paged } from '../../../lib/admin-tables';
+import { logAdmin } from '../../../lib/audit';
+import { formatNumber } from '../../../lib/format';
+import { EMPTY, NOTE_ERR, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD } from '../../../components/admin/ui';
+
+// Localities, one city at a time (?city=), hidden ones included: search, sort, 25 per page; Edit and Hide / Unhide
+// (posts here, audited). A locality is not hidden while live listings or projects use it: the message says how many.
+const sp = Astro.url.searchParams;
+const refs = await getRefs();
+const city = refs.city(sp.get('city') ?? '') ?? refs.cities[0];
+const back = (done: string, extra = '') => {
+  const u = new URLSearchParams([...sp].filter(([k]) => !['done', 'n', 'p', 'l'].includes(k)));
+  u.set('city', city.slug); u.set('done', done);
+  return Astro.redirect(`/admin/localities?${u}${extra}`, 303);
+};
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const loc = await getLocality(city.slug, String(form.get('slug') ?? ''));
+  if (!loc || (action !== 'hide' && action !== 'unhide')) return new Response('Bad request', { status: 400 });
+  const hide = action === 'hide';
+  if (hide && !loc.hidden) {
+    const use = await localityUse(loc.city_slug, loc.slug);
+    if (use.listings || use.projects) return back('blocked', `&n=${use.listings}&p=${use.projects}&l=${encodeURIComponent(loc.name)}`);
+  }
+  if (!!loc.hidden !== hide) {
+    await setLocalityHidden(loc.city_slug, loc.slug, hide);
+    await logAdmin(Astro, `locality.${action}`, `locality ${loc.name} (${loc.city_slug}/${loc.slug}): ${loc.hidden ? 'hidden' : 'live'} → ${hide ? 'hidden' : 'live'}`);
+    clearContentCaches();
+  }
+  return back(action);
+}
+
+type Row = { slug: string; name: string; rate_per_sqft: number; rent_per_sqft: number; yoy_growth_pct: number; hidden: number; photo_key: string | null; listings: number; projects: number };
+const res = await paged<Row>({
+  from: 'localities l', where: ['l.city_slug = ?'], binds: [city.slug],
+  select: `l.slug, l.name, l.rate_per_sqft, l.rent_per_sqft, l.yoy_growth_pct, l.hidden, l.photo_key,
+    (SELECT count(*) FROM listings x WHERE x.city_slug = l.city_slug AND x.locality_slug = l.slug AND ${live('x')}) AS listings,
+    (SELECT count(*) FROM projects p WHERE p.city_slug = l.city_slug AND p.locality_slug = l.slug AND p.${VISIBLE_PROJECT}) AS projects`,
+  search: { columns: ['l.name', 'l.slug'] },
+  sorts: { name: 'lower(l.name)', rate: 'l.rate_per_sqft', yoy: 'l.yoy_growth_pct', listings: 'listings', status: 'l.hidden' },
+  defaultSort: 'name', defaultDir: 'asc', url: Astro.url,
+});
+const done = sp.get('done');
+const doneText = ({ hide: 'Locality hidden: it is no longer on the site.', unhide: 'Locality is live on the site again.' } as Record<string, string>)[done ?? ''];
+const n = Number(sp.get('n')) || 0, p = Number(sp.get('p')) || 0;
+const plural = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;
+const blocked = done === 'blocked' ? `${sp.get('l')?.slice(0, 80) ?? 'This locality'} can't be hidden: ${[n && plural(n, 'live listing'), p && plural(p, 'live project')].filter(Boolean).join(' and ')} still use it. Close or move ${n + p === 1 ? 'it' : 'them'} first.` : '';
+const backUrl = `/admin/localities?${new URLSearchParams([...sp].filter(([k]) => !['done', 'n', 'p', 'l'].includes(k)))}`;
+---
+<AdminLayout title="Localities" active="localities" crumbs={[['Localities']]}>
+  {doneText && <p class={NOTE_OK}>{doneText}</p>}
+  {blocked && <p class={NOTE_ERR} role="alert">{blocked}</p>}
+  <nav class="mb-4 flex flex-wrap gap-2" aria-label="City">
+    {refs.cities.map((c) => <a href={`/admin/localities?city=${c.slug}`} class:list={['pill border border-slate-200', c.slug === city.slug ? 'pill-active' : 'bg-white']} aria-current={c.slug === city.slug ? 'true' : undefined}>{c.name}</a>)}
+  </nav>
+  <AdminCard title={`${city.name} localities (${res.total})`} id="localities" search={{ value: res.q, placeholder: 'Locality name', keep: { city: city.slug, sort: sp.get('sort') ?? undefined, dir: sp.get('dir') ?? undefined } }} add={{ href: `/admin/localities/new?city=${city.slug}`, label: 'Add locality' }}>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[900px]']}>
+        <thead class={THEAD}><tr><Th label="Photo" /><Th label="Name" sortKey="name" url={Astro.url} /><Th label="Reference rate" sortKey="rate" url={Astro.url} /><Th label="Rent" /><Th label="YoY" sortKey="yoy" url={Astro.url} /><Th label="Live listings / projects" sortKey="listings" url={Astro.url} /><Th label="Status" sortKey="status" url={Astro.url} /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {res.rows.map((l) => (
+            <tr data-row={l.slug}>
+              <td class={TD}><div class="relative h-14 w-12 overflow-hidden rounded-md bg-slate-200">{l.photo_key && <img src={`/admin/media/${l.photo_key}`} alt={l.name} loading="lazy" class="absolute inset-0 h-full w-full object-cover" />}</div></td>
+              <td class={TD}>
+                {l.hidden ? <span class="font-semibold text-slate-800">{l.name}</span> : <a href={`/locality/${city.slug}/${l.slug}`} class="font-semibold text-slate-800 hover:text-brand-700">{l.name}</a>}
+                <span class="block text-xs text-slate-500">{l.slug}</span>
+              </td>
+              <td class:list={[TD, 'whitespace-nowrap']}>₹{formatNumber(l.rate_per_sqft)}/sq.ft</td>
+              <td class:list={[TD, 'whitespace-nowrap']}>₹{l.rent_per_sqft}/sq.ft</td>
+              <td class={TD}>{l.yoy_growth_pct}%</td>
+              <td class={TD}>{l.listings} / {l.projects}</td>
+              <td class={TD}>{l.hidden ? <Pill status="hidden" label="Hidden" /> : <Pill status="live" label="Live" />}</td>
+              <td class={TD}>
+                <form method="post" action={backUrl} class="flex flex-col gap-1.5">
+                  <input type="hidden" name="slug" value={l.slug} />
+                  <ActionButton label={`Edit ${l.name}`} icon="edit" href={`/admin/localities/${city.slug}/${l.slug}`} />
+                  {l.hidden ? <ActionButton label={`Unhide ${l.name}`} icon="eye" value="unhide" /> : <ActionButton label={`Hide ${l.name}`} icon="eye-off" value="hide" tone="danger" confirm={`Hide ${l.name}? It disappears from the site until you unhide it.`} />}
+                </form>
+              </td>
+            </tr>
+          ))}
+          {res.rows.length === 0 && <tr><td colspan="8" class={EMPTY}>{res.q ? 'No localities match.' : 'No localities yet.'}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <Pagination page={res.page} pages={res.pages} url={Astro.url} />
+  </AdminCard>
+</AdminLayout>

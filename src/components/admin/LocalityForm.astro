@@ -1,0 +1,36 @@
+---
+// Add / edit locality form (/admin/localities/new, /admin/localities/{city}/{slug}). Every field is checked on the
+// server (src/lib/admin-localities.ts). City and slug are chosen only when adding (listings and projects refer to them).
+import type { City } from '../../data/types';
+import type { LocalityFormValues } from '../../lib/admin-localities';
+
+interface Props { values: LocalityFormValues; error?: string; submit: string; cities?: City[] }
+const { values: v, error, submit, cities } = Astro.props;
+const label = 'block text-sm text-slate-600';
+const input = 'input mt-1';
+---
+<form method="post" class="space-y-6" id="locality-form">
+  {error && <p class="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700" role="alert">{error}</p>}
+  <fieldset class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <label class={label}>Name<input name="name" value={v.name ?? ''} required minlength="2" maxlength="80" class={input} /></label>
+    {cities && (
+      <>
+        <label class={label}>City
+          <select name="city" class={input} required>{cities.map((c) => <option value={c.slug} selected={c.slug === v.city}>{c.name}</option>)}</select>
+        </label>
+        <label class={label}>URL name (slug) <span class="text-xs">— empty: made from the name</span><input name="slug" value={v.slug ?? ''} maxlength="80" pattern="[a-z0-9-]*" title="Lowercase letters, digits and dashes" class={input} /></label>
+      </>
+    )}
+    <label class={label}>Reference rate (₹ per sq.ft)<input name="ratePerSqft" type="number" min="500" max="500000" value={v.ratePerSqft ?? ''} required class={input} /></label>
+    <label class={label}>Rent (₹ per sq.ft per month)<input name="rentPerSqft" type="number" step="0.1" min="1" max="2000" value={v.rentPerSqft ?? ''} required class={input} /></label>
+    <label class={label}>Yearly growth (%)<input name="yoyGrowthPct" type="number" step="0.1" min="-50" max="100" value={v.yoyGrowthPct ?? ''} required class={input} /></label>
+    <label class={label}>Latitude<input name="lat" type="number" step="0.00001" min="6" max="37.5" value={v.lat ?? ''} required class={input} /></label>
+    <label class={label}>Longitude<input name="lng" type="number" step="0.00001" min="68" max="97.5" value={v.lng ?? ''} required class={input} /></label>
+    <label class:list={[label, 'sm:col-span-2 lg:col-span-3']}>Description <span class="text-xs">— shown on the locality page</span><textarea name="description" rows="4" maxlength="3000" class={input}>{v.description ?? ''}</textarea></label>
+  </fieldset>
+  <p class="text-xs text-slate-500">The price range on the home page card comes from live listings; the reference rate is shown until there are some.</p>
+  <div class="flex flex-wrap items-center gap-3">
+    <button class="btn-primary py-2">{submit}</button>
+    <a href="/admin/localities" class="btn-ghost py-2">Cancel</a>
+  </div>
+</form>

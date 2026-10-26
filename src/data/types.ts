@@ -27,6 +27,10 @@ export interface Locality {
   yoyGrowthPct: number;
   lat: number;
   lng: number;
+  /** Admin-written text for the locality page (migration 0018); absent when none. */
+  description?: string;
+  /** URL of the admin's photo for the home page card; absent when none (a stock image is used). */
+  photo?: string;
 }
 
 export interface Builder {

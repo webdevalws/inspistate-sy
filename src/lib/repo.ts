@@ -67,6 +67,8 @@ async function loadRefs(): Promise<Refs> {
     slug: r.slug as string, name: r.name as string, citySlug: r.city_slug as string,
     ratePerSqft: r.rate_per_sqft as number, rentPerSqft: r.rent_per_sqft as number,
     yoyGrowthPct: r.yoy_growth_pct as number, lat: r.lat as number, lng: r.lng as number,
+    ...(r.description ? { description: r.description as string } : {}),
+    ...(r.photo_key ? { photo: `/media/${r.photo_key as string}` } : {}),
   }));
   const builders: Builder[] = (b.results as Row[]).map((r) => ({
     slug: r.slug as string, name: r.name as string, founded: r.founded as number, hq: r.hq as string,
@@ -407,7 +409,7 @@ export const platformTotals = () => cached('platformTotals', () => loadPlatformT
 async function loadPlatformTotals() {
   const r = await db()
     .prepare(`SELECT (SELECT count(*) FROM listings WHERE ${live()}) AS listings, (SELECT count(*) FROM projects WHERE ${VISIBLE_PROJECT}) AS projects,
-      (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities) AS localities`)
+      (SELECT count(*) FROM builders) AS builders, (SELECT count(*) FROM cities) AS cities, (SELECT count(*) FROM localities WHERE hidden = 0) AS localities`)
     .first<Record<string, number>>();
   return r!;
 }
@@ -488,6 +490,11 @@ export async function deleteListingPhotos(listingId: number): Promise<number> {
 /** Photos of a project are served while it is live (hidden projects disappear everywhere, photos included). */
 export async function projectPhotosVisible(projectId: number): Promise<boolean> {
   return !!(await db().prepare(`SELECT 1 FROM projects WHERE id = ? AND ${VISIBLE_PROJECT}`).bind(projectId).first());
+}
+
+/** A locality's photo is served while the locality is live. */
+export async function localityPhotoVisible(citySlug: string, slug: string): Promise<boolean> {
+  return !!(await db().prepare('SELECT 1 FROM localities WHERE city_slug = ? AND slug = ? AND hidden = 0').bind(citySlug, slug).first());
 }
 
 export async function photosVisible(listingId: number): Promise<boolean> {

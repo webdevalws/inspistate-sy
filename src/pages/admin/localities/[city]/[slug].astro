@@ -1,0 +1,79 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import AdminCard from '../../../../components/admin/AdminCard.astro';
+import LocalityForm from '../../../../components/admin/LocalityForm.astro';
+import Pill from '../../../../components/admin/Pill.astro';
+import { clearContentCaches, getRefs } from '../../../../lib/repo';
+import { getLocality, localityFormFrom, localityFormValues, parseLocalityForm, setLocalityPhoto, updateLocality } from '../../../../lib/admin-localities';
+import { logAdmin } from '../../../../lib/audit';
+import { NOTE_ERR, NOTE_OK } from '../../../../components/admin/ui';
+
+// Edit a locality: the fields (each change audited as locality.edit, old → new) and its photo (locality.photo).
+// Caches are cleared on every save so the home page "Top Localities" and the city page show the change at once.
+const citySlug = Astro.params.city!, slug = Astro.params.slug!;
+let loc = await getLocality(citySlug, slug);
+if (!loc) return new Response('Locality not found', { status: 404 });
+let error = '', photoError = '';
+let values = localityFormValues(loc);
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  const tag = `locality ${loc.name} (${citySlug}/${slug})`;
+  if (action === 'photo-set' || action === 'photo-remove') {
+    const file = form.get('photo');
+    const r = action === 'photo-set'
+      ? (file instanceof File && file.size > 0 ? await setLocalityPhoto(loc, file) : { ok: false as const, error: 'Choose a photo.' })
+      : loc.photo_key ? await setLocalityPhoto(loc, null) : { ok: true as const };
+    if (r.ok) {
+      if (action === 'photo-set' || loc.photo_key) {
+        await logAdmin(Astro, 'locality.photo', `${tag}: photo ${action === 'photo-remove' ? 'removed' : loc.photo_key ? 'replaced' : 'added'}`);
+        clearContentCaches();
+      }
+      return Astro.redirect(`/admin/localities/${citySlug}/${slug}?done=${action === 'photo-set' ? 'photo' : 'photo-removed'}#photo`, 303);
+    }
+    photoError = r.error;
+  } else {
+    const parsed = parseLocalityForm(form);
+    if (parsed.ok) {
+      const changes = await updateLocality(loc, parsed.locality);
+      for (const [field, from, to] of changes) await logAdmin(Astro, 'locality.edit', `${tag} ${field}: ${from} → ${to}`);
+      if (changes.length) clearContentCaches();
+      return Astro.redirect(`/admin/localities/${citySlug}/${slug}?done=${changes.length ? 'saved' : 'unchanged'}`, 303);
+    }
+    error = parsed.error;
+    values = localityFormFrom(form);
+  }
+}
+const refs = await getRefs();
+const cityName = refs.city(citySlug)?.name ?? citySlug;
+const done = ({ added: 'Locality added. Add a photo below; it is already on the site.', saved: 'Changes saved. The site shows them now.', unchanged: 'Nothing changed.', photo: 'Photo saved. The home page shows it now.', 'photo-removed': 'Photo removed: the home page shows a stock image.' } as Record<string, string>)[Astro.url.searchParams.get('done') ?? ''];
+---
+<AdminLayout title={loc.name} active="localities" crumbs={[['Localities', `/admin/localities?city=${citySlug}`], [`${loc.name}, ${cityName}`]]}>
+  {done && <p class={NOTE_OK}>{done}</p>}
+  <p class="mb-4 flex flex-wrap items-center gap-3 text-sm">
+    {loc.hidden ? <Pill status="hidden" label="Hidden" /> : <Pill status="live" label="Live" />}
+    <span class="text-slate-500">/locality/{citySlug}/{slug}</span>
+    {!loc.hidden && <a href={`/locality/${citySlug}/${slug}`} class="text-brand-700 hover:underline">View on the site →</a>}
+  </p>
+  <AdminCard title="Photo" id="photo">
+    {photoError && <p class={NOTE_ERR} role="alert">{photoError}</p>}
+    <div class="flex flex-wrap items-start gap-5">
+      <div class="relative h-40 w-32 overflow-hidden rounded-lg bg-slate-200">
+        {loc.photo_key ? <img src={`/admin/media/${loc.photo_key}`} alt={loc.name} class="absolute inset-0 h-full w-full object-cover" data-photo={loc.photo_key} /> : <span class="absolute inset-0 grid place-items-center p-3 text-center text-xs text-slate-500">No photo: the home page shows a stock image</span>}
+      </div>
+      <div class="space-y-3">
+        <p class="text-sm text-slate-600">Shown on the home page “Top Localities” card.</p>
+        <form method="post" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="action" value="photo-set" />
+          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required aria-label="Locality photo" class="text-sm" />
+          <button class="btn-primary py-2">{loc.photo_key ? 'Replace photo' : 'Upload photo'}</button>
+        </form>
+        <p class="text-xs text-slate-500">JPEG, PNG or WebP · 5 MB · location data is removed</p>
+        {loc.photo_key && <form method="post"><button name="action" value="photo-remove" class="btn-ghost py-1.5 text-sm text-rose-700" onclick="return confirm('Remove this photo?')">Remove photo</button></form>}
+      </div>
+    </div>
+  </AdminCard>
+  <AdminCard title="Edit locality" id="edit">
+    <LocalityForm values={values} error={error} submit="Save changes" />
+  </AdminCard>
+</AdminLayout>
