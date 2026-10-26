@@ -90,7 +90,7 @@ const collections = [
 const moreCollections = [discover[0].cards[4], discover[1].cards[1], discover[2].cards[0], discover[3].cards[1]].map((m) => ({ title: `${m.title} · ${m.city.name}`, href: m.href }));
 
 const hotProjects = withPicks(picks.get('hot_projects:') ?? [], projects, (p) => String(p.id), (id) => projectById.get(id), SHOWCASE_CARDS.hot_projects).map((p, i) => ({
-  id: p.id, name: p.name, href: projectUrl(p), img: photos[(i + 2) % photos.length], status: p.status,
+  id: p.id, name: p.name, href: projectUrl(p), img: p.cover ?? photos[(i + 2) % photos.length], status: p.status,
   locality: refs.locality(p.citySlug, p.localitySlug)?.name ?? '', city: refs.city(p.citySlug)?.name ?? '',
   price: formatRange(p.priceMin, p.priceMax), meta: `${p.bhkLabel} · ${p.possession}`,
 }));

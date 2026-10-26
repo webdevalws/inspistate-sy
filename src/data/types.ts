@@ -79,10 +79,14 @@ export interface Project {
   launchedYear: number;
   /** Admin-written “About the project” text (migration 0018); absent on projects without one. */
   description?: string;
+  /** URL of the admin's cover photo; absent when the project has no photos (stock images are used). */
+  cover?: string;
 }
 
 export interface ProjectDetail extends Project {
   units: UnitConfig[];
+  /** URLs of the admin-uploaded photos, cover first; absent when there are none (generated covers are shown). */
+  photos?: string[];
 }
 
 export interface Listing {

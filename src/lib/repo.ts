@@ -92,7 +92,11 @@ const toProject = (r: Row): Project => ({
   amenities: json(r.amenities, []), highlights: json(r.highlights, []), priceTrend: json(r.price_trend, []), nearby: json(r.nearby, []),
   hue: r.hue as number, launchedYear: r.launched_year as number,
   ...(r.description ? { description: r.description as string } : {}),
+  ...(r.cover ? { cover: `/media/${r.cover as string}` } : {}),
 });
+
+/** Public project reads: every column plus the cover photo key (the first project_photos position), NULL when none. */
+const PROJECT_SELECT = 'SELECT *, (SELECT r2_key FROM project_photos ph WHERE ph.project_id = projects.id ORDER BY position LIMIT 1) AS cover FROM projects';
 
 /** Projects the public may see: not hidden by the admin (migration 0018). Admin pages read projects without it. */
 export const VISIBLE_PROJECT = 'hidden = 0';
@@ -108,7 +112,7 @@ export async function getProjects(
     const v = filter[k as keyof typeof filter];
     if (v) { where.push(`${col} = ?`); args.push(v); }
   }
-  const sql = `SELECT * FROM projects WHERE ${where.join(' AND ')}
+  const sql = `${PROJECT_SELECT} WHERE ${where.join(' AND ')}
     ORDER BY ${opts.orderBy === 'newest' ? 'launched_year DESC, id' : 'id'} ${opts.limit ? `LIMIT ${Number(opts.limit)}` : ''}`;
   const { results } = await db().prepare(sql).bind(...args).all<Row>();
   return results.map(toProject);
@@ -118,16 +122,20 @@ export async function getProjects(
 export const allProjects = () => cached('projects:newest', () => getProjects({}, { orderBy: 'newest' }));
 
 export async function getProject(citySlug: string, slug: string): Promise<ProjectDetail | undefined> {
-  const r = await db().prepare(`SELECT * FROM projects WHERE city_slug = ? AND slug = ? AND ${VISIBLE_PROJECT}`).bind(citySlug, slug).first<Row>();
+  const r = await db().prepare(`${PROJECT_SELECT} WHERE city_slug = ? AND slug = ? AND ${VISIBLE_PROJECT}`).bind(citySlug, slug).first<Row>();
   if (!r) return undefined;
-  const { results } = await db().prepare('SELECT bhk, label, carpet_sqft, price FROM project_units WHERE project_id = ? ORDER BY bhk, price').bind(r.id).all<Row>();
-  const units: UnitConfig[] = results.map((u) => ({ bhk: u.bhk as number, label: u.label as string, carpetSqft: u.carpet_sqft as number, price: u.price as number }));
-  return { ...toProject(r), units };
+  const [u, ph] = await db().batch<Row>([
+    db().prepare('SELECT bhk, label, carpet_sqft, price FROM project_units WHERE project_id = ? ORDER BY bhk, price').bind(r.id),
+    db().prepare('SELECT r2_key FROM project_photos WHERE project_id = ? ORDER BY position').bind(r.id),
+  ]);
+  const units: UnitConfig[] = u.results.map((x) => ({ bhk: x.bhk as number, label: x.label as string, carpetSqft: x.carpet_sqft as number, price: x.price as number }));
+  const photos = ph.results.map((x) => `/media/${x.r2_key as string}`);
+  return { ...toProject(r), units, ...(photos.length ? { photos } : {}) };
 }
 
 export async function getProjectsByIds(ids: number[]): Promise<Project[]> {
   if (!ids.length) return [];
-  const { results } = await db().prepare(`SELECT * FROM projects WHERE ${VISIBLE_PROJECT} AND id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
+  const { results } = await db().prepare(`${PROJECT_SELECT} WHERE ${VISIBLE_PROJECT} AND id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Row>();
   return results.map(toProject);
 }
 
@@ -477,6 +485,11 @@ export async function deleteListingPhotos(listingId: number): Promise<number> {
 }
 
 /** Whether a listing's photos may be served: not for rejected or deleted listings (pending ones are shown in previews). */
+/** Photos of a project are served while it is live (hidden projects disappear everywhere, photos included). */
+export async function projectPhotosVisible(projectId: number): Promise<boolean> {
+  return !!(await db().prepare(`SELECT 1 FROM projects WHERE id = ? AND ${VISIBLE_PROJECT}`).bind(projectId).first());
+}
+
 export async function photosVisible(listingId: number): Promise<boolean> {
   const r = await db().prepare('SELECT status, closed FROM listings WHERE id = ?').bind(listingId).first<{ status: string; closed: string | null }>();
   return !!r && r.status !== 'rejected' && r.closed !== 'deleted';

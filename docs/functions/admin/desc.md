@@ -90,6 +90,14 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   {name}” on the project page, only when filled). A new project gets a flat six-quarter price trend at its rate.
   Audited: `project.add`, `builder.add`, and one `project.edit` row per changed field (old → new; lists as item
   counts).
+- **Project photos** (item 123, “Photos” card on the edit page, `src/lib/admin-project-photos.ts`): upload up to 12
+  photos, checked like listing photos (JPEG / PNG / WebP from the file's bytes, 5 MB each, EXIF incl. GPS stripped by
+  `src/lib/strip-metadata.ts`), stored in R2 as `projects/<id>/<uuid>.<ext>`; **Make cover**, move earlier / later,
+  **Remove** (also deletes the R2 object). The first photo is the cover: project cards (city, locality, builder, new
+  projects search, compare), the home page “Hot projects” cards and the project page hero; all photos fill the
+  project page “Photos” tab. Projects without photos (the demo ones) keep their stock images and generated covers.
+  `/media` serves a project photo only while the project is live; the admin sees them through `/admin/media/…`
+  (admin password). Audited: `project.photo-add`, `project.photo-order`, `project.photo-remove`.
 - **Caches:** every admin save calls `clearContentCaches()` (repo.ts): this Worker instance drops its 5-minute caches
   (reference data, project list, stats, suggestions, city facets) so the change shows at once.
 

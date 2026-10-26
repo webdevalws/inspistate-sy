@@ -1,14 +1,16 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { photosVisible } from '../../lib/repo';
+import { photosVisible, projectPhotosVisible } from '../../lib/repo';
 
 // Serves uploaded photos from R2. Keys are random UUIDs, so an object never changes; but photos of rejected or
-// deleted listings must stop being served, so the listing is checked and caches keep a copy for a day only.
+// deleted listings (and of hidden projects) must stop being served, so the owner is checked and caches keep a copy
+// for a day only.
 export const GET: APIRoute = async ({ params, request }) => {
   const key = params.key;
-  const m = key?.match(/^listings\/(\d+)\/[0-9a-f-]{36}\.(jpg|png|webp)$/);
+  const m = key?.match(/^(listings|projects)\/(\d+)\/[0-9a-f-]{36}\.(jpg|png|webp)$/);
   if (!key || !m) return new Response('Not found', { status: 404 });
-  if (!(await photosVisible(Number(m[1])))) return new Response('Not found', { status: 404 });
+  const visible = m[1] === 'listings' ? photosVisible : projectPhotosVisible;
+  if (!(await visible(Number(m[2])))) return new Response('Not found', { status: 404 });
 
   const obj = await env.MEDIA.get(key, { onlyIf: request.headers });
   if (!obj) return new Response('Not found', { status: 404 });
