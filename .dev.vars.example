@@ -28,6 +28,14 @@ ANTHROPIC_API_KEY=
 # Helpline number shown when an owner's number can't be revealed ("or call ..."), e.g. +91 22 4000 0000.
 PUBLIC_HELPLINE=
 
+# "Continue with Google" login (alongside phone + OTP). Create an OAuth client of type "Web application" in Google
+# Cloud Console → APIs & Services → Credentials, with the authorised redirect URI
+#   http://localhost:4321/api/auth/google/callback   (local)   or   https://<your domain>/api/auth/google/callback
+# Set BOTH, or leave both empty: without them the Google button is hidden and login works exactly as before.
+# One NAME=value per line — don't paste Google's JSON download here. Never commit the secret.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
 # WhatsApp number (digits with country code, no +) for the "WhatsApp" button on project pages, e.g. 919800000000.
 # Without it the button is hidden.
 PUBLIC_WHATSAPP=

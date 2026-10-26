@@ -10,9 +10,16 @@ interface Props {
   /** Logged in but registration never finished: open straight at the register step. */
   needsRegistration?: boolean;
   phone?: string;
+  /** Show "Continue with Google". */
+  google?: boolean;
+  /** Register step pre-fill (accounts created with Google). */
+  name?: string;
+  email?: string;
+  /** Open by itself for accounts that never finished registration (off on /login, which shows the same form). */
+  nudge?: boolean;
 }
 
-export default function AuthDialog({ cities, needsRegistration = false, phone = '' }: Props) {
+export default function AuthDialog({ cities, needsRegistration = false, phone = '', google = false, name = '', email = '', nudge = true }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [next, setNext] = useState<string | null>(null);
@@ -33,13 +40,13 @@ export default function AuthDialog({ cities, needsRegistration = false, phone = 
     document.addEventListener('click', onClick);
     // Nudge accounts that verified their number but never picked a role — once per browser session.
     try {
-      if (needsRegistration && !sessionStorage.getItem('is_reg_prompted')) {
+      if (needsRegistration && nudge && !sessionStorage.getItem('is_reg_prompted')) {
         sessionStorage.setItem('is_reg_prompted', '1');
         setOpen(true);
       }
     } catch { /* storage blocked: skip the nudge */ }
     return () => document.removeEventListener('click', onClick);
-  }, [needsRegistration]);
+  }, [needsRegistration, nudge]);
 
   useEffect(() => {
     const d = ref.current;
@@ -61,7 +68,7 @@ export default function AuthDialog({ cities, needsRegistration = false, phone = 
         <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-8 w-8 cursor-pointer place-items-center border-[0.5px] border-[#1C1A17]/25 transition hover:bg-[#1C1A17] hover:text-sand-50">✕</button>
       </div>
       <div className="p-5 sm:p-6">
-        {open && <AuthFlow key={key} cities={cities} next={next} defaultRole={role} startAt={needsRegistration ? 'register' : 'phone'} knownPhone={phone} />}
+        {open && <AuthFlow key={key} cities={cities} next={next} defaultRole={role} startAt={needsRegistration ? 'register' : 'phone'} knownPhone={phone} google={google} knownName={name} knownEmail={email} />}
       </div>
     </dialog>
   );

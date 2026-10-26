@@ -70,6 +70,13 @@ if (editParam !== null) {
               </form>
             </>
           )}
+          {allowance.reason === 'phone' && (
+            <>
+              <p class="font-display text-xl font-bold">Add your mobile number to list your property</p>
+              <p class="mt-2 text-sm text-slate-600">Buyers and tenants reach you through it. We’ll send a code to check the number.</p>
+              <a href="/account#profile" class="ed-btn ed-btn-dark mt-6">Add mobile number →</a>
+            </>
+          )}
           {allowance.reason === 'limit' && (
             <>
               <p class="font-display text-xl font-bold">You’ve used all {allowance.limit} free listings</p>

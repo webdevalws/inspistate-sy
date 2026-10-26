@@ -29,6 +29,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
       login: 'Log in to post your property.',
       register: 'Finish creating your account first.',
       buyer: 'Your account is set up as a Buyer. Switch to Seller to list a property.',
+      phone: 'Add your mobile number on your account page before posting.',
       limit: `You have used all ${allowance.limit} free listings. ${locals.user?.role === 'agent' ? 'Choose a plan for unlimited listings.' : 'Remove a listing to post another.'}`,
     }[allowance.reason ?? 'login'];
     return bad(msg, allowance.reason === 'login' ? 401 : 403);

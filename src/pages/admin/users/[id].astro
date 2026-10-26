@@ -1,11 +1,12 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import { getRefs } from '../../../lib/repo';
-import { adminUser, adminUserListings, adminUserPlans, listingStateLabel } from '../../../lib/admin-users';
+import { adminUser, adminUserListings, adminUserPlans, listingStateLabel, loginMethod } from '../../../lib/admin-users';
 import { leadsReceived, myEnquiries } from '../../../lib/accounts';
 import { formatPrice, formatRent } from '../../../lib/format';
 import { safeNext } from '../../../lib/redirect';
 import { PLANS, planByKey, ROLES, roleLabel } from '../../../data/plans';
+import { realPhone } from '../../../lib/auth';
 
 // One account: details, listings (every state), enquiries sent and leads received. Protected by the admin middleware.
 const id = Number(Astro.params.id);
@@ -16,7 +17,10 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateSty
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
 const details: [string, string][] = [
   ['Status', user.blocked_at ? `Blocked since ${fmtTime(user.blocked_at)}` : 'Active'],
-  ['Phone', `+91 ${user.phone}`],
+  // Accounts created with Google have no mobile number until they add one (users.phone holds a placeholder).
+  ['Phone', realPhone(user.phone) ? `+91 ${user.phone}` : '—'],
+  ['Login method', loginMethod(user)],
+  ['Google email', user.google_email ?? '—'],
   ['Email', user.email ?? '—'],
   ['Role', user.role ? roleLabel(user.role) : 'Not registered'],
   ['City', user.city_slug ? (refs.city(user.city_slug)?.name ?? user.city_slug) : '—'],
@@ -49,7 +53,7 @@ const error = ({
 
     <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
       {details.map(([k, v]) => (
-        <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="font-semibold">{k === 'Phone' ? <a href={`tel:+91${user.phone}`} class="text-brand-700 hover:underline">{v}</a> : v}</dd></div>
+        <div class="card p-5"><dt class="text-sm text-slate-500">{k}</dt><dd class="font-semibold">{k === 'Phone' && realPhone(user.phone) ? <a href={`tel:+91${user.phone}`} class="text-brand-700 hover:underline">{v}</a> : v}</dd></div>
       ))}
     </dl>
 
@@ -60,7 +64,7 @@ const error = ({
       <form method="post" action={`/api/admin/users/${user.id}`} class="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
         <input type="hidden" name="action" value="profile" />
         <label class="block"><span class="text-sm text-slate-500">Name</span><input name="name" value={user.name ?? ''} maxlength="100" class="input mt-1" /></label>
-        <label class="block"><span class="text-sm text-slate-500">Phone (login)</span><input name="phone" value={user.phone} inputmode="numeric" maxlength="14" required class="input mt-1" /></label>
+        <label class="block"><span class="text-sm text-slate-500">Phone (login)</span><input name="phone" value={realPhone(user.phone) ?? ''} inputmode="numeric" maxlength="14" required={!!realPhone(user.phone)} placeholder={realPhone(user.phone) ? undefined : 'None yet'} class="input mt-1" /></label>
         <label class="block"><span class="text-sm text-slate-500">Role</span>
           <select name="role" class="input mt-1">
             {!user.role && <option value="" selected>Not registered</option>}

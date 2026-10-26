@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import AccountNav from '../../components/AccountNav.astro';
 import { subscriptionState, listingAllowance } from '../../lib/accounts';
+import { realPhone } from '../../lib/auth';
 import { PLANS, PLAN_FEATURES, FREE_LISTINGS, planByKey } from '../../data/plans';
 
 const user = Astro.locals.user!; // middleware redirects anonymous users to /login
@@ -28,7 +29,7 @@ const ICON = {
         <h1 class="mt-3 font-display text-[clamp(1.8rem,3.5vw,2.6rem)] font-bold leading-[1.04] tracking-[-0.02em] !text-[#1C1A17]">Available Plans</h1>
         <p class="mt-2 max-w-xl text-sm text-[#1C1A17]/65">Every agent account starts with {FREE_LISTINGS.agent} free listings. A plan removes the limit and unlocks buyer contact details on all your leads.</p>
 
-        {requested && <p class="mt-6 border-[0.5px] border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Request received. Our team will call you on +91 {user.phone} to complete payment and activate your plan.</p>}
+        {requested && <p class="mt-6 border-[0.5px] border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Request received. Our team will call you{realPhone(user.phone) && ` on +91 ${user.phone}`} to complete payment and activate your plan.</p>}
         {error && <p class="mt-6 border-[0.5px] border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error === 'agent' ? 'Plans are available on Agent accounts.' : error}</p>}
 
         {!isAgent ? (

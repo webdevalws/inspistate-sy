@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { adminUser, setUserBlocked, setUserPlan, updateUserProfile } from '../../../../lib/admin-users';
-import { normalizePhone } from '../../../../lib/auth';
+import { hasRealPhone, normalizePhone, realPhone } from '../../../../lib/auth';
 import { getRefs } from '../../../../lib/repo';
 import { logAdmin } from '../../../../lib/audit';
 import { isRole, planByKey } from '../../../../data/plans';
@@ -8,6 +8,8 @@ import { isRole, planByKey } from '../../../../data/plans';
 // Admin edits to one account (protected by middleware: admin Basic auth + same-origin). Plain form posts from
 // /admin/users/{id}; every change is audited as user.<field> with old → new. See docs/functions/admin/desc.md.
 const short = (v: string | null) => (v ? (v.length > 80 ? `${v.slice(0, 79)}…` : v) : '—');
+// A Google account's placeholder phone ('g:<id>') is never written to the log.
+const shown = (field: string, v: string | null) => (field === 'phone' && v && !hasRealPhone(v) ? 'none' : short(v));
 
 export const POST: APIRoute = async (ctx) => {
   const { params, request, redirect } = ctx;
@@ -21,7 +23,9 @@ export const POST: APIRoute = async (ctx) => {
   const action = str('action', 20);
 
   if (action === 'profile') {
-    const phone = normalizePhone(str('phone', 20));
+    // Left empty on an account created with Google that has no number yet: it keeps its placeholder.
+    const rawPhone = str('phone', 20);
+    const phone = (rawPhone || hasRealPhone(user.phone)) ? normalizePhone(rawPhone) : user.phone;
     const name = str('name', 100) || null;
     const roleRaw = str('role', 10);
     const citySlug = str('city', 60) || null;
@@ -37,7 +41,7 @@ export const POST: APIRoute = async (ctx) => {
     if (res === 'not-found') return new Response('User not found', { status: 404 });
     if (res === 'phone-taken') return back('error=phone-taken');
     for (const [field, from, to] of res.changes) {
-      await logAdmin(ctx, `user.${field}`, `user #${id}: ${short(from)} → ${short(to)}${field === 'phone' && res.sessionsEnded ? ' (logged out)' : ''}`);
+      await logAdmin(ctx, `user.${field}`, `user #${id}: ${shown(field, from)} → ${shown(field, to)}${field === 'phone' && res.sessionsEnded ? ' (logged out)' : ''}`);
     }
     return back(`done=${res.changes.length ? 'profile' : 'unchanged'}`);
   }
@@ -57,8 +61,8 @@ export const POST: APIRoute = async (ctx) => {
     const blocked = action === 'block';
     if (!(await setUserBlocked(id, blocked))) return back('done=unchanged');
     await logAdmin(ctx, `user.${action}`, blocked
-      ? `user #${id} (+91 ${user.phone}): active → blocked; logged out, listings hidden`
-      : `user #${id} (+91 ${user.phone}): blocked → active; listings shown again`);
+      ? `user #${id}${realPhone(user.phone) ? ` (+91 ${user.phone})` : ''}: active → blocked; logged out, listings hidden`
+      : `user #${id}${realPhone(user.phone) ? ` (+91 ${user.phone})` : ''}: blocked → active; listings shown again`);
     return back(`done=${action}`);
   }
   return new Response('Bad action', { status: 400 });

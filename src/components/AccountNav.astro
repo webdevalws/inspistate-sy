@@ -1,6 +1,6 @@
 ---
 // Account sidebar. Items follow the role chosen at registration (Buyer / Seller / Agent).
-import type { User } from '../lib/auth';
+import { realPhone, type User } from '../lib/auth';
 import { roleLabel } from '../data/plans';
 
 interface Props { user: User; active: 'overview' | 'plans' }
@@ -36,7 +36,7 @@ const items: { label: string; href: string; icon: string; on?: boolean }[] = [
 <aside class="h-fit border-[0.5px] border-[#1C1A17]/15 bg-white lg:sticky lg:top-24">
   <div class="border-b-[0.5px] border-[#1C1A17]/15 p-5">
     <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-[#1C1A17]/55">{user.role ? `${roleLabel(user.role)} account` : 'Registration pending'}</p>
-    <p class="mt-1.5 truncate font-display text-lg font-bold">{user.name ?? `+91 ${user.phone}`}</p>
+    <p class="mt-1.5 truncate font-display text-lg font-bold">{user.name ?? (realPhone(user.phone) ? `+91 ${user.phone}` : 'My account')}</p>
     {user.company && <p class="truncate text-xs text-[#1C1A17]/60">{user.company}</p>}
   </div>
   <nav aria-label="Account" class="no-scrollbar flex overflow-x-auto lg:block">
