@@ -122,3 +122,63 @@ export async function offersSent(agentId: number): Promise<SentOffer[]> {
   // A Google-only placeholder is never shown (sellers need a real number to post, but be safe).
   return results.map((r) => ({ ...r, seller_phone: realPhone(r.seller_phone) }));
 }
+
+// ---------- sellers: offers received ----------
+
+export interface ReceivedOffer {
+  id: number; listing_id: number; status: 'pending' | 'accepted' | 'declined'; message: string; created_at: string; responded_at: string | null;
+  agent_name: string | null; agency: string | null;
+  /** The agent's phone: only filled in once the seller has accepted. */
+  agent_phone: string | null;
+  purpose: 'buy' | 'rent'; type: string; bhk: number; city_slug: string; locality_slug: string;
+  /** The listing was sold, rented or deleted since: the offer can only be declined. */
+  listing_closed: string | null;
+}
+
+/** Offers on the seller's listings, pending first, newest first. Offers from agents who are now blocked are left out. */
+export async function offersReceived(sellerId: number): Promise<ReceivedOffer[]> {
+  const { results } = await db()
+    .prepare(`SELECT o.id, o.listing_id, o.status, o.message, o.created_at, o.responded_at,
+        a.name AS agent_name, a.company AS agency, CASE WHEN o.status = 'accepted' THEN a.phone END AS agent_phone,
+        l.purpose, l.type, l.bhk, l.city_slug, l.locality_slug, l.closed AS listing_closed
+      FROM agent_offers o JOIN users a ON a.id = o.agent_id JOIN listings l ON l.id = o.listing_id
+      WHERE o.seller_id = ? AND a.blocked_at IS NULL ORDER BY o.status = 'pending' DESC, o.id DESC LIMIT 200`)
+    .bind(sellerId)
+    .all<ReceivedOffer>();
+  return results.map((r) => ({ ...r, agent_phone: realPhone(r.agent_phone) }));
+}
+
+/**
+ * The seller accepts or declines a pending offer on their own listing. Accept needs the listing still open; an offer
+ * from an agent who is now blocked can't be answered. Returns false when nothing changed.
+ */
+export async function respondToOffer(sellerId: number, offerId: number, accept: boolean): Promise<boolean> {
+  const r = await db()
+    .prepare(`UPDATE agent_offers SET status = ?, responded_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+      WHERE id = ? AND seller_id = ? AND status = 'pending'
+        AND EXISTS (SELECT 1 FROM users a WHERE a.id = agent_offers.agent_id AND a.blocked_at IS NULL)
+        ${accept ? 'AND EXISTS (SELECT 1 FROM listings l WHERE l.id = agent_offers.listing_id AND l.closed IS NULL)' : ''}`)
+    .bind(accept ? 'accepted' : 'declined', offerId, sellerId)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
+}
+
+/** Days an accepted offer counts as "new" for the agent (dashboard line and menu count). */
+export const NEW_ACCEPTED_DAYS = 7;
+
+/**
+ * The small count next to "Agent offers" / "Agent dashboard": a seller's offers waiting for an answer, or an agent's
+ * offers accepted in the last NEW_ACCEPTED_DAYS days. Offers involving a blocked account don't count. 0 for buyers.
+ */
+export async function offerBadge(user: Pick<User, 'id' | 'role'> | null): Promise<number> {
+  if (user?.role === 'seller') {
+    return (await db().prepare(`SELECT count(*) AS n FROM agent_offers o JOIN users a ON a.id = o.agent_id
+      WHERE o.seller_id = ? AND o.status = 'pending' AND a.blocked_at IS NULL`).bind(user.id).first<number>('n')) ?? 0;
+  }
+  if (user?.role === 'agent') {
+    return (await db().prepare(`SELECT count(*) AS n FROM agent_offers o JOIN users s ON s.id = o.seller_id
+      WHERE o.agent_id = ? AND o.status = 'accepted' AND o.responded_at > strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?) AND s.blocked_at IS NULL`)
+      .bind(user.id, `-${NEW_ACCEPTED_DAYS} days`).first<number>('n')) ?? 0;
+  }
+  return 0;
+}

@@ -2,9 +2,13 @@
 // Account sidebar. Items follow the role chosen at registration (Buyer / Seller / Agent).
 import { realPhone, type User } from '../lib/auth';
 import { roleLabel } from '../data/plans';
+import { offerBadge } from '../lib/agent-offers';
 
 interface Props { user: User; active: 'overview' | 'agent' | 'find-sellers' | 'plans' }
 const { user, active } = Astro.props;
+// Seller: agent offers waiting for an answer; agent: offers accepted in the last week.
+const badge = await offerBadge(user);
+const withCount = (label: string) => (badge ? `${label} (${badge})` : label);
 const lister = user.role === 'seller' || user.role === 'agent';
 const P = {
   overview: 'M4 11l8-7 8 7M6 10v10h12V10',
@@ -22,7 +26,7 @@ const P = {
 const items: { label: string; href: string; icon: string; on?: boolean }[] = [
   { label: 'Overview', href: '/account', icon: P.overview, on: active === 'overview' },
   ...(user.role === 'agent' ? [
-    { label: 'Agent dashboard', href: '/account/agent', icon: P.dashboard, on: active === 'agent' },
+    { label: withCount('Agent dashboard'), href: '/account/agent', icon: P.dashboard, on: active === 'agent' },
     { label: 'Find sellers', href: '/account/agent/find-sellers', icon: P.search, on: active === 'find-sellers' },
   ] : []),
   ...(lister ? [
@@ -30,6 +34,7 @@ const items: { label: string; href: string; icon: string; on?: boolean }[] = [
     { label: 'List Property', href: '/post-property', icon: P.add },
     { label: 'Leads Received', href: '/account#leads', icon: P.leads },
   ] : []),
+  ...(user.role === 'seller' ? [{ label: withCount('Agent offers'), href: '/account#offers', icon: P.mail }] : []),
   ...(user.role === 'agent' ? [{ label: 'Subscription Plans', href: '/account/plans', icon: P.plans, on: active === 'plans' }] : []),
   { label: 'Shortlist', href: '/account#shortlist', icon: P.heart },
   { label: 'Saved Searches', href: '/account#searches', icon: P.search },

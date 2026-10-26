@@ -7,6 +7,8 @@ import AddPhone from '../components/islands/AddPhone';
 import ListerStats from '../components/account/ListerStats.astro';
 import MyListings from '../components/account/MyListings.astro';
 import LeadsReceived from '../components/account/LeadsReceived.astro';
+import AgentOffers from '../components/account/AgentOffers.astro';
+import { offersReceived } from '../lib/agent-offers';
 import { fmtDate, h2 } from '../components/account/shared';
 import { realPhone } from '../lib/auth';
 import { GOOGLE_ERRORS, googleEnabled } from '../lib/google';
@@ -17,10 +19,14 @@ import { ROLES, roleLabel } from '../data/plans';
 
 const user = Astro.locals.user!; // middleware redirects anonymous users to /login
 const lister = user.role === 'seller' || user.role === 'agent';
-const [refs, listings, enquiries, searches, allowance, leads, subs] = await Promise.all([
+const [refs, listings, enquiries, searches, allowance, leads, subs, offers] = await Promise.all([
   getRefs(), myListings(user.id), myEnquiries(user.id), savedSearches(user.id), listingAllowance(user),
   lister ? leadsReceived(user.id) : Promise.resolve([]), user.role === 'agent' ? subscriptionState(user.id) : Promise.resolve(null),
+  user.role === 'seller' ? offersReceived(user.id) : Promise.resolve([]),
 ]);
+// Agent offers (sellers): waiting ones are counted at the top; ?offer= is the result of Accept / Decline.
+const pendingOffers = offers.filter((o) => o.status === 'pending').length;
+const offerDone = ({ accepted: 'Offer accepted. You can now see each other’s phone numbers.', declined: 'Offer declined. That agent can’t ask again for this listing.', unavailable: 'That offer can’t be answered any more.' } as Record<string, string>)[Astro.url.searchParams.get('offer') ?? ''];
 const saved = Astro.url.searchParams.get('saved');
 // Accounts created with Google have no mobile number until they add one (sellers and agents need it to post).
 const phone = realPhone(user.phone);
@@ -47,6 +53,12 @@ const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked ren
             <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
               <p class="text-sm">Finish creating your account — tell us whether you are a <b>Buyer</b>, <b>Seller</b> or <b>Agent</b>.</p>
               <a href="/login" data-auth-open class="ed-btn ed-btn-dark">Finish registration →</a>
+            </div>
+          )}
+          {pendingOffers > 0 && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
+              <p class="text-sm">{pendingOffers === 1 ? 'An agent has' : `${pendingOffers} agents have`} offered to help with your listings.</p>
+              <a href="#offers" class="ed-btn ed-btn-dark">See agent offers →</a>
             </div>
           )}
           {lister && !phone && (
@@ -78,6 +90,8 @@ const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked ren
         {lister && (
           <LeadsReceived leads={leads} hasPlan={allowance.hasPlan} />
         )}
+
+        {user.role === 'seller' && <AgentOffers offers={offers} refs={refs} done={offerDone} />}
 
         <section id="shortlist" class="scroll-mt-28">
           <h2 class={`${h2} mb-4`}>Shortlist</h2>

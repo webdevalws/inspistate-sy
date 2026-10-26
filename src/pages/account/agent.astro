@@ -7,7 +7,7 @@ import LeadsReceived from '../../components/account/LeadsReceived.astro';
 import { realPhone } from '../../lib/auth';
 import { leadsReceived, listingAllowance, myListings, subscriptionState } from '../../lib/accounts';
 import { getRefs } from '../../lib/repo';
-import { offersSent } from '../../lib/agent-offers';
+import { NEW_ACCEPTED_DAYS, offersSent } from '../../lib/agent-offers';
 import { fmtDate, h2 } from '../../components/account/shared';
 import { typeLabel } from '../../lib/search';
 
@@ -18,6 +18,9 @@ if (user.role !== 'agent') return Astro.redirect('/account');
 const [refs, listings, allowance, leads, subs, offers] = await Promise.all([
   getRefs(), myListings(user.id), listingAllowance(user), leadsReceived(user.id), subscriptionState(user.id), offersSent(user.id),
 ]);
+// Offers accepted in the last week (also counted next to "Agent dashboard" in the menus).
+const since = Date.now() - NEW_ACCEPTED_DAYS * 86400000;
+const newlyAccepted = offers.filter((o) => o.status === 'accepted' && o.responded_at && Date.parse(o.responded_at) > since).length;
 const offerChip: Record<string, string> = { pending: 'bg-amber-50 text-amber-900', accepted: 'bg-emerald-50 text-emerald-800', declined: 'bg-sand-100 text-[#1C1A17]/70' };
 const offerLabel: Record<string, string> = { pending: 'Waiting', accepted: 'Accepted', declined: 'Declined' };
 const phone = realPhone(user.phone);
@@ -38,6 +41,13 @@ const listingDone = ({ sold: 'Listing marked sold.', rented: 'Listing marked ren
             <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-amber-400 bg-amber-50 p-5">
               <p class="text-sm">Add your mobile number to post listings and get enquiries from buyers.</p>
               <a href="/account#profile" class="ed-btn ed-btn-dark">Add mobile number →</a>
+            </div>
+          )}
+
+          {newlyAccepted > 0 && (
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4 border-[0.5px] border-emerald-300 bg-emerald-50 p-5">
+              <p class="text-sm text-emerald-800">{newlyAccepted === 1 ? 'An owner has' : `${newlyAccepted} owners have`} accepted your offer this week — their phone numbers are under Offers sent.</p>
+              <a href="#offers" class="ed-btn ed-btn-dark">See offers →</a>
             </div>
           )}
 

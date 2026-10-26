@@ -5,6 +5,7 @@ import CityPicker from './islands/CityPicker';
 import { roleLabel } from '../data/plans';
 import { realPhone } from '../lib/auth';
 import { googleEnabled } from '../lib/google';
+import { offerBadge } from '../lib/agent-offers';
 import { cityListingCounts, getRefs } from '../lib/repo';
 import { headerMenus } from '../lib/catalog';
 import { currentCity } from '../lib/city';
@@ -16,10 +17,14 @@ const pickerCities = cities.map((c) => ({ slug: c.slug, name: c.name, count: cou
 const menus = headerMenus(current.slug, current.name);
 const user = Astro.locals.user;
 const authCities = cities.map((c) => ({ slug: c.slug, name: c.name }));
-// Account menu follows the role picked at registration.
+// Account menu follows the role picked at registration. The count: a seller's agent offers waiting for an answer, or
+// an agent's offers accepted in the last week.
+const badge = await offerBadge(user);
+const withCount = (label: string) => (badge ? `${label} (${badge})` : label);
 const accountLinks: [string, string][] = [
   ['My account', '/account'],
-  ...(user?.role === 'agent' ? [['Agent dashboard', '/account/agent'], ['Find sellers', '/account/agent/find-sellers']] as [string, string][] : []),
+  ...(user?.role === 'seller' ? [[withCount('Agent offers'), '/account#offers']] as [string, string][] : []),
+  ...(user?.role === 'agent' ? [[withCount('Agent dashboard'), '/account/agent'], ['Find sellers', '/account/agent/find-sellers']] as [string, string][] : []),
   ...(user?.role === 'seller' || user?.role === 'agent' ? [['My listings', '/account#listings'], ['Leads received', '/account#leads'], ['List property', '/post-property']] as [string, string][] : []),
   ...(user?.role === 'agent' ? [['Subscription plans', '/account/plans']] as [string, string][] : []),
   ['Shortlist', '/account#shortlist'], ['Saved searches', '/account#searches'], ['My enquiries', '/account#enquiries'],

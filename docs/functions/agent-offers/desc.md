@@ -35,8 +35,21 @@ Accept do both see each other's phone numbers.
 - Agent dashboard → **Offers sent**: listing, sent / answered dates, status (Waiting, Accepted, Declined). Offers to
   sellers who are now blocked are left out.
 
+## Seller answers (item 108)
+- `/account` → **Agent offers** (Seller accounts, `AgentOffers.astro`): agent name, agency, the listing, message and date,
+  waiting offers first, with **Accept** / **Decline** (`action=accept|decline`, `respondToOffer`, only the seller’s own
+  pending offers). A listing that has been sold, rented or deleted since offers Decline only.
+- **Phones only after Accept:** the seller then sees the agent’s phone; the agent sees the seller’s name and **account**
+  phone (their verified login number) under Offers sent. Before that neither query selects a phone; a Google-only
+  placeholder is never shown (`realPhone`). Declined is final: that agent can’t offer again on that listing.
+- **Blocked accounts:** offers from a blocked agent are hidden from the seller and can’t be answered; offers to a
+  blocked seller are hidden from the agent. Blocked users can’t log in, so they can’t send or answer.
+- **Counts** (no email / SMS yet): sellers see “Agent offers (N)” (waiting) in the header account menu and the account
+  sidebar, plus a line at the top of `/account`; agents see “Agent dashboard (N)” for offers accepted in the last
+  7 days (`NEW_ACCEPTED_DAYS`), plus a line at the top of the dashboard (`offerBadge`).
+
 ## Files
 - `src/lib/agent-offers.ts`, `migrations/0016_agent_offers.sql`, `src/pages/api/account/agent-offers.ts`,
-  `src/pages/account/agent/find-sellers.astro`, `src/pages/account/agent.astro`
+  `src/pages/account/agent/find-sellers.astro`, `src/pages/account/agent.astro`, `src/components/account/AgentOffers.astro`
 - `src/components/islands/PostPropertyForm.tsx`, `src/components/account/MyListings.astro`,
   `src/pages/api/listings.ts`, `src/pages/api/account/listings/[id].ts`
