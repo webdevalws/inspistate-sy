@@ -18,5 +18,6 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { key: 'enquiries', label: 'Enquiries', href: '/admin/enquiries', icon: 'M4 5h16v11H8l-4 4z' },
   { key: 'forum', label: 'Forum', href: '/admin/forum', icon: 'M4 5h11v8H8l-4 3zM9 16h7l4 3V9h-3' },
   { key: 'newsletter', label: 'Newsletter', href: '/admin/newsletter', icon: 'M4 6h16v12H4zM4 7l8 6 8-6' },
+  { key: 'showcase', label: 'Showcase', href: '/admin/showcase', icon: 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4' },
   { key: 'audit', label: 'Audit log', href: '/admin/audit', icon: 'M8 4h11v16H8zM5 7v13h11M11 9h5M11 13h5' },
 ];

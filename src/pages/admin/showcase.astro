@@ -1,0 +1,92 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import AdminCard from '../../components/admin/AdminCard.astro';
+import Pill from '../../components/admin/Pill.astro';
+import ActionButton from '../../components/admin/ActionButton.astro';
+import Th from '../../components/admin/Th.astro';
+import Photo from '../../components/Photo.astro';
+import { allProjects, getRefs } from '../../lib/repo';
+import { SHOWCASE_CARDS, showcaseItems, withPicks } from '../../lib/showcase';
+import { EMPTY, NOTE_ERR, NOTE_OK, TABLE, TABLE_WRAP, TBODY, TD, THEAD } from '../../components/admin/ui';
+import type { Project } from '../../data/types';
+
+// Showcase: pick and order what two home page sections show (lib/showcase.ts, /api/admin/showcase, audited).
+// Changes show on the home page at once (it reads the picks on every request).
+const sp = Astro.url.searchParams;
+const [refs, projects, hotPicks] = await Promise.all([getRefs(), allProjects(), showcaseItems('hot_projects')]);
+const byId = new Map(projects.map((p) => [String(p.id), p]));
+const picked = hotPicks.map((id) => byId.get(id)).filter((p): p is Project => !!p);
+const N = SHOWCASE_CARDS.hot_projects;
+const homeNow = withPicks(hotPicks, projects, (p) => String(p.id), (id) => byId.get(id), N);
+// "+ Add project": search by project name, city or locality (?pq=).
+const pq = (sp.get('pq') ?? '').trim().toLowerCase().slice(0, 60);
+const where = (p: Project) => `${refs.locality(p.citySlug, p.localitySlug)?.name ?? ''}, ${refs.city(p.citySlug)?.name ?? ''}`;
+const found = pq ? projects.filter((p) => !hotPicks.includes(String(p.id)) && `${p.name} ${where(p)}`.toLowerCase().includes(pq)).slice(0, 20) : [];
+const DONE: Record<string, [boolean, string]> = {
+  added: [true, 'Added. The home page shows it now.'], removed: [true, 'Removed from the home page.'], moved: [true, 'Order saved.'],
+  exists: [false, 'That one is already picked.'], unknown: [false, 'Only existing projects and localities can be picked.'], unchanged: [false, 'Nothing changed.'],
+};
+const done = Object.hasOwn(DONE, sp.get('done') ?? '') ? DONE[sp.get('done')!] : null;
+---
+<AdminLayout title="Showcase" active="showcase" crumbs={[['Showcase']]}>
+  <p class="mb-6 max-w-3xl text-sm text-slate-600">Choose what two home page sections show, and in which order. Changes show on the home page straight away. With nothing picked, a section keeps its automatic choice; with fewer picks than cards, your picks come first and the rest is filled automatically.</p>
+  {done && <p class={done[0] ? NOTE_OK : NOTE_ERR}>{done[1]}</p>}
+
+  <AdminCard title="Hot Selling Projects Across India" id="hot_projects" add={{ href: '#add-project', label: 'Add project' }}>
+    <p class:list={['mb-4 rounded-lg px-3 py-2 text-sm', picked.length >= N || picked.length === 0 ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-900']} data-count>
+      The home page shows <b>{N} cards</b>. {picked.length === 0 ? 'Nothing picked: it shows the newest projects automatically.' : picked.length < N ? `${picked.length} picked — the other ${N - picked.length} are filled automatically with the newest projects.` : `${picked.length} picked${picked.length > N ? ` — only the first ${N} are shown` : ''}.`}
+    </p>
+    <div class={TABLE_WRAP}>
+      <table class:list={[TABLE, 'min-w-[760px]']}>
+        <thead class={THEAD}><tr><Th label="S.No." /><Th label="Image" /><Th label="Title" /><Th label="Type" /><Th label="Status" /><Th label="Action" /></tr></thead>
+        <tbody class={TBODY}>
+          {picked.map((p, i) => (
+            <tr data-pick={p.id}>
+              <td class={TD}>{i + 1}</td>
+              <td class={TD}><Photo hue={p.hue} kind="tower" alt={p.name} class="h-14 w-20 rounded-md" /></td>
+              <td class={TD}><a href={`/projects/${p.citySlug}/${p.slug}`} class="font-semibold text-slate-800 hover:text-brand-700">{p.name}</a><span class="block text-xs text-slate-500">{where(p)}</span></td>
+              <td class={TD}>{p.status}</td>
+              <td class={TD}>{i < N ? <Pill status="live" label="On home page" /> : <Pill status="hidden" label={`Not shown (${N} cards)`} />}</td>
+              <td class={TD}>
+                <form method="post" action="/api/admin/showcase" class="flex flex-wrap gap-1.5">
+                  <input type="hidden" name="section" value="hot_projects" /><input type="hidden" name="item" value={p.id} />
+                  {i > 0 && <ActionButton label={`Move ${p.name} up`} icon="up" value="up" />}
+                  {i < picked.length - 1 && <ActionButton label={`Move ${p.name} down`} icon="down" value="down" />}
+                  <ActionButton label={`Remove ${p.name}`} icon="delete" value="remove" tone="danger" />
+                </form>
+              </td>
+            </tr>
+          ))}
+          {picked.length === 0 && <tr><td colspan="6" class={EMPTY}>Nothing picked yet.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+
+    <div id="add-project" class="mt-8 scroll-mt-6 border-t border-dashed border-slate-200 pt-6">
+      <h3 class="font-semibold text-slate-800">Add a project</h3>
+      <form method="get" action="/admin/showcase#add-project" class="mt-3 flex flex-wrap items-center gap-2" role="search">
+        <label for="pq" class="text-sm text-slate-600">Search:</label>
+        <input id="pq" name="pq" type="search" value={sp.get('pq') ?? ''} maxlength="60" placeholder="Project name, city or locality" class="input w-64 py-2" />
+        <button class="btn-ghost py-2">Find</button>
+      </form>
+      {pq && (
+        <ul class="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200">
+          {found.map((p) => (
+            <li class="flex items-center justify-between gap-3 px-4 py-3" data-found={p.id}>
+              <span><b class="text-slate-800">{p.name}</b> <span class="text-sm text-slate-500">· {where(p)} · {p.status}</span></span>
+              <form method="post" action="/api/admin/showcase"><input type="hidden" name="section" value="hot_projects" /><input type="hidden" name="item" value={p.id} /><button name="action" value="add" class="btn-primary py-1.5 text-sm">+ Add</button></form>
+            </li>
+          ))}
+          {found.length === 0 && <li class="px-4 py-3 text-sm text-slate-500">No projects match (already picked ones are left out).</li>}
+        </ul>
+      )}
+    </div>
+
+    <div class="mt-8 border-t border-dashed border-slate-200 pt-6">
+      <h3 class="font-semibold text-slate-800">The home page shows now</h3>
+      <ol class="mt-2 list-decimal pl-5 text-sm text-slate-700" data-home-now>
+        {homeNow.map((p) => <li>{p.name} <span class="text-slate-500">· {where(p)}{hotPicks.includes(String(p.id)) ? '' : ' · automatic'}</span></li>)}
+      </ol>
+    </div>
+  </AdminCard>
+</AdminLayout>

@@ -47,6 +47,18 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   audited as before. Each form sends `back` (only `/admin/listings…` pages are accepted) so the admin returns to the
   same filtered page.
 
+## Showcase (items 115–117)
+- **Migration 0017** (additive): `showcase (section, city_slug, item, position)`, primary key (section, city_slug, item).
+  `hot_projects`: item = project id, city `''`; `top_localities`: item = locality slug, city = the home page city tab.
+- `/admin/showcase` (`src/lib/showcase.ts`, `POST /api/admin/showcase` with `action=add|remove|up|down`):
+  - **Hot Selling Projects Across India** (item 115): the picks in order with move up / down / remove, “+ Add project”
+    (search by name, city or locality; already picked ones are left out), and a preview of what the home page shows.
+  - Shows how many cards the home page displays (5) and warns when fewer are picked (the rest are filled
+    automatically, newest projects first, without duplicates); picks beyond 5 are marked “Not shown”.
+  - Only existing projects can be added (all projects are public); unknown ids are refused.
+  - Every change is audited: `showcase.add|remove|up|down`, e.g. “hot selling projects: #1003 Skyreach Riverstone”, moves
+    with the new place (“→ 2”).
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).
