@@ -77,6 +77,12 @@ search form puts city + Search on one row under the query field.
 - **Comments:** template notes use Astro comments (`{/* … */}`), which are not sent to the browser; HTML comments
   (`<!-- … -->`) would be.
 
+## Showcase (item 117)
+- “Hot Selling Projects Across India” and each “Top Localities” city tab show the admin’s picks first (`/admin/showcase`,
+  `src/lib/showcase.ts`), then the automatic choice fills the rest (newest projects; fastest-growing localities), no
+  duplicates, 5 cards each. The picks are read live on every request, so changes show at once. The city tabs come
+  from `localityTabCities` (first eight cities, then later cities with projects), shared with the admin page.
+
 ## Data loading (item 79)
 - The asking-price histogram and median per city are computed in SQL (`homeInsights` in `src/lib/community.ts`: one
   grouped query for 6 equal-width buckets, one window-function query for the median) — about 75 rows instead of

@@ -59,6 +59,11 @@ same `action` values, same checks and audit entries); only where an endpoint sen
   - **Top Localities in India** (item 116): one tab per home page city (`localityTabCities`, the same rule the home page
     uses), each with its own picks: move up / down / remove, add from that city's localities (only existing ones), the
     5-card count and warning (the rest filled with the fastest-growing localities) and a preview of the tab.
+- **On the home page** (item 117): `index.astro` reads all picks with one small query on every request (`showcasePicks`),
+  so adding, removing or reordering shows **immediately**. `withPicks` puts the picks first and fills up to 5 with the
+  old automatic choice (newest projects / fastest-growing localities), without duplicates; with nothing picked the
+  home page is exactly as before (checked: identical HTML). The project and locality details on the cards still come
+  from the cached lists, so an edit to a project itself can take up to 5 minutes, as before.
   - Every change is audited: `showcase.add|remove|up|down`, e.g. “hot selling projects: #1003 Skyreach Riverstone”, moves
     with the new place (“→ 2”).
 
