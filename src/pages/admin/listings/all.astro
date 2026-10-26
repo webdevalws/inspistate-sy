@@ -59,7 +59,8 @@ const state = (l: Row) => l.closed ?? l.status;
             return (
               <tr data-row={l.id}>
                 <td class={TD}>{res.offset + i + 1}</td>
-                <td class={TD}><Photo photo={l.photo ?? undefined} hue={l.hue} alt={title} class="h-14 w-20 rounded-md" /></td>
+                {/* Photos of rejected or deleted listings are not served (photosVisible): show the placeholder. */}
+                <td class={TD}><Photo photo={l.status === 'rejected' || l.closed === 'deleted' ? undefined : l.photo ?? undefined} hue={l.hue} alt={title} class="h-14 w-20 rounded-md" /></td>
                 <td class={TD}>
                   {l.closed === 'deleted' ? <span class="font-semibold text-slate-800">#{l.id} · {title}</span> : <a href={`/property/${l.id}${l.status === 'active' && !l.closed && !l.owner_blocked ? '' : `?token=${l.edit_token}`}`} class="font-semibold text-slate-800 hover:text-brand-700">#{l.id} · {title}</a>}
                   <p class="text-xs text-slate-500">{l.contact_name}{l.owner_blocked ? ' · owner blocked' : ''}</p>
