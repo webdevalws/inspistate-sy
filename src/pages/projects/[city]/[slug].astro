@@ -242,9 +242,10 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 
 
         <section id="location" class="scroll-mt-32">
           <h2 class="section-title mb-4">Location and connectivity around {loc.name}</h2>
-          <div class="grid gap-4 md:grid-cols-2">
+          <div class:list={['grid gap-4', p.nearby.length > 0 && 'md:grid-cols-2']}>
             <iframe title={`Map of ${loc.name}`} class="h-72 w-full rounded-2xl border border-slate-200" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${loc.lat},${loc.lng}`}></iframe>
-            <TravelTime client:visible places={p.nearby} origin={p.name} />
+            {/* Admin-added projects may have no nearby places: then there is nothing to time. */}
+            {p.nearby.length > 0 && <TravelTime client:visible places={p.nearby} origin={p.name} />}
           </div>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {nearbyByKind.map(([kind, list]) => (

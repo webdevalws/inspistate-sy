@@ -116,12 +116,15 @@ export function unitSummary(units: UnitInput[]) {
   return { priceMin: Math.min(...prices), priceMax: Math.max(...prices), bhkLabel: bhks.length ? `${bhks.join(', ')} BHK` : units[0].label };
 }
 
-/** A flat six-quarter price trend at the project's rate, ending this quarter (the project page charts it). */
+/**
+ * A flat eight-quarter price trend at the project's rate, ending this quarter: the project page charts it and the
+ * home page averages it per quarter with the city's other projects (the seed data has eight quarters too).
+ */
 function flatTrend(rate: number) {
   const now = new Date();
   let y = now.getFullYear(); let q = Math.floor(now.getMonth() / 3) + 1;
   const out: { label: string; rate: number }[] = [];
-  for (let i = 0; i < 6; i++) { out.unshift({ label: `Q${q} ${y}`, rate }); q--; if (q === 0) { q = 4; y--; } }
+  for (let i = 0; i < 8; i++) { out.unshift({ label: `Q${q} ${y}`, rate }); q--; if (q === 0) { q = 4; y--; } }
   return out;
 }
 

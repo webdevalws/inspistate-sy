@@ -33,13 +33,15 @@ const pct = (a: number, b: number) => (a ? ((b - a) / a) * 100 : 0);
 // Market-insight series per city, all from our own data.
 const insight = (slug: string) => {
   const ps = projects.filter((p) => p.citySlug === slug);
-  const trend = ps.length ? ps[0].priceTrend.map((pt, i) => ({ label: pt.label.replace(' 20', " '"), v: ps.reduce((s, p) => s + p.priceTrend[i].rate, 0) / ps.length })) : [];
+  // Averaged per quarter label, so a project whose trend covers other quarters (e.g. one added by the admin) can't break it.
+  const rateAt = (label: string) => ps.map((p) => p.priceTrend.find((x) => x.label === label)?.rate).filter((r): r is number => r !== undefined);
+  const trend = ps.length ? ps[0].priceTrend.map((pt) => { const rs = rateAt(pt.label); return { label: pt.label.replace(' 20', " '"), v: rs.reduce((s, r) => s + r, 0) / rs.length }; }) : [];
   const yields = refs.localitiesOf(slug).map((l) => ({ label: l.name.split(' ')[0], n: +(((l.rentPerSqft * 12) / l.ratePerSqft) * 100).toFixed(1) })).slice(0, 6);
   const tx = mkt.txQuarters(slug).slice(-6);
   return {
     trend, yields, tx,
-    movement: trend.length ? pct(trend[3].v, trend[7].v) : 0,
-    growth: trend.length ? pct(trend[0].v, trend[7].v) : 0,
+    movement: trend.length >= 5 ? pct(trend.at(-5)!.v, trend.at(-1)!.v) : 0,
+    growth: trend.length ? pct(trend[0].v, trend.at(-1)!.v) : 0,
     avgYield: yields.length ? yields.reduce((s, y) => s + y.n, 0) / yields.length : 0,
     txGrowth: tx.length > 1 ? pct(tx[0].v, tx.at(-1)!.v) : 0,
   };
