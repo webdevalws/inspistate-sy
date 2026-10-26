@@ -1,5 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { getRefs } from '../../../lib/repo';
 import { adminUser, adminUserListings, adminUserPlans, listingStateLabel, loginMethod } from '../../../lib/admin-users';
 import { leadsReceived, myEnquiries } from '../../../lib/accounts';
@@ -47,10 +47,10 @@ const error = ({
   plan: 'Choose a plan from the list.',
 } as Record<string, string>)[Astro.url.searchParams.get('error') ?? ''];
 ---
-<Base title={`${user.name ?? `User #${user.id}`} · Admin`}>
-  <div class="container-x py-8">
+<AdminLayout title={user.name ?? `User #${user.id}`} active="users" sub={user.blocked_at ? 'blocked' : 'all'} crumbs={[['Users', '/admin/users'], [user.name ?? `User #${user.id}`]]}>
+  <div>
     <p class="text-sm"><a href="/admin/users" class="text-brand-700 hover:underline">← All users</a></p>
-    <h1 class="mt-2 text-2xl font-extrabold">{user.name ?? `User #${user.id}`}{user.blocked_at && <span class="chip ml-2 align-middle">blocked</span>}</h1>
+    <h2 class="mt-2 section-title">{user.name ?? `User #${user.id}`}{user.blocked_at && <span class="chip ml-2 align-middle">blocked</span>}</h2>
 
     <dl class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
       {details.map(([k, v]) => (
@@ -201,4 +201,4 @@ const error = ({
       </div>
     </section>
   </div>
-</Base>
+</AdminLayout>

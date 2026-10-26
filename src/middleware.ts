@@ -35,6 +35,13 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return ctx.redirect(`/login?next=${encodeURIComponent(pathname + ctx.url.search)}`);
   }
   if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin/')) {
+    // Logout: Basic auth has no real logout. A 401 makes most browsers forget the admin password; it is not counted
+    // as a wrong password. Closing the browser always works.
+    if (pathname === '/admin/logout') {
+      return new Response('<!doctype html><meta charset="utf-8"><title>Logged out</title><p style="font-family:system-ui;margin:3rem">You are logged out of InspiState admin. To fully log out, close the browser. <a href="/admin">Log in again</a></p>', {
+        status: 401, headers: { 'www-authenticate': 'Basic realm="InspiState admin", charset="UTF-8"', 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
     const password = (env as { ADMIN_PASSWORD?: string }).ADMIN_PASSWORD;
     if (!password) return new Response('Admin is disabled: set the ADMIN_PASSWORD secret.', { status: 503 });
 
@@ -49,8 +56,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     const [scheme, encoded] = header.split(' ');
     if (scheme !== 'Basic' || !encoded) return unauthorized(); // the browser's first, header-less request: not a failure
     let supplied = '';
+    let username = '';
     try {
-      supplied = atob(encoded).split(':').slice(1).join(':');
+      const decoded = atob(encoded);
+      username = decoded.split(':')[0];
+      supplied = decoded.split(':').slice(1).join(':');
     } catch {
       return unauthorized();
     }
@@ -59,6 +69,9 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       if (failures + 1 >= ADMIN_SLOW_AFTER) await new Promise((r) => setTimeout(r, 2000));
       return unauthorized();
     }
+
+    // Shown in the admin top bar (any username works; only the password is checked).
+    ctx.locals.adminName = username.trim().slice(0, 40) || 'Admin';
 
     // State-changing admin requests must come from our own pages.
     if (ctx.request.method !== 'GET' && ctx.request.headers.get('origin') !== ctx.url.origin) {

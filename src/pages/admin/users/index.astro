@@ -1,5 +1,5 @@
 ---
-import Base from '../../../layouts/Base.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Pagination from '../../../components/Pagination.astro';
 import { getRefs } from '../../../lib/repo';
 import { isRoleFilter, isStateFilter, listUsers, loginMethod, type RoleFilter, type StateFilter } from '../../../lib/admin-users';
@@ -25,10 +25,9 @@ const filterHref = (key: string, value: string) => {
 const roleFilters: [string, string][] = [['', 'All'], ['user', 'Buyers'], ['seller', 'Sellers'], ['agent', 'Agents'], ['none', 'Not registered']];
 const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active'], ['blocked', 'Blocked']];
 ---
-<Base title="Users · Admin">
-  <div class="container-x py-8">
-    <p class="text-sm"><a href="/admin" class="text-brand-700 hover:underline">← Admin dashboard</a></p>
-    <h1 class="mt-2 text-2xl font-extrabold">Users ({res.total})</h1>
+<AdminLayout title="Users" active="users" sub={state === 'blocked' ? 'blocked' : 'all'} crumbs={[['Users', '/admin/users'], [state === 'blocked' ? 'Blocked' : 'All users']]}>
+  <div>
+    <h2 class="section-title">Users ({res.total})</h2>
 
     <form method="get" action="/admin/users" class="mt-6 flex flex-wrap items-center gap-2">
       {role && <input type="hidden" name="role" value={role} />}
@@ -76,4 +75,4 @@ const stateFilters: [string, string][] = [['', 'Any status'], ['active', 'Active
     </div>
     <Pagination page={res.page} pages={res.pages} url={Astro.url} />
   </div>
-</Base>
+</AdminLayout>

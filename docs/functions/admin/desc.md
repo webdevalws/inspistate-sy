@@ -6,6 +6,17 @@
 One page for the team: moderate listings and reviews, approve agent plans, see leads, and (from this
 branch) audit admin actions.
 
+## Layout (item 112)
+- Every admin page uses `src/layouts/AdminLayout.astro` (no site header / footer): a dark sidebar (`#1C1A17`) with the
+  InspiState mark, a “Manage” label, the menu from `src/lib/admin-nav.ts` (icons, sub-items under the active parent,
+  the active item in the bronze accent) and **Logout**; a white top bar with the page title, a breadcrumb (home icon /
+  section / page) and the admin’s name (the username typed at the password prompt — any username works, only the
+  password is checked); content on a light background. On phones the sidebar folds into a **Menu** button (CSS only,
+  no JavaScript).
+- **Logout** (`/admin/logout`): Basic auth has no real logout. The route answers 401 so most browsers forget the
+  password; it is handled before the password check and never counted as a wrong password. The note under the
+  button says: “To fully log out, close the browser.”
+
 ## Access
 - HTTP Basic auth with the `ADMIN_PASSWORD` secret (`src/middleware.ts`); admin is disabled (503) when the
   secret is not set. State-changing admin requests must come from our own pages (same-origin check).
