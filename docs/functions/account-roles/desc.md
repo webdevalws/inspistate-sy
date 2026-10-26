@@ -42,9 +42,19 @@ accounts that already have a role). Agents must give an agency / firm name when 
   `subscription` so sales can call; staff activate it in `/admin#subscriptions` once paid.
 - Prices, perks and limits live in `src/data/plans.ts` (Yearly ₹9,999 vs ₹14,000; Half-Yearly ₹5,999 vs ₹7,000).
 
+## Agent dashboard (item 103)
+- `/account/agent` (agents only; other roles are sent to `/account`): agency name, the overview strip (listings used of
+  the allowance, leads received, plan status), **+ List property** and **Subscription plans** buttons, **My Listings** and
+  **Leads Received**. Linked as **Agent dashboard** in the account sidebar and the header account menu (agents only).
+- The strip, My Listings and Leads Received are shared components (`src/components/account/ListerStats.astro`,
+  `MyListings.astro`, `LeadsReceived.astro`) used by `/account` too, which looks exactly as before (checked: identical
+  HTML and pixels for buyer, seller and agent at 1280 and 390 px). Owner actions on the dashboard (mark sold / rented,
+  delete) return to it (`back=/account/agent`, the only other allowed target).
+
 ## Files
 - `src/data/plans.ts`, `src/lib/accounts.ts`, `src/lib/auth.ts`
-- `src/pages/account.astro`, `src/pages/account/plans.astro`, `src/components/AccountNav.astro`
+- `src/pages/account.astro`, `src/pages/account/plans.astro`, `src/pages/account/agent.astro`, `src/components/AccountNav.astro`,
+  `src/components/account/*`
 - `src/pages/post-property.astro`, `src/pages/api/listings.ts`
 - `src/pages/api/account/{register,role,subscription}.ts`, `src/pages/api/admin/subscriptions/[id].ts`
 - `src/pages/admin/index.astro` (Agent plan requests), `migrations/0010_roles_plans.sql`

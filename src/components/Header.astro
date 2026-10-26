@@ -19,6 +19,7 @@ const authCities = cities.map((c) => ({ slug: c.slug, name: c.name }));
 // Account menu follows the role picked at registration.
 const accountLinks: [string, string][] = [
   ['My account', '/account'],
+  ...(user?.role === 'agent' ? [['Agent dashboard', '/account/agent']] as [string, string][] : []),
   ...(user?.role === 'seller' || user?.role === 'agent' ? [['My listings', '/account#listings'], ['Leads received', '/account#leads'], ['List property', '/post-property']] as [string, string][] : []),
   ...(user?.role === 'agent' ? [['Subscription plans', '/account/plans']] as [string, string][] : []),
   ['Shortlist', '/account#shortlist'], ['Saved searches', '/account#searches'], ['My enquiries', '/account#enquiries'],

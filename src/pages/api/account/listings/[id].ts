@@ -34,5 +34,7 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   await closeListing(id, as);
   // Deleting is final for the owner: the photos go too (sold / rented listings keep theirs).
   if (as === 'deleted') await deleteListingPhotos(id);
-  return redirect(`/account?listing=${as}#listings`, 303);
+  // Back to the page the action came from: /account, or the agent dashboard (the only other allowed target).
+  const back = form.get('back') === '/account/agent' ? '/account/agent' : '/account';
+  return redirect(`${back}?listing=${as}#listings`, 303);
 };

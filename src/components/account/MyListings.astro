@@ -1,0 +1,41 @@
+---
+// "My Listings" with the owner actions (Edit, Mark sold / rented, Delete). Used on /account and /account/agent.
+import type { Refs } from '../../lib/repo';
+import type { myListings } from '../../lib/accounts';
+import { formatPrice, formatRent } from '../../lib/format';
+import { fmtDate, h2 } from './shared';
+
+/** `back`: the page the owner actions return to (only /account/agent besides the default /account). */
+interface Props { listings: Awaited<ReturnType<typeof myListings>>; refs: Refs; listingDone?: string; back?: string }
+const { listings, refs, listingDone, back } = Astro.props;
+const statusChip: Record<string, string> = { active: 'bg-emerald-50 text-emerald-800', pending: 'bg-amber-50 text-amber-900', rejected: 'bg-rose-50 text-rose-700', sold: 'bg-sand-100 text-[#1C1A17]/70', rented: 'bg-sand-100 text-[#1C1A17]/70' };
+const chipLabel = (l: { status: string; closed: string | null }) => (l.closed === 'sold' ? 'Sold' : l.closed === 'rented' ? 'Rented' : l.status === 'pending' ? 'Under review' : l.status === 'active' ? 'Live' : 'Rejected');
+---
+<section id="listings" class="scroll-mt-28">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 class={h2}>My Listings</h2><a href="/post-property" class="ed-link">+ List property</a></div>
+  {listingDone && <p class="mb-3 border-[0.5px] border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{listingDone}</p>}
+  {listings.length ? (
+    <ul class="border-t-[0.5px] border-[#1C1A17]/15">
+      {listings.map((l) => {
+        const title = `#${l.id} · ${l.bhk ? `${l.bhk} BHK ` : ''}${l.type} in ${refs.locality(l.city_slug, l.locality_slug)?.name}, ${refs.city(l.city_slug)?.name}`;
+        return (
+        <li class="flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-[#1C1A17]/15 bg-white px-4 py-4">
+          <div class="min-w-0">
+            {l.closed ? <span class="font-semibold">{title}</span> : <a href={`/property/${l.id}${l.status === 'active' ? '' : `?token=${l.edit_token}`}`} class="font-semibold hover:underline">{title}</a>}
+            <p class="text-sm text-[#1C1A17]/60">{l.purpose === 'buy' ? formatPrice(l.price) : formatRent(l.price)} · {l.area_sqft.toLocaleString('en-IN')} sq.ft · posted {fmtDate(l.posted_at)}</p>
+            {/* Owner actions; edits go back to review. Plain form posts, so they work without JavaScript. */}
+            {!l.closed && (
+              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <a href={`/post-property?edit=${l.id}`} class="ed-link">Edit</a>
+                <form method="post" action={`/api/account/listings/${l.id}`}>{back && <input type="hidden" name="back" value={back} />}<button name="action" value={l.purpose === 'buy' ? 'sold' : 'rented'} class="ed-link cursor-pointer">Mark {l.purpose === 'buy' ? 'sold' : 'rented'}</button></form>
+                <form method="post" action={`/api/account/listings/${l.id}`} onsubmit="return confirm('Delete this listing? It will be removed from search and can’t be restored.')">{back && <input type="hidden" name="back" value={back} />}<button name="action" value="delete" class="ed-link cursor-pointer">Delete</button></form>
+              </div>
+            )}
+          </div>
+          <span class:list={['px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em]', statusChip[l.closed ?? l.status]]}>{chipLabel(l)}</span>
+        </li>
+        );
+      })}
+    </ul>
+  ) : <p class="border-[0.5px] border-dashed border-[#1C1A17]/25 p-6 text-sm text-[#1C1A17]/60">You haven’t listed a property yet. <a href="/post-property" class="font-semibold underline">List your first one</a>.</p>}
+</section>
